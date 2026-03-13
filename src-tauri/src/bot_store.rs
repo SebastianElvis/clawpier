@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::BotProfile;
+use crate::models::{BotProfile, EnvVar};
 
 pub struct BotStore {
     bots: Vec<BotProfile>,
@@ -18,14 +18,30 @@ impl BotStore {
 
         let config_path = config_dir.join("bots.json");
 
-        let bots = if config_path.exists() {
+        let mut bots: Vec<BotProfile> = if config_path.exists() {
             let data = std::fs::read_to_string(&config_path)?;
             serde_json::from_str(&data).unwrap_or_default()
         } else {
             Vec::new()
         };
 
-        Ok(Self { bots, config_path })
+        // Migrate legacy api_key_env -> env_vars
+        let mut migrated = false;
+        for bot in &mut bots {
+            if bot.api_key_env.is_some() {
+                bot.migrate();
+                migrated = true;
+            }
+        }
+
+        let store = Self { bots, config_path };
+
+        // Persist migration if any bots were migrated
+        if migrated {
+            store.save()?;
+        }
+
+        Ok(store)
     }
 
     fn save(&self) -> Result<(), AppError> {
@@ -100,6 +116,17 @@ impl BotStore {
             .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
 
         bot.network_enabled = enabled;
+        self.save()
+    }
+
+    pub fn update_env_vars(&mut self, id: &str, env_vars: Vec<EnvVar>) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.env_vars = env_vars;
         self.save()
     }
 }

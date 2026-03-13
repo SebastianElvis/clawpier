@@ -3,6 +3,7 @@ import { useBotStore } from "./stores/bot-store";
 import { useBotEvents } from "./hooks/use-bot-events";
 import { Layout } from "./components/Layout";
 import { BotList } from "./components/BotList";
+import { BotDetail } from "./components/BotDetail";
 import { NewBotSheet } from "./components/NewBotSheet";
 import { DockerError } from "./components/DockerError";
 import { ImageMissing } from "./components/ImageMissing";
@@ -20,6 +21,7 @@ function App() {
     bots,
   } = useBotStore();
   const [showNewBot, setShowNewBot] = useState(false);
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(
     () => !localStorage.getItem(WELCOME_KEY)
   );
@@ -95,11 +97,33 @@ function App() {
     return <ImageMissing />;
   }
 
+  // Find selected bot for detail view
+  const selectedBot = selectedBotId
+    ? bots.find((b) => b.id === selectedBotId)
+    : null;
+
+  // If selected bot was deleted, go back to list
+  if (selectedBotId && !selectedBot) {
+    setSelectedBotId(null);
+  }
+
   return (
     <>
-      <Layout onCreateBot={() => setShowNewBot(true)} botCount={bots.length}>
-        <BotList onCreateBot={() => setShowNewBot(true)} />
-      </Layout>
+      {selectedBot ? (
+        <div className="h-screen bg-white">
+          <BotDetail
+            bot={selectedBot}
+            onBack={() => setSelectedBotId(null)}
+          />
+        </div>
+      ) : (
+        <Layout onCreateBot={() => setShowNewBot(true)} botCount={bots.length}>
+          <BotList
+            onCreateBot={() => setShowNewBot(true)}
+            onSelectBot={setSelectedBotId}
+          />
+        </Layout>
+      )}
 
       {showNewBot && <NewBotSheet onClose={() => setShowNewBot(false)} />}
       {showWelcome && <WelcomeScreen onDismiss={handleDismissWelcome} />}

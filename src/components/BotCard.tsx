@@ -8,18 +8,23 @@ import {
   MoreVertical,
   WifiOff,
   Wifi,
+  ChevronRight,
+  Cpu,
+  HardDrive,
 } from "lucide-react";
 import type { BotWithStatus } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
+import { useContainerStats } from "../hooks/use-container-stats";
 import { StatusBadge } from "./StatusBadge";
 import { NetworkBadge } from "./NetworkBadge";
 import { DeleteConfirm } from "./DeleteConfirm";
 
 interface BotCardProps {
   bot: BotWithStatus;
+  onSelect: () => void;
 }
 
-export function BotCard({ bot }: BotCardProps) {
+export function BotCard({ bot, onSelect }: BotCardProps) {
   const { startBot, stopBot, renameBot, toggleNetwork, actionInProgress } =
     useBotStore();
   const [isEditing, setIsEditing] = useState(false);
@@ -30,6 +35,7 @@ export function BotCard({ bot }: BotCardProps) {
 
   const isLoading = actionInProgress.has(bot.id);
   const isRunning = bot.status.type === "Running";
+  const stats = useContainerStats(bot.id, isRunning);
 
   const handleStart = async () => {
     setError(null);
@@ -173,6 +179,36 @@ export function BotCard({ bot }: BotCardProps) {
           )}
         </div>
 
+        {/* Mini stats (when running) */}
+        {isRunning && stats && (
+          <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-500">
+            <div className="flex items-center gap-1">
+              <Cpu className="h-3 w-3" />
+              <span>{stats.cpu_percent.toFixed(1)}%</span>
+              <div className="h-1 w-10 rounded-full bg-gray-200">
+                <div
+                  className="h-1 rounded-full bg-blue-500 transition-all"
+                  style={{
+                    width: `${Math.min(stats.cpu_percent, 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <HardDrive className="h-3 w-3" />
+              <span>{stats.memory_percent.toFixed(1)}%</span>
+              <div className="h-1 w-10 rounded-full bg-gray-200">
+                <div
+                  className="h-1 rounded-full bg-emerald-500 transition-all"
+                  style={{
+                    width: `${Math.min(stats.memory_percent, 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error message */}
         {error && (
           <p className="mt-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">
@@ -209,6 +245,15 @@ export function BotCard({ bot }: BotCardProps) {
               Start
             </button>
           )}
+
+          {/* Open detail view */}
+          <button
+            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            onClick={onSelect}
+          >
+            Open
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 

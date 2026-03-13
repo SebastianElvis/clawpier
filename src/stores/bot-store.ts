@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { BotWithStatus } from "../lib/types";
+import type { BotWithStatus, EnvVar } from "../lib/types";
 import * as api from "../lib/tauri";
 
 export const DEFAULT_IMAGE = "ghcr.io/openclaw/openclaw:latest";
@@ -27,6 +27,7 @@ interface BotStore {
   deleteBot: (id: string) => Promise<void>;
   renameBot: (id: string, name: string) => Promise<void>;
   toggleNetwork: (id: string, enabled: boolean) => Promise<void>;
+  updateEnvVars: (id: string, envVars: EnvVar[]) => Promise<void>;
 }
 
 export const useBotStore = create<BotStore>((set, get) => ({
@@ -125,6 +126,11 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   toggleNetwork: async (id, enabled) => {
     await api.toggleNetwork(id, enabled);
+    await get().fetchBots();
+  },
+
+  updateEnvVars: async (id, envVars) => {
+    await api.updateEnvVars(id, envVars);
     await get().fetchBots();
   },
 }));

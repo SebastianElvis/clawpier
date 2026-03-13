@@ -1,3 +1,8 @@
+export interface EnvVar {
+  key: string;
+  value: string;
+}
+
 export interface BotProfile {
   id: string;
   name: string;
@@ -5,6 +10,7 @@ export interface BotProfile {
   network_enabled: boolean;
   workspace_path?: string;
   api_key_env?: string;
+  env_vars: EnvVar[];
 }
 
 export type BotStatus =
@@ -14,4 +20,31 @@ export type BotStatus =
 
 export interface BotWithStatus extends BotProfile {
   status: BotStatus;
+}
+
+export interface ContainerStats {
+  cpu_percent: number;
+  memory_usage: number;
+  memory_limit: number;
+  memory_percent: number;
+  network_rx: number;
+  network_tx: number;
+}
+
+export interface LogEntry {
+  timestamp: string | null;
+  message: string;
+  stream: "stdout" | "stderr";
+}
+
+export interface ExecResult {
+  output: string;
+  exit_code: number | null;
+}
+
+export interface FileEntry {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size: number | null;
 }

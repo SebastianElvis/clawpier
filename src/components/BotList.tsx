@@ -4,9 +4,10 @@ import { EmptyState } from "./EmptyState";
 
 interface BotListProps {
   onCreateBot: () => void;
+  onSelectBot: (id: string) => void;
 }
 
-export function BotList({ onCreateBot }: BotListProps) {
+export function BotList({ onCreateBot, onSelectBot }: BotListProps) {
   const { bots, loading } = useBotStore();
 
   if (loading) {
@@ -29,7 +30,7 @@ export function BotList({ onCreateBot }: BotListProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {bots.map((bot) => (
-        <BotCard key={bot.id} bot={bot} />
+        <BotCard key={bot.id} bot={bot} onSelect={() => onSelectBot(bot.id)} />
       ))}
     </div>
   );

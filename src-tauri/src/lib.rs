@@ -4,6 +4,7 @@ mod docker_manager;
 mod error;
 mod models;
 mod state;
+mod streaming;
 
 use bot_store::BotStore;
 use docker_manager::DockerManager;
@@ -32,6 +33,14 @@ pub fn run() {
             commands::rename_bot,
             commands::toggle_network,
             commands::pull_image,
+            commands::update_env_vars,
+            commands::start_stats_stream,
+            commands::stop_stats_stream,
+            commands::start_log_stream,
+            commands::stop_log_stream,
+            commands::exec_command,
+            commands::list_workspace_files,
+            commands::read_workspace_file,
         ])
         .setup(|app| {
             // Spawn background status polling task
