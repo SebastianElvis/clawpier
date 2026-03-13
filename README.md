@@ -1,73 +1,113 @@
-# React + TypeScript + Vite
+# Clawbox
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A macOS desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw) bot instances via Docker.
 
-Currently, two official plugins are available:
+Built with **Tauri v2** (Rust backend + React frontend).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- **Multi-bot dashboard** — Create, start, stop, and delete bot instances from a clean UI
+- **Sandbox isolation** — Containers run with `--network none` by default; network access is opt-in per bot
+- **Real-time status** — Background polling (5s) shows live Running / Stopped / Error states
+- **Workspace mounting** — Optionally bind a local folder into the container
+- **Docker prerequisite check** — Friendly error screen if Docker Desktop isn't running
+- **Keyboard shortcuts** — `Cmd+N` to create a new bot
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+| Layer | Technology |
+|-------|-----------|
+| Framework | Tauri v2 |
+| Frontend | React 19, TypeScript, Tailwind CSS v4, Zustand |
+| Backend | Rust, bollard (Docker API), tokio, serde |
+| Package manager | pnpm |
+| Icons | lucide-react |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **macOS** (primary target)
+- **Docker Desktop** — must be installed and running
+- **Rust** toolchain (`rustup`)
+- **Node.js** ≥ 18 + **pnpm**
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Install frontend dependencies
+pnpm install
+
+# Run in development mode (hot-reload)
+pnpm tauri dev
+
+# Build a release binary + .app bundle
+pnpm tauri build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The built app lands at `src-tauri/target/release/bundle/macos/Clawbox.app`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Project Structure
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+clawbox/
+├── src/                          # React frontend
+│   ├── components/               # UI components
+│   │   ├── BotCard.tsx           # Bot card with inline rename, start/stop
+│   │   ├── BotList.tsx           # Grid of bot cards + loading skeleton
+│   │   ├── Layout.tsx            # App shell, header, drag region
+│   │   ├── NewBotSheet.tsx       # Create-bot modal form
+│   │   ├── DeleteConfirm.tsx     # Deletion confirmation dialog
+│   │   ├── StatusBadge.tsx       # Running / Stopped / Error indicator
+│   │   ├── NetworkBadge.tsx      # Network-enabled indicator
+│   │   ├── EmptyState.tsx        # Empty dashboard CTA
+│   │   ├── DockerError.tsx       # Docker-not-found screen
+│   │   └── WelcomeScreen.tsx     # First-launch onboarding
+│   ├── stores/bot-store.ts       # Zustand state management
+│   ├── hooks/use-bot-events.ts   # Tauri event listener
+│   ├── lib/tauri.ts              # Typed IPC invoke wrappers
+│   ├── lib/types.ts              # TypeScript types
+│   └── App.tsx                   # Root component
+├── src-tauri/                    # Rust backend
+│   ├── src/
+│   │   ├── docker_manager.rs     # Docker API via bollard
+│   │   ├── bot_store.rs          # JSON persistence (~/.config/clawbox/bots.json)
+│   │   ├── commands.rs           # Tauri IPC commands
+│   │   ├── models.rs             # BotProfile, BotStatus, BotWithStatus
+│   │   ├── state.rs              # Shared AppState (Mutex)
+│   │   ├── error.rs              # Error types
+│   │   ├── lib.rs                # Tauri setup + status polling
+│   │   └── main.rs               # Entry point
+│   └── tauri.conf.json           # Tauri config
+├── package.json
+├── vite.config.ts
+└── CLAUDE.md                     # AI assistant guidelines
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────┐
+│           React Frontend            │
+│  (Zustand store ← Tauri events)     │
+├─────────────────────────────────────┤
+│          Tauri IPC Bridge           │
+│    invoke() ↔ #[tauri::command]     │
+├─────────────────────────────────────┤
+│           Rust Core                 │
+│  DockerManager · BotStore · State   │
+├─────────────────────────────────────┤
+│      Docker Engine (bollard)        │
+│  /var/run/docker.sock               │
+└─────────────────────────────────────┘
+```
+
+## Key Design Decisions
+
+- **Container naming**: `clawbox-{uuid}` — one container per bot profile
+- **Network isolation**: `--network none` by default; toggled per-bot
+- **Environment injection**: `OPENCLAW_GATEWAY_HOST=127.0.0.1` always set
+- **Persistence**: Simple JSON file at `~/.config/clawbox/bots.json`
+- **Status polling**: 5-second interval via Tauri events (`bot-status-update`)
+
+## License
+
+MIT
