@@ -23,6 +23,7 @@ pub fn run() {
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::check_docker,
+            commands::check_image,
             commands::list_bots,
             commands::create_bot,
             commands::start_bot,

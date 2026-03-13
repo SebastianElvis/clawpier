@@ -11,6 +11,12 @@ pub async fn check_docker(state: State<'_, AppState>) -> Result<bool, AppError> 
 }
 
 #[tauri::command]
+pub async fn check_image(state: State<'_, AppState>, image: String) -> Result<bool, AppError> {
+    let docker = state.docker.lock().await;
+    docker.check_image(&image).await
+}
+
+#[tauri::command]
 pub async fn list_bots(state: State<'_, AppState>) -> Result<Vec<BotWithStatus>, AppError> {
     let store = state.store.lock().await;
     let docker = state.docker.lock().await;

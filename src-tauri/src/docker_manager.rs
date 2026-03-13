@@ -7,6 +7,7 @@ use bollard::container::{
 use bollard::image::CreateImageOptions;
 use bollard::models::HostConfig;
 use bollard::Docker;
+use bollard::image::ListImagesOptions;
 use futures_util::StreamExt;
 
 use crate::error::AppError;
@@ -26,6 +27,31 @@ impl DockerManager {
     pub async fn check_docker(&self) -> Result<bool, AppError> {
         self.docker.ping().await?;
         Ok(true)
+    }
+
+    pub async fn check_image(&self, image: &str) -> Result<bool, AppError> {
+        // Parse image name to match against repo tags
+        // Docker stores tags as "repo:tag" in RepoTags
+        let search = if image.contains(':') {
+            image.to_string()
+        } else {
+            format!("{}:latest", image)
+        };
+
+        let options = ListImagesOptions::<String> {
+            all: false,
+            ..Default::default()
+        };
+
+        let images = self.docker.list_images(Some(options)).await?;
+
+        let found = images.iter().any(|img| {
+            img.repo_tags
+                .iter()
+                .any(|tag| tag == &search)
+        });
+
+        Ok(found)
     }
 
     pub async fn get_container_status(&self, bot_id: &str) -> BotStatus {

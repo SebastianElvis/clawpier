@@ -2,10 +2,13 @@ import { create } from "zustand";
 import type { BotWithStatus } from "../lib/types";
 import * as api from "../lib/tauri";
 
+export const DEFAULT_IMAGE = "ghcr.io/openclaw/openclaw:latest";
+
 interface BotStore {
   bots: BotWithStatus[];
   loading: boolean;
   dockerAvailable: boolean | null;
+  imageAvailable: boolean | null; // null = not checked yet
   actionInProgress: Set<string>; // bot IDs with pending actions
 
   // Setters
@@ -15,6 +18,8 @@ interface BotStore {
 
   // Actions
   checkDocker: () => Promise<boolean>;
+  checkImage: () => Promise<boolean>;
+  pullImage: () => Promise<void>;
   fetchBots: () => Promise<void>;
   createBot: (name: string, workspacePath?: string) => Promise<void>;
   startBot: (id: string) => Promise<void>;
@@ -28,6 +33,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
   bots: [],
   loading: true,
   dockerAvailable: null,
+  imageAvailable: null,
   actionInProgress: new Set(),
 
   setBots: (bots) => set({ bots }),
@@ -53,6 +59,22 @@ export const useBotStore = create<BotStore>((set, get) => ({
       set({ dockerAvailable: false });
       return false;
     }
+  },
+
+  checkImage: async () => {
+    try {
+      const available = await api.checkImage(DEFAULT_IMAGE);
+      set({ imageAvailable: available });
+      return available;
+    } catch {
+      set({ imageAvailable: false });
+      return false;
+    }
+  },
+
+  pullImage: async () => {
+    await api.pullImage(DEFAULT_IMAGE);
+    set({ imageAvailable: true });
   },
 
   fetchBots: async () => {

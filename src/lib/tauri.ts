@@ -42,6 +42,10 @@ export async function toggleNetwork(
   return invoke("toggle_network", { id, enabled });
 }
 
+export async function checkImage(image: string): Promise<boolean> {
+  return invoke<boolean>("check_image", { image });
+}
+
 export async function pullImage(image: string): Promise<void> {
   return invoke("pull_image", { image });
 }
