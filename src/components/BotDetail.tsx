@@ -294,6 +294,8 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
 const QUICK_COMMANDS = [
   { label: "openclaw configure", command: "openclaw configure" },
+  { label: "openclaw config show", command: "openclaw config show" },
+  { label: "openclaw status", command: "openclaw status" },
   { label: "openclaw --help", command: "openclaw --help" },
   { label: "ls /workspace", command: "ls /workspace" },
   { label: "env", command: "env" },
