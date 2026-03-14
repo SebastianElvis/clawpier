@@ -361,6 +361,7 @@ name = "clawbox"
 version = "0.1.0"
 dependencies = [
  "bollard",
+ "bytes",
  "dirs",
  "futures-util",
  "serde",

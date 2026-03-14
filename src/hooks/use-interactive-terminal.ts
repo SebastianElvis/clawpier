@@ -10,6 +10,9 @@ import {
 
 import "@xterm/xterm/css/xterm.css";
 
+const MAX_RETRIES = 5;
+const BASE_DELAY_MS = 500;
+
 interface UseInteractiveTerminalOptions {
   botId: string;
   isRunning: boolean;
@@ -24,7 +27,11 @@ export function useInteractiveTerminal({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [sessionKey, setSessionKey] = useState(0);
+  const isReconnectRef = useRef(false);
   const unlistenRef = useRef<UnlistenFn | null>(null);
+  const unlistenDisconnectRef = useRef<UnlistenFn | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Write a command to the terminal (used by quick command chips)
@@ -36,6 +43,48 @@ export function useInteractiveTerminal({
     },
     [botId, isConnected]
   );
+
+  // Manual reconnect — clears error and bumps sessionKey
+  const reconnect = useCallback(() => {
+    setConnectionError(null);
+    isReconnectRef.current = true;
+    setSessionKey((k) => k + 1);
+  }, []);
+
+  // Listen for disconnect events (container crash, restart, etc.)
+  // Bumping sessionKey triggers the main effect to re-run and reconnect.
+  useEffect(() => {
+    if (!isRunning) return;
+
+    let cancelled = false;
+    let unlisten: UnlistenFn | null = null;
+
+    listen<string>(`terminal-disconnect-${botId}`, () => {
+      if (!cancelled) {
+        // Write a disconnect notice into the terminal buffer
+        terminalRef.current?.write(
+          "\r\n\x1b[33m--- Session disconnected. Reconnecting... ---\x1b[0m\r\n"
+        );
+        setIsConnected(false);
+        setConnectionError(null);
+        isReconnectRef.current = true;
+        setSessionKey((k) => k + 1);
+      }
+    }).then((fn) => {
+      if (cancelled) {
+        fn();
+      } else {
+        unlisten = fn;
+        unlistenDisconnectRef.current = fn;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+      unlistenDisconnectRef.current = null;
+    };
+  }, [botId, isRunning]);
 
   useEffect(() => {
     if (!isRunning || !containerRef.current) return;
@@ -92,9 +141,11 @@ export function useInteractiveTerminal({
 
     // Start the interactive session
     setIsConnecting(true);
+    setConnectionError(null);
 
     const cols = term.cols;
     const rows = term.rows;
+    const isReconnect = isReconnectRef.current;
 
     let cancelled = false;
 
@@ -111,19 +162,43 @@ export function useInteractiveTerminal({
         );
         unlistenRef.current = unlisten;
 
-        // Start the backend terminal session
-        await startTerminalSession(botId, cols, rows);
+        // Start the backend terminal session with retry
+        let lastError: unknown;
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+          if (cancelled) return;
+          try {
+            await startTerminalSession(botId, cols, rows);
+            lastError = null;
+            break;
+          } catch (err) {
+            lastError = err;
+            if (attempt < MAX_RETRIES - 1) {
+              const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+              await new Promise((r) => setTimeout(r, delay));
+            }
+          }
+        }
+
+        if (lastError) throw lastError;
 
         if (!cancelled) {
           setIsConnected(true);
           setIsConnecting(false);
+          setConnectionError(null);
+          if (isReconnect) {
+            term.write(
+              "\r\n\x1b[32m--- Reconnected ---\x1b[0m\r\n"
+            );
+            isReconnectRef.current = false;
+          }
         }
       } catch (err) {
         console.error("Failed to start terminal session:", err);
         if (!cancelled) {
           setIsConnecting(false);
+          setConnectionError(String(err));
           term.write(
-            "\r\n\x1b[31mFailed to connect to container terminal.\x1b[0m\r\n"
+            `\r\n\x1b[31mFailed to connect to container terminal.\x1b[0m\r\n`
           );
         }
       }
@@ -167,7 +242,14 @@ export function useInteractiveTerminal({
       setIsConnected(false);
       setIsConnecting(false);
     };
-  }, [botId, isRunning]);
+  }, [botId, isRunning, sessionKey]);
 
-  return { containerRef, isConnected, isConnecting, writeCommand };
+  return {
+    containerRef,
+    isConnected,
+    isConnecting,
+    connectionError,
+    writeCommand,
+    reconnect,
+  };
 }

@@ -31,7 +31,7 @@ impl BotProfile {
             id: uuid::Uuid::new_v4().to_string(),
             name,
             image: "ghcr.io/openclaw/openclaw:latest".to_string(),
-            network_enabled: false,
+            network_enabled: true,
             workspace_path,
             api_key_env: None,
             env_vars: Vec::new(),
@@ -108,4 +108,106 @@ pub struct FileEntry {
     pub path: String,
     pub is_dir: bool,
     pub size: Option<u64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    #[test]
+    fn bot_profile_new_defaults() {
+        let bot = BotProfile::new("TestBot".into(), None);
+        assert_eq!(bot.name, "TestBot");
+        assert_eq!(bot.image, "ghcr.io/openclaw/openclaw:latest");
+        assert!(bot.network_enabled);
+        assert!(bot.env_vars.is_empty());
+        assert!(bot.workspace_path.is_none());
+        assert!(bot.api_key_env.is_none());
+        assert!(!bot.id.is_empty());
+    }
+
+    #[test]
+    fn container_name_format() {
+        let mut bot = BotProfile::new("Test".into(), None);
+        bot.id = "abc-123".to_string();
+        assert_eq!(bot.container_name(), "clawbox-abc-123");
+    }
+
+    #[test]
+    fn migrate_moves_api_key_to_env_vars() {
+        let mut bot = BotProfile::new("Test".into(), None);
+        bot.api_key_env = Some("MY_KEY=secret123".to_string());
+
+        bot.migrate();
+
+        assert!(bot.api_key_env.is_none());
+        assert_eq!(bot.env_vars.len(), 1);
+        assert_eq!(bot.env_vars[0].key, "MY_KEY");
+        assert_eq!(bot.env_vars[0].value, "secret123");
+    }
+
+    #[test]
+    fn migrate_skips_duplicate() {
+        let mut bot = BotProfile::new("Test".into(), None);
+        bot.env_vars.push(EnvVar {
+            key: "MY_KEY".to_string(),
+            value: "existing".to_string(),
+        });
+        bot.api_key_env = Some("MY_KEY=new_value".to_string());
+
+        bot.migrate();
+
+        assert_eq!(bot.env_vars.len(), 1);
+        assert_eq!(bot.env_vars[0].value, "existing");
+    }
+
+    #[test]
+    fn migrate_noop_without_api_key() {
+        let mut bot = BotProfile::new("Test".into(), None);
+        let env_count_before = bot.env_vars.len();
+
+        bot.migrate();
+
+        assert_eq!(bot.env_vars.len(), env_count_before);
+    }
+
+    #[test]
+    fn bot_status_tagged_serialization() {
+        let running = serde_json::to_value(BotStatus::Running).unwrap();
+        assert_eq!(running["type"], "Running");
+
+        let stopped = serde_json::to_value(BotStatus::Stopped).unwrap();
+        assert_eq!(stopped["type"], "Stopped");
+
+        let error = serde_json::to_value(BotStatus::Error("oops".into())).unwrap();
+        assert_eq!(error["type"], "Error");
+        assert_eq!(error["message"], "oops");
+    }
+
+    #[test]
+    fn bot_with_status_flattened() {
+        let bot = BotProfile::new("FlatTest".into(), None);
+        let bws = BotWithStatus {
+            profile: bot,
+            status: BotStatus::Running,
+        };
+
+        let json = serde_json::to_value(&bws).unwrap();
+        // Flattened: profile fields are at the top level
+        assert_eq!(json["name"], "FlatTest");
+        assert_eq!(json["status"]["type"], "Running");
+    }
+
+    #[test]
+    fn bot_profile_roundtrip() {
+        let original = BotProfile::new("Roundtrip".into(), Some("/tmp/ws".into()));
+        let json = serde_json::to_string(&original).unwrap();
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.id, original.id);
+        assert_eq!(restored.name, "Roundtrip");
+        assert_eq!(restored.workspace_path, Some("/tmp/ws".to_string()));
+        assert_eq!(restored.image, original.image);
+    }
 }

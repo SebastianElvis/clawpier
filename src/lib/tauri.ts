@@ -33,6 +33,10 @@ export async function stopBot(id: string): Promise<void> {
   return invoke("stop_bot", { id });
 }
 
+export async function restartBot(id: string): Promise<void> {
+  return invoke("restart_bot", { id });
+}
+
 export async function deleteBot(id: string): Promise<void> {
   return invoke("delete_bot", { id });
 }

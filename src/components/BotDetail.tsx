@@ -10,6 +10,8 @@ import {
   Settings,
   Cpu,
   HardDrive,
+  RotateCw,
+  RefreshCw,
 } from "lucide-react";
 import type { BotWithStatus } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
@@ -21,6 +23,7 @@ import { EnvVarEditor } from "./EnvVarEditor";
 import { FileBrowser } from "./FileBrowser";
 import { StatusBadge } from "./StatusBadge";
 import { NetworkBadge } from "./NetworkBadge";
+import { useAutoRestart } from "../hooks/use-auto-restart";
 
 type Tab = "logs" | "terminal" | "files" | "settings";
 
@@ -30,12 +33,23 @@ interface BotDetailProps {
 }
 
 export function BotDetail({ bot, onBack }: BotDetailProps) {
-  const { startBot, stopBot, actionInProgress } = useBotStore();
+  const { startBot, stopBot, restartBot, actionInProgress } = useBotStore();
   const [activeTab, setActiveTab] = useState<Tab>("logs");
   const [error, setError] = useState<string | null>(null);
 
   const isRunning = bot.status.type === "Running";
   const isLoading = actionInProgress.has(bot.id);
+
+  // Auto-restart once when container stops unexpectedly while terminal is active.
+  // The one-shot guard prevents restart loops if the container keeps crashing.
+  const { resetAutoRestart } = useAutoRestart({
+    botId: bot.id,
+    isRunning,
+    activeTab,
+    isLoading,
+    restartBot,
+    onError: setError,
+  });
 
   // Stats streaming (only when running)
   const stats = useContainerStats(bot.id, isRunning);
@@ -48,6 +62,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
   const handleStart = async () => {
     setError(null);
+    resetAutoRestart();
     try {
       await startBot(bot.id);
     } catch (e) {
@@ -57,8 +72,18 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
   const handleStop = async () => {
     setError(null);
+    resetAutoRestart();
     try {
       await stopBot(bot.id);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const handleRestart = async () => {
+    setError(null);
+    try {
+      await restartBot(bot.id);
     } catch (e) {
       setError(String(e));
     }
@@ -97,20 +122,35 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
             {bot.network_enabled && <NetworkBadge />}
           </div>
 
-          {/* Start/Stop button */}
+          {/* Start/Stop/Restart buttons */}
           {isRunning ? (
-            <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
-              onClick={handleStop}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Square className="h-3.5 w-3.5" />
-              )}
-              Stop
-            </button>
+            <>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                onClick={handleRestart}
+                disabled={isLoading}
+                title="Restart container"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCw className="h-3.5 w-3.5" />
+                )}
+                Restart
+              </button>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                onClick={handleStop}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Square className="h-3.5 w-3.5" />
+                )}
+                Stop
+              </button>
+            </>
           ) : (
             <button
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
@@ -266,8 +306,14 @@ function TerminalTab({
   botId: string;
   isRunning: boolean;
 }) {
-  const { containerRef, isConnected, isConnecting, writeCommand } =
-    useInteractiveTerminal({ botId, isRunning });
+  const {
+    containerRef,
+    isConnected,
+    isConnecting,
+    connectionError,
+    writeCommand,
+    reconnect,
+  } = useInteractiveTerminal({ botId, isRunning });
 
   if (!isRunning) {
     return (
@@ -299,18 +345,33 @@ function TerminalTab({
 
       {/* Terminal container */}
       <div className="relative min-h-0 flex-1 bg-[#030712]">
-        {isConnecting && (
+        {/* Connecting/reconnecting overlay */}
+        {isConnecting && !connectionError && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-950/80">
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Connecting to container...
+              {isConnected ? "Connecting..." : "Reconnecting..."}
             </div>
           </div>
         )}
-        <div
-          ref={containerRef}
-          className="h-full w-full p-1"
-        />
+
+        {/* Connection error bar */}
+        {connectionError && (
+          <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between bg-red-950/90 px-4 py-2">
+            <span className="min-w-0 flex-1 truncate text-xs text-red-300">
+              Connection failed
+            </span>
+            <button
+              className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-md bg-red-800 px-3 py-1 text-xs font-medium text-red-100 hover:bg-red-700"
+              onClick={reconnect}
+            >
+              <RefreshCw className="h-3 w-3" />
+              Reconnect
+            </button>
+          </div>
+        )}
+
+        <div ref={containerRef} className="h-full w-full p-1" />
       </div>
     </div>
   );

@@ -24,3 +24,6 @@ uuid = { version = "1", features = ["v4"] }
 dirs = "6"
 thiserror = "2"
 futures-util = "0.3"
+
+[dev-dependencies]
+bytes = "1"

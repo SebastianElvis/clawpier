@@ -92,6 +92,41 @@ pub async fn stop_bot(state: State<'_, AppState>, id: String) -> Result<(), AppE
 }
 
 #[tauri::command]
+pub async fn restart_bot(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), AppError> {
+    // Clean up streams and terminal session
+    let mut streams = state.streams.lock().await;
+    streams.stop_all(&id);
+    streams.stop_session(&id);
+    drop(streams);
+
+    // Stop and remove the container
+    let docker = state.docker.lock().await;
+    let _ = docker.stop_bot(&id).await;
+    drop(docker);
+
+    // Re-read the profile and start a fresh container
+    let store = state.store.lock().await;
+    let bot = store
+        .get_by_id(&id)
+        .ok_or_else(|| AppError::BotNotFound(id.clone()))?
+        .clone();
+    drop(store);
+
+    let docker = state.docker.lock().await;
+    docker.start_bot(&bot).await?;
+    drop(docker);
+
+    // Notify frontend AFTER the new container is running and ready for exec
+    let _ = app.emit(&format!("terminal-disconnect-{}", id), "restart");
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn delete_bot(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
     // Stop streams and interactive session
     let mut streams = state.streams.lock().await;
@@ -465,6 +500,7 @@ pub async fn start_terminal_session(
             // Spawn output streaming task
             let bot_id = id.clone();
             let event_name = format!("terminal-output-{}", id);
+            let disconnect_event = format!("terminal-disconnect-{}", id);
             let output_task = tauri::async_runtime::spawn(async move {
                 let mut stream = output;
                 while let Some(Ok(msg)) = stream.next().await {
@@ -481,6 +517,8 @@ pub async fn start_terminal_session(
                         let _ = app.emit(&event_name, &text);
                     }
                 }
+                // Stream ended (container stopped, exec died, etc.)
+                let _ = app.emit(&disconnect_event, "stream_ended");
             });
 
             // Store the session

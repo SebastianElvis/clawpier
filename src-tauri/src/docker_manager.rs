@@ -11,6 +11,8 @@ use bollard::models::HostConfig;
 use bollard::Docker;
 use futures_util::StreamExt;
 
+use std::path::PathBuf;
+
 use crate::error::AppError;
 use crate::models::{BotProfile, BotStatus, ContainerStats, ExecResult, LogEntry};
 
@@ -119,11 +121,12 @@ impl DockerManager {
             env.push(api_key_env.clone());
         }
 
-        // Build volume binds
-        let mut binds = Vec::new();
-        if let Some(ref workspace) = profile.workspace_path {
-            binds.push(format!("{}:/workspace:rw", workspace));
-        }
+        // Create a host directory for persisting OpenClaw config across restarts.
+        // Using a host bind mount (not a named volume) so it inherits the correct
+        // user permissions — named volumes are root-owned and cause EACCES for the
+        // container's `node` user.
+        let bot_config_dir = config_dir_for_bot(&profile.id)?;
+        let binds = build_binds(profile, &bot_config_dir);
 
         // Host config
         let host_config = HostConfig {
@@ -132,11 +135,7 @@ impl DockerManager {
             } else {
                 Some("none".to_string())
             },
-            binds: if binds.is_empty() {
-                None
-            } else {
-                Some(binds)
-            },
+            binds: Some(binds),
             ..Default::default()
         };
 
@@ -363,6 +362,31 @@ impl DockerManager {
     }
 }
 
+// ── Helper: create and return the host config directory for a bot ─────
+fn config_dir_for_bot(bot_id: &str) -> Result<PathBuf, AppError> {
+    let dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("clawbox")
+        .join("data")
+        .join(bot_id);
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+// ── Helper: build volume bind mounts for a bot container ─────────────
+fn build_binds(profile: &BotProfile, bot_config_dir: &std::path::Path) -> Vec<String> {
+    let mut binds = Vec::new();
+    if let Some(ref workspace) = profile.workspace_path {
+        binds.push(format!("{}:/workspace:rw", workspace));
+    }
+    // Persist OpenClaw config across container restarts using a host bind mount
+    binds.push(format!(
+        "{}:/home/node/.openclaw:rw",
+        bot_config_dir.display()
+    ));
+    binds
+}
+
 // ── Helper: create log stream options ────────────────────────────────
 pub fn log_options(tail: Option<u64>) -> LogsOptions<String> {
     LogsOptions {
@@ -382,5 +406,465 @@ pub fn stats_options() -> StatsOptions {
     StatsOptions {
         stream: true,
         one_shot: false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bollard::container::LogOutput;
+    use bytes::Bytes;
+
+    // ── split_timestamp ──────────────────────────────────────────────
+
+    #[test]
+    fn split_timestamp_with_ts() {
+        let line = "2024-01-15T10:30:45.123456789Z Hello world";
+        let (ts, msg) = DockerManager::split_timestamp(line);
+        assert_eq!(ts.unwrap(), "2024-01-15T10:30:45.123456789Z");
+        assert_eq!(msg, "Hello world");
+    }
+
+    #[test]
+    fn split_timestamp_without_ts() {
+        let line = "Just a plain message without any timestamp";
+        let (ts, msg) = DockerManager::split_timestamp(line);
+        assert!(ts.is_none());
+        assert_eq!(msg, line);
+    }
+
+    #[test]
+    fn split_timestamp_short_string() {
+        let line = "short";
+        let (ts, msg) = DockerManager::split_timestamp(line);
+        assert!(ts.is_none());
+        assert_eq!(msg, "short");
+    }
+
+    #[test]
+    fn split_timestamp_empty() {
+        let (ts, msg) = DockerManager::split_timestamp("");
+        assert!(ts.is_none());
+        assert_eq!(msg, "");
+    }
+
+    // ── parse_log_output ─────────────────────────────────────────────
+
+    #[test]
+    fn parse_log_output_stdout() {
+        let output = LogOutput::StdOut {
+            message: Bytes::from("2024-01-15T10:30:45.123456789Z server started"),
+        };
+        let entry = DockerManager::parse_log_output(&output);
+        assert_eq!(entry.stream, "stdout");
+        assert_eq!(entry.message, "server started");
+        assert!(entry.timestamp.is_some());
+    }
+
+    #[test]
+    fn parse_log_output_stderr() {
+        let output = LogOutput::StdErr {
+            message: Bytes::from("2024-01-15T10:30:45.123456789Z error occurred"),
+        };
+        let entry = DockerManager::parse_log_output(&output);
+        assert_eq!(entry.stream, "stderr");
+        assert_eq!(entry.message, "error occurred");
+    }
+
+    #[test]
+    fn parse_log_output_no_timestamp() {
+        let output = LogOutput::StdOut {
+            message: Bytes::from("plain message"),
+        };
+        let entry = DockerManager::parse_log_output(&output);
+        assert!(entry.timestamp.is_none());
+        assert_eq!(entry.message, "plain message");
+    }
+
+    // ── log_options / stats_options ──────────────────────────────────
+
+    #[test]
+    fn log_options_default_tail() {
+        let opts = log_options(None);
+        assert!(opts.follow);
+        assert!(opts.stdout);
+        assert!(opts.stderr);
+        assert!(opts.timestamps);
+        assert_eq!(opts.tail, "100");
+    }
+
+    #[test]
+    fn log_options_custom_tail() {
+        let opts = log_options(Some(500));
+        assert_eq!(opts.tail, "500");
+    }
+
+    #[test]
+    fn stats_options_defaults() {
+        let opts = stats_options();
+        assert!(opts.stream);
+        assert!(!opts.one_shot);
+    }
+
+    // ── build_binds ─────────────────────────────────────────────────
+
+    #[test]
+    fn build_binds_always_includes_config_dir() {
+        let profile = BotProfile::new("test".into(), None);
+        let config_dir = std::path::PathBuf::from("/tmp/clawbox-test");
+        let binds = build_binds(&profile, &config_dir);
+        assert_eq!(binds.len(), 1);
+        assert_eq!(binds[0], "/tmp/clawbox-test:/home/node/.openclaw:rw");
+    }
+
+    #[test]
+    fn build_binds_includes_workspace_when_set() {
+        let profile = BotProfile::new("test".into(), Some("/my/workspace".into()));
+        let config_dir = std::path::PathBuf::from("/tmp/clawbox-test");
+        let binds = build_binds(&profile, &config_dir);
+        assert_eq!(binds.len(), 2);
+        assert_eq!(binds[0], "/my/workspace:/workspace:rw");
+        assert_eq!(binds[1], "/tmp/clawbox-test:/home/node/.openclaw:rw");
+    }
+
+    #[test]
+    fn config_dir_for_bot_creates_directory() {
+        let bot_id = format!("test-{}", uuid::Uuid::new_v4());
+        let dir = config_dir_for_bot(&bot_id).expect("should create dir");
+        assert!(dir.exists());
+        assert!(dir.is_dir());
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── Docker integration test ─────────────────────────────────────
+    // Verifies that host bind mounts persist data across container
+    // recreations. This is the mechanism that keeps openclaw config
+    // (Telegram, Kimi, etc.) across restarts triggered by `openclaw configure`.
+    //
+    // Requires: Docker running, busybox image available.
+    // Run with: cargo test --manifest-path src-tauri/Cargo.toml -- --ignored
+
+    #[tokio::test]
+    #[ignore]
+    async fn config_bind_mount_persists_across_restart() {
+        let dm = DockerManager::new().expect("Docker must be running");
+        let client = dm.client();
+
+        let test_id = uuid::Uuid::new_v4().to_string();
+        let short_id = &test_id[..8];
+        let cname = format!("clawbox-inttest-{}", short_id);
+
+        // Use a temp directory as the host bind mount
+        let host_dir = std::env::temp_dir().join(format!("clawbox-inttest-{}", short_id));
+        std::fs::create_dir_all(&host_dir).expect("create host dir");
+
+        // Cleanup from any previous failed run
+        let _ = client
+            .remove_container(
+                &cname,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await;
+
+        let host_dir_str = host_dir.to_string_lossy().to_string();
+        let make_config = || Config {
+            image: Some("busybox:latest".to_string()),
+            cmd: Some(vec!["sleep".to_string(), "300".to_string()]),
+            host_config: Some(HostConfig {
+                binds: Some(vec![format!("{}:/config:rw", host_dir_str)]),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Step 1: Create container, write test data
+        client
+            .create_container(
+                Some(CreateContainerOptions {
+                    name: cname.as_str(),
+                    platform: None,
+                }),
+                make_config(),
+            )
+            .await
+            .expect("create container");
+        client
+            .start_container(&cname, None::<StartContainerOptions<String>>)
+            .await
+            .expect("start container");
+
+        let exec = client
+            .create_exec(
+                &cname,
+                CreateExecOptions {
+                    cmd: Some(vec![
+                        "sh",
+                        "-c",
+                        "echo 'telegram_token=abc123' > /config/test.txt",
+                    ]),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("create write exec");
+        client
+            .start_exec(&exec.id, None)
+            .await
+            .expect("start write exec");
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+        // Step 2: Remove container (simulates restart)
+        client
+            .stop_container(&cname, Some(StopContainerOptions { t: 1 }))
+            .await
+            .expect("stop");
+        client
+            .remove_container(
+                &cname,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await
+            .expect("remove");
+
+        // Step 3: Recreate container with the same bind mount
+        client
+            .create_container(
+                Some(CreateContainerOptions {
+                    name: cname.as_str(),
+                    platform: None,
+                }),
+                make_config(),
+            )
+            .await
+            .expect("recreate container");
+        client
+            .start_container(&cname, None::<StartContainerOptions<String>>)
+            .await
+            .expect("restart container");
+
+        // Step 4: Read test data back — it must have persisted
+        let exec = client
+            .create_exec(
+                &cname,
+                CreateExecOptions {
+                    attach_stdout: Some(true),
+                    cmd: Some(vec!["cat", "/config/test.txt"]),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("create read exec");
+
+        let mut output = String::new();
+        if let StartExecResults::Attached {
+            output: mut stream, ..
+        } = client
+            .start_exec(&exec.id, None)
+            .await
+            .expect("start read exec")
+        {
+            while let Some(Ok(msg)) = stream.next().await {
+                if let bollard::container::LogOutput::StdOut { message } = msg {
+                    output.push_str(&String::from_utf8_lossy(&message));
+                }
+            }
+        }
+
+        assert!(
+            output.contains("telegram_token=abc123"),
+            "Config data must persist across restarts. Got: '{}'",
+            output.trim()
+        );
+
+        // Cleanup
+        let _ = client
+            .stop_container(&cname, Some(StopContainerOptions { t: 1 }))
+            .await;
+        let _ = client
+            .remove_container(
+                &cname,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await;
+        let _ = std::fs::remove_dir_all(&host_dir);
+    }
+
+    /// Verifies that a non-root user (UID 1000, like OpenClaw's `node` user)
+    /// can write to the bind-mounted config directory.
+    ///
+    /// This is the exact scenario that caused EACCES with named Docker volumes:
+    /// named volumes are root-owned, so the `node` user couldn't write
+    /// `openclaw.json`. Host bind mounts don't have this problem because
+    /// Docker Desktop maps UIDs via virtiofs.
+    #[tokio::test]
+    #[ignore]
+    async fn bind_mount_writable_by_nonroot_user() {
+        let dm = DockerManager::new().expect("Docker must be running");
+        let client = dm.client();
+
+        let test_id = uuid::Uuid::new_v4().to_string();
+        let short_id = &test_id[..8];
+        let cname = format!("clawbox-perm-{}", short_id);
+
+        // Create host directory (same as config_dir_for_bot does)
+        let host_dir =
+            std::env::temp_dir().join(format!("clawbox-perm-{}", short_id));
+        std::fs::create_dir_all(&host_dir).expect("create host dir");
+
+        let _ = client
+            .remove_container(
+                &cname,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await;
+
+        // Run container as non-root user UID 1000 (matches openclaw's `node`)
+        let host_dir_str = host_dir.to_string_lossy().to_string();
+        let config = Config {
+            image: Some("busybox:latest".to_string()),
+            cmd: Some(vec!["sleep".to_string(), "300".to_string()]),
+            user: Some("1000:1000".to_string()),
+            host_config: Some(HostConfig {
+                binds: Some(vec![format!(
+                    "{}:/home/node/.openclaw:rw",
+                    host_dir_str
+                )]),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        client
+            .create_container(
+                Some(CreateContainerOptions {
+                    name: cname.as_str(),
+                    platform: None,
+                }),
+                config,
+            )
+            .await
+            .expect("create container");
+        client
+            .start_container(&cname, None::<StartContainerOptions<String>>)
+            .await
+            .expect("start container");
+
+        // Write a config file as the non-root user.
+        // With named volumes this would fail: EACCES: permission denied
+        let exec = client
+            .create_exec(
+                &cname,
+                CreateExecOptions {
+                    attach_stderr: Some(true),
+                    cmd: Some(vec![
+                        "sh",
+                        "-c",
+                        "echo '{\"telegram\":{\"token\":\"test123\"}}' > /home/node/.openclaw/openclaw.json",
+                    ]),
+                    user: Some("1000:1000"),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("create write exec");
+
+        if let StartExecResults::Attached {
+            output: mut stream, ..
+        } = client
+            .start_exec(&exec.id, None)
+            .await
+            .expect("write exec must not EACCES")
+        {
+            let mut stderr = String::new();
+            while let Some(Ok(msg)) = stream.next().await {
+                if let bollard::container::LogOutput::StdErr { message } = msg {
+                    stderr.push_str(&String::from_utf8_lossy(&message));
+                }
+            }
+            assert!(
+                !stderr.contains("Permission denied") && !stderr.contains("EACCES"),
+                "Non-root user must be able to write. Got stderr: '{}'",
+                stderr.trim()
+            );
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+        // Verify the file is readable from inside the container
+        let exec = client
+            .create_exec(
+                &cname,
+                CreateExecOptions {
+                    attach_stdout: Some(true),
+                    cmd: Some(vec!["cat", "/home/node/.openclaw/openclaw.json"]),
+                    user: Some("1000:1000"),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("create read exec");
+
+        let mut output = String::new();
+        if let StartExecResults::Attached {
+            output: mut stream, ..
+        } = client
+            .start_exec(&exec.id, None)
+            .await
+            .expect("start read exec")
+        {
+            while let Some(Ok(msg)) = stream.next().await {
+                if let bollard::container::LogOutput::StdOut { message } = msg {
+                    output.push_str(&String::from_utf8_lossy(&message));
+                }
+            }
+        }
+
+        assert!(
+            output.contains("telegram"),
+            "Non-root user must read back config. Got: '{}'",
+            output.trim()
+        );
+
+        // Verify the file also exists on the host (bind mount is bidirectional)
+        let host_file = host_dir.join("openclaw.json");
+        assert!(
+            host_file.exists(),
+            "File written in container must appear on host"
+        );
+        let host_content =
+            std::fs::read_to_string(&host_file).expect("read host file");
+        assert!(
+            host_content.contains("telegram"),
+            "Host file must contain data written by container"
+        );
+
+        // Cleanup
+        let _ = client
+            .stop_container(&cname, Some(StopContainerOptions { t: 1 }))
+            .await;
+        let _ = client
+            .remove_container(
+                &cname,
+                Some(RemoveContainerOptions {
+                    force: true,
+                    ..Default::default()
+                }),
+            )
+            .await;
+        let _ = std::fs::remove_dir_all(&host_dir);
     }
 }

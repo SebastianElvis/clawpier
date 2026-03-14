@@ -29,6 +29,7 @@ pub fn run() {
             commands::create_bot,
             commands::start_bot,
             commands::stop_bot,
+            commands::restart_bot,
             commands::delete_bot,
             commands::rename_bot,
             commands::toggle_network,

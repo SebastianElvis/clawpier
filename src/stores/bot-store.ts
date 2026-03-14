@@ -24,6 +24,7 @@ interface BotStore {
   createBot: (name: string, workspacePath?: string) => Promise<void>;
   startBot: (id: string) => Promise<void>;
   stopBot: (id: string) => Promise<void>;
+  restartBot: (id: string) => Promise<void>;
   deleteBot: (id: string) => Promise<void>;
   renameBot: (id: string, name: string) => Promise<void>;
   toggleNetwork: (id: string, enabled: boolean) => Promise<void>;
@@ -108,6 +109,16 @@ export const useBotStore = create<BotStore>((set, get) => ({
     get().setActionInProgress(id, true);
     try {
       await api.stopBot(id);
+      await get().fetchBots();
+    } finally {
+      get().setActionInProgress(id, false);
+    }
+  },
+
+  restartBot: async (id) => {
+    get().setActionInProgress(id, true);
+    try {
+      await api.restartBot(id);
       await get().fetchBots();
     } finally {
       get().setActionInProgress(id, false);
