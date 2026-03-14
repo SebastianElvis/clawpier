@@ -112,6 +112,14 @@ export async function readWorkspaceFile(
   return invoke<string>("read_workspace_file", { id, path });
 }
 
+// ── Bot config commands ───────────────────────────────────────────
+
+export async function getBotConfig(
+  id: string
+): Promise<Record<string, string>> {
+  return invoke<Record<string, string>>("get_bot_config", { id });
+}
+
 // ── Interactive terminal commands ──────────────────────────────────
 
 export async function startTerminalSession(

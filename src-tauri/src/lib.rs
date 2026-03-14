@@ -42,6 +42,7 @@ pub fn run() {
             commands::exec_command,
             commands::list_workspace_files,
             commands::read_workspace_file,
+            commands::get_bot_config,
             commands::start_terminal_session,
             commands::write_terminal_input,
             commands::resize_terminal,

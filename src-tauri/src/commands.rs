@@ -437,6 +437,51 @@ pub async fn read_workspace_file(
     Ok(content)
 }
 
+// ── Bot config commands ───────────────────────────────────────────
+
+#[tauri::command]
+pub async fn get_bot_config(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<std::collections::HashMap<String, String>, AppError> {
+    // Verify bot exists
+    {
+        let store = state.store.lock().await;
+        store
+            .get_by_id(&id)
+            .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
+    }
+
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("clawbox")
+        .join("data")
+        .join(&id);
+
+    let mut configs = std::collections::HashMap::new();
+
+    if !config_dir.exists() {
+        return Ok(configs);
+    }
+
+    let mut entries = tokio::fs::read_dir(&config_dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+        if path.is_file() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            // Only read text files up to 1MB
+            let metadata = tokio::fs::metadata(&path).await?;
+            if metadata.len() <= 1_048_576 {
+                if let Ok(content) = tokio::fs::read_to_string(&path).await {
+                    configs.insert(name, content);
+                }
+            }
+        }
+    }
+
+    Ok(configs)
+}
+
 // ── Interactive terminal commands ──────────────────────────────────
 
 #[tauri::command]

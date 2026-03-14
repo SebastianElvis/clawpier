@@ -12,6 +12,7 @@ import {
   HardDrive,
   RotateCw,
   RefreshCw,
+  LayoutDashboard,
 } from "lucide-react";
 import type { BotWithStatus } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
@@ -21,11 +22,12 @@ import { useInteractiveTerminal } from "../hooks/use-interactive-terminal";
 import { LogViewer } from "./LogViewer";
 import { EnvVarEditor } from "./EnvVarEditor";
 import { FileBrowser } from "./FileBrowser";
+import { ConfigDashboard } from "./ConfigDashboard";
 import { StatusBadge } from "./StatusBadge";
 import { NetworkBadge } from "./NetworkBadge";
 import { useAutoRestart } from "../hooks/use-auto-restart";
 
-type Tab = "logs" | "terminal" | "files" | "settings";
+type Tab = "dashboard" | "logs" | "terminal" | "files" | "settings";
 
 interface BotDetailProps {
   bot: BotWithStatus;
@@ -34,7 +36,7 @@ interface BotDetailProps {
 
 export function BotDetail({ bot, onBack }: BotDetailProps) {
   const { startBot, stopBot, restartBot, actionInProgress } = useBotStore();
-  const [activeTab, setActiveTab] = useState<Tab>("logs");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [error, setError] = useState<string | null>(null);
 
   const isRunning = bot.status.type === "Running";
@@ -90,6 +92,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
   };
 
   const tabs: { key: Tab; label: string; icon: typeof ScrollText }[] = [
+    { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { key: "logs", label: "Logs", icon: ScrollText },
     { key: "terminal", label: "Terminal", icon: Terminal },
     { key: "files", label: "Files", icon: FolderOpen },
@@ -246,6 +249,13 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
             </div>
           )
         )}
+        {activeTab === "dashboard" && (
+          <ConfigDashboard
+            botId={bot.id}
+            isRunning={isRunning}
+            onSwitchToTerminal={() => setActiveTab("terminal")}
+          />
+        )}
         {activeTab === "settings" && (
           <div className="overflow-y-auto p-4">
             <EnvVarEditor botId={bot.id} envVars={bot.env_vars ?? []} />
@@ -294,8 +304,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
 const QUICK_COMMANDS = [
   { label: "openclaw configure", command: "openclaw configure" },
-  { label: "openclaw config show", command: "openclaw config show" },
-  { label: "openclaw status", command: "openclaw status" },
+{ label: "openclaw status", command: "openclaw status" },
   { label: "openclaw --help", command: "openclaw --help" },
   { label: "ls /workspace", command: "ls /workspace" },
   { label: "env", command: "env" },
