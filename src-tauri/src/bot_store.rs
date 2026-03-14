@@ -119,6 +119,21 @@ impl BotStore {
         self.save()
     }
 
+    pub fn set_workspace_path(
+        &mut self,
+        id: &str,
+        workspace_path: Option<String>,
+    ) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.workspace_path = workspace_path;
+        self.save()
+    }
+
     pub fn update_env_vars(&mut self, id: &str, env_vars: Vec<EnvVar>) -> Result<(), AppError> {
         let bot = self
             .bots

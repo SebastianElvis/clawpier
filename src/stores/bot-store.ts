@@ -29,6 +29,7 @@ interface BotStore {
   renameBot: (id: string, name: string) => Promise<void>;
   toggleNetwork: (id: string, enabled: boolean) => Promise<void>;
   updateEnvVars: (id: string, envVars: EnvVar[]) => Promise<void>;
+  setWorkspacePath: (id: string, workspacePath: string | null) => Promise<void>;
 }
 
 export const useBotStore = create<BotStore>((set, get) => ({
@@ -142,6 +143,11 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   updateEnvVars: async (id, envVars) => {
     await api.updateEnvVars(id, envVars);
+    await get().fetchBots();
+  },
+
+  setWorkspacePath: async (id, workspacePath) => {
+    await api.setWorkspacePath(id, workspacePath);
     await get().fetchBots();
   },
 }));

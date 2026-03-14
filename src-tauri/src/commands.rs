@@ -166,6 +166,16 @@ pub async fn toggle_network(
 }
 
 #[tauri::command]
+pub async fn set_workspace_path(
+    state: State<'_, AppState>,
+    id: String,
+    workspace_path: Option<String>,
+) -> Result<(), AppError> {
+    let mut store = state.store.lock().await;
+    store.set_workspace_path(&id, workspace_path)
+}
+
+#[tauri::command]
 pub async fn pull_image(state: State<'_, AppState>, image: String) -> Result<(), AppError> {
     let docker = state.docker.lock().await;
     docker.pull_image(&image).await
@@ -598,7 +608,11 @@ pub async fn start_terminal_session(
         attach_stdout: Some(true),
         attach_stderr: Some(true),
         tty: Some(true),
-        cmd: Some(vec!["/bin/sh"]),
+        cmd: Some(vec!["/bin/bash".to_string()]),
+        env: Some(vec![
+            "TERM=xterm-256color".to_string(),
+            "PS1=\\u@\\h:\\w\\$ ".to_string(),
+        ]),
         ..Default::default()
     };
 

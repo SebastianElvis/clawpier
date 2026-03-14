@@ -33,6 +33,7 @@ pub fn run() {
             commands::delete_bot,
             commands::rename_bot,
             commands::toggle_network,
+            commands::set_workspace_path,
             commands::pull_image,
             commands::update_env_vars,
             commands::start_stats_stream,

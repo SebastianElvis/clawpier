@@ -52,6 +52,16 @@ export async function toggleNetwork(
   return invoke("toggle_network", { id, enabled });
 }
 
+export async function setWorkspacePath(
+  id: string,
+  workspacePath: string | null
+): Promise<void> {
+  return invoke("set_workspace_path", {
+    id,
+    workspacePath,
+  });
+}
+
 export async function checkImage(image: string): Promise<boolean> {
   return invoke<boolean>("check_image", { image });
 }

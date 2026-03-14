@@ -13,7 +13,9 @@ import {
   RotateCw,
   RefreshCw,
   LayoutDashboard,
+  X,
 } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { BotWithStatus } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
@@ -35,7 +37,8 @@ interface BotDetailProps {
 }
 
 export function BotDetail({ bot, onBack }: BotDetailProps) {
-  const { startBot, stopBot, restartBot, actionInProgress } = useBotStore();
+  const { startBot, stopBot, restartBot, setWorkspacePath, actionInProgress } =
+    useBotStore();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [error, setError] = useState<string | null>(null);
 
@@ -93,9 +96,9 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
   const tabs: { key: Tab; label: string; icon: typeof ScrollText }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { key: "logs", label: "Logs", icon: ScrollText },
     { key: "terminal", label: "Terminal", icon: Terminal },
     { key: "files", label: "Files", icon: FolderOpen },
+    { key: "logs", label: "Logs", icon: ScrollText },
     { key: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -244,8 +247,16 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
               workspacePath={bot.workspace_path}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-gray-400">
-              No workspace path configured. Set one in Settings.
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
+              <FolderOpen className="h-8 w-8 text-gray-300" />
+              <p>No workspace path configured.</p>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                onClick={() => setActiveTab("settings")}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Go to Settings
+              </button>
             </div>
           )
         )}
@@ -258,7 +269,62 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
         )}
         {activeTab === "settings" && (
           <div className="overflow-y-auto p-4">
-            <EnvVarEditor botId={bot.id} envVars={bot.env_vars ?? []} />
+            {/* Workspace Path */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-700">
+                Workspace Path
+              </h3>
+              <p className="text-xs text-gray-400">
+                A local folder mounted into the container at{" "}
+                <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">
+                  /workspace
+                </code>
+                . The bot can read and write files here. Changes take
+                effect after restarting the bot.
+              </p>
+              <div className="flex items-center gap-2">
+                {bot.workspace_path ? (
+                  <>
+                    <span className="min-w-0 flex-1 truncate rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-600">
+                      {bot.workspace_path}
+                    </span>
+                    <button
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                      onClick={async () => {
+                        const dir = await open({ directory: true });
+                        if (dir) await setWorkspacePath(bot.id, dir);
+                      }}
+                    >
+                      <FolderOpen className="h-3 w-3" />
+                      Change
+                    </button>
+                    <button
+                      className="inline-flex shrink-0 items-center rounded-md border border-gray-200 bg-white p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                      onClick={() => setWorkspacePath(bot.id, null)}
+                      title="Remove workspace"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                    onClick={async () => {
+                      const dir = await open({ directory: true });
+                      if (dir) await setWorkspacePath(bot.id, dir);
+                    }}
+                  >
+                    <FolderOpen className="h-3 w-3" />
+                    Choose Folder
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Env Vars */}
+            <div className="mt-6">
+              <EnvVarEditor botId={bot.id} envVars={bot.env_vars ?? []} />
+            </div>
 
             <div className="mt-6 space-y-3">
               <h3 className="text-sm font-medium text-gray-700">
@@ -283,14 +349,6 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
                     {bot.network_enabled ? "Enabled" : "Disabled (sandboxed)"}
                   </span>
                 </div>
-                {bot.workspace_path && (
-                  <div className="flex justify-between">
-                    <span>Workspace</span>
-                    <span className="font-mono text-gray-600">
-                      {bot.workspace_path}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           </div>

@@ -94,6 +94,7 @@ export function useInteractiveTerminal({
     // Create terminal instance
     const term = new Terminal({
       cursorBlink: true,
+      cursorStyle: "bar",
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
       fontSize: 13,
       lineHeight: 1.2,
@@ -182,6 +183,9 @@ export function useInteractiveTerminal({
         if (lastError) throw lastError;
 
         if (!cancelled) {
+          // Clear xterm's internal buffer so the first prompt renders
+          // cleanly without selection/highlight artifacts.
+          term.clear();
           setIsConnected(true);
           setIsConnecting(false);
           setConnectionError(null);
