@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useBotStore } from "./stores/bot-store";
 import { useBotEvents } from "./hooks/use-bot-events";
+import { useZoom } from "./hooks/use-zoom";
 import { Layout } from "./components/Layout";
 import { BotList } from "./components/BotList";
 import { BotDetail } from "./components/BotDetail";
@@ -28,6 +29,9 @@ function App() {
 
   // Subscribe to real-time status updates
   useBotEvents();
+
+  // Zoom in/out with Cmd+=/Cmd+-/Cmd+0
+  useZoom();
 
   // Initial check on mount: Docker → Image → fetch bots
   useEffect(() => {
