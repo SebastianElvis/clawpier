@@ -15,7 +15,7 @@ export function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
         </div>
 
         <h1 className="mt-5 text-center text-xl font-bold text-gray-900">
-          Welcome to Clawbox
+          Welcome to ClawPier
         </h1>
         <p className="mt-2 text-center text-sm text-gray-500">
           Manage sandboxed OpenClaw bot instances from a single dashboard —

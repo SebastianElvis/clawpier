@@ -36,7 +36,7 @@ export function ImageMissing() {
         OpenClaw Image Not Found
       </h1>
       <p className="mt-2 max-w-md text-center text-sm text-gray-500">
-        Clawbox needs the OpenClaw Docker image to run bot instances. The image
+        ClawPier needs the OpenClaw Docker image to run bot instances. The image
         will be downloaded from the container registry.
       </p>
       <p className="mt-1.5 rounded bg-gray-100 px-3 py-1 font-mono text-xs text-gray-600">

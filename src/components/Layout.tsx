@@ -19,8 +19,11 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
             className="text-sm font-bold tracking-tight text-gray-900"
             data-tauri-drag-region
           >
-            Clawbox
+            ClawPier
           </h1>
+          <span className="text-[10px] text-gray-400" data-tauri-drag-region>
+            v0.1.0
+          </span>
           {botCount > 0 && (
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
               {botCount} bot{botCount !== 1 ? "s" : ""}

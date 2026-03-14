@@ -462,7 +462,7 @@ pub async fn get_bot_config(
 
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("clawbox")
+        .join("clawpier")
         .join("data")
         .join(&id);
 
@@ -512,7 +512,7 @@ pub async fn resolve_telegram_bot(
             .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("clawbox")
+            .join("clawpier")
             .join("data")
             .join(&id)
     };

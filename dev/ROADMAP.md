@@ -1,10 +1,10 @@
-# Clawbox Product Roadmap
+# ClawPier Product Roadmap
 
 > Last updated: 2026-03-14
 
-- [Clawbox Product Roadmap](#clawbox-product-roadmap)
+- [ClawPier Product Roadmap](#clawpier-product-roadmap)
   - [Vision](#vision)
-  - [Scope: What OpenClaw Handles vs. What Clawbox Builds](#scope-what-openclaw-handles-vs-what-clawbox-builds)
+  - [Scope: What OpenClaw Handles vs. What ClawPier Builds](#scope-what-openclaw-handles-vs-what-clawpier-builds)
   - [Competitive Landscape](#competitive-landscape)
   - [Phase 1: Container Resource Management](#phase-1-container-resource-management)
     - [Why it matters](#why-it-matters)
@@ -45,34 +45,34 @@
 
 ## Vision
 
-Clawbox is the definitive desktop companion for managing sandboxed OpenClaw bot instances. The goal is to evolve from a container manager into a full agent operations platform — where users can configure, monitor, converse with, and extend their bots from a single native app.
+ClawPier is the definitive desktop companion for managing sandboxed OpenClaw bot instances. The goal is to evolve from a container manager into a full agent operations platform — where users can configure, monitor, converse with, and extend their bots from a single native app.
 
 ---
 
-## Scope: What OpenClaw Handles vs. What Clawbox Builds
+## Scope: What OpenClaw Handles vs. What ClawPier Builds
 
-OpenClaw is a full-featured agent runtime. Clawbox should **not** duplicate capabilities that OpenClaw already provides natively. Instead, Clawbox focuses on container operations, GUI management, and surfacing OpenClaw's capabilities in an accessible way.
+OpenClaw is a full-featured agent runtime. ClawPier should **not** duplicate capabilities that OpenClaw already provides natively. Instead, ClawPier focuses on container operations, GUI management, and surfacing OpenClaw's capabilities in an accessible way.
 
 | Capability | Owner | Notes |
 |------------|-------|-------|
 | Scheduled tasks / cron jobs | **OpenClaw** | Users ask the agent to schedule tasks directly. |
-| Persistent memory / context | **OpenClaw** | Agent memory is managed by the runtime. Clawbox persists the data directory across restarts. |
-| LLM provider selection | **OpenClaw** | Configured via `openclaw.json`. Clawbox surfaces this read-only in the Dashboard. |
-| Channel integrations (Telegram, etc.) | **OpenClaw** | Configured via `openclaw configure`. Clawbox shows status in Dashboard. |
-| Skills & plugins | **OpenClaw** | Installed via `clawhub` CLI. Clawbox provides a visual browser & manager (Phase 4). |
-| Container lifecycle | **Clawbox** | Start, stop, restart, delete — Docker operations. |
-| Resource limits (CPU/memory) | **Clawbox** | Docker-level constraints — not an OpenClaw concept. |
-| Network isolation & security | **Clawbox** | Docker network modes, port mapping, sandboxing. |
-| Chat sessions (GUI) | **Clawbox** | Native chat UI to talk to the agent without external tools. |
-| Log streaming & search | **Clawbox** | Real-time logs with search, filtering, and export. |
-| File browser | **Clawbox** | Browse and manage the workspace bind mount. |
-| Multi-bot management | **Clawbox** | Groups, cloning, templates — container fleet operations. |
+| Persistent memory / context | **OpenClaw** | Agent memory is managed by the runtime. ClawPier persists the data directory across restarts. |
+| LLM provider selection | **OpenClaw** | Configured via `openclaw.json`. ClawPier surfaces this read-only in the Dashboard. |
+| Channel integrations (Telegram, etc.) | **OpenClaw** | Configured via `openclaw configure`. ClawPier shows status in Dashboard. |
+| Skills & plugins | **OpenClaw** | Installed via `clawhub` CLI. ClawPier provides a visual browser & manager (Phase 4). |
+| Container lifecycle | **ClawPier** | Start, stop, restart, delete — Docker operations. |
+| Resource limits (CPU/memory) | **ClawPier** | Docker-level constraints — not an OpenClaw concept. |
+| Network isolation & security | **ClawPier** | Docker network modes, port mapping, sandboxing. |
+| Chat sessions (GUI) | **ClawPier** | Native chat UI to talk to the agent without external tools. |
+| Log streaming & search | **ClawPier** | Real-time logs with search, filtering, and export. |
+| File browser | **ClawPier** | Browse and manage the workspace bind mount. |
+| Multi-bot management | **ClawPier** | Groups, cloning, templates — container fleet operations. |
 
 ---
 
 ## Competitive Landscape
 
-| Feature | NanoClaw | ZeroClaw | Docker Desktop | Knolli | **Clawbox** |
+| Feature | NanoClaw | ZeroClaw | Docker Desktop | Knolli | **ClawPier** |
 |---------|----------|----------|----------------|--------|-------------|
 | **Desktop GUI** | No (CLI) | No (CLI) | Partial | Web-only | **Yes** |
 | **Container isolation** | MicroVM | Process | MicroVM | Cloud | Docker |
@@ -84,7 +84,7 @@ OpenClaw is a full-featured agent runtime. Clawbox should **not** duplicate capa
 | **Persistent memory** | Yes | SQLite+vector | No | Cloud | Via OpenClaw |
 | **Multi-agent orchestration** | Per-channel | No | docker-agent | Workflows | **Planned** |
 
-**Clawbox's unique advantage:** None of the competitors have a native desktop GUI. NanoClaw, ZeroClaw, and docker-agent are all CLI tools. Knolli is web-only. Clawbox is the only polished native app for managing OpenClaw bots — the tool you recommend to users who want a visual, approachable experience.
+**ClawPier's unique advantage:** None of the competitors have a native desktop GUI. NanoClaw, ZeroClaw, and docker-agent are all CLI tools. Knolli is web-only. ClawPier is the only polished native app for managing OpenClaw bots — the tool you recommend to users who want a visual, approachable experience.
 
 ---
 
@@ -94,7 +94,7 @@ OpenClaw is a full-featured agent runtime. Clawbox should **not** duplicate capa
 
 ### Why it matters
 
-Today, containers run with unlimited resources. A runaway bot can consume the entire machine's CPU and memory, degrading other apps. Users running multiple bots need resource guardrails. This is table-stakes functionality that Docker Desktop provides at the VM level — Clawbox should offer it per-bot.
+Today, containers run with unlimited resources. A runaway bot can consume the entire machine's CPU and memory, degrading other apps. Users running multiple bots need resource guardrails. This is table-stakes functionality that Docker Desktop provides at the VM level — ClawPier should offer it per-bot.
 
 ### Features
 
@@ -121,11 +121,11 @@ Unlocks the "I can safely run 3 bots on my laptop" use case. Directly addresses 
 
 ## Phase 2: Chat Sessions
 
-> *"I want to talk to my bot directly from Clawbox — without opening Telegram or a terminal."*
+> *"I want to talk to my bot directly from ClawPier — without opening Telegram or a terminal."*
 
 ### Why it matters
 
-Every competitor lets users interact with their agent — NanoClaw via CLI, ZeroClaw via CLI, Knolli via web. Clawbox has **zero chat ability** today. The terminal workaround is too technical for daily users. This is the #1 feature gap and the highest-value addition for user engagement.
+Every competitor lets users interact with their agent — NanoClaw via CLI, ZeroClaw via CLI, Knolli via web. ClawPier has **zero chat ability** today. The terminal workaround is too technical for daily users. This is the #1 feature gap and the highest-value addition for user engagement.
 
 ### Features
 
@@ -151,7 +151,7 @@ Every competitor lets users interact with their agent — NanoClaw via CLI, Zero
 
 ### Adoption impact
 
-Transforms Clawbox from "a Docker manager" into "the place where I use my bot." Users will keep Clawbox open all day if they can chat with their agents directly. Dramatically increases session time and daily active use.
+Transforms ClawPier from "a Docker manager" into "the place where I use my bot." Users will keep ClawPier open all day if they can chat with their agents directly. Dramatically increases session time and daily active use.
 
 ---
 
@@ -161,7 +161,7 @@ Transforms Clawbox from "a Docker manager" into "the place where I use my bot." 
 
 ### Why it matters
 
-The current binary toggle (network on/off) is too blunt. Users running bots that need internet for Telegram but shouldn't have unrestricted access need more options. NanoClaw offers sandbox policies, ZeroClaw has allowlists — Clawbox should match or exceed them with a visual interface.
+The current binary toggle (network on/off) is too blunt. Users running bots that need internet for Telegram but shouldn't have unrestricted access need more options. NanoClaw offers sandbox policies, ZeroClaw has allowlists — ClawPier should match or exceed them with a visual interface.
 
 ### Features
 
@@ -182,7 +182,7 @@ The current binary toggle (network on/off) is too blunt. Users running bots that
 
 ### Adoption impact
 
-Unlocks enterprise and security-conscious users who won't run bots without proper network controls. Port mapping enables webhook-based channel integrations that currently don't work in Clawbox.
+Unlocks enterprise and security-conscious users who won't run bots without proper network controls. Port mapping enables webhook-based channel integrations that currently don't work in ClawPier.
 
 ---
 
@@ -192,9 +192,9 @@ Unlocks enterprise and security-conscious users who won't run bots without prope
 
 ### Why it matters
 
-OpenClaw's power comes from its ecosystem: [ClawHub](https://github.com/openclaw/clawhub) hosts **13,000+ community-built skills**, plugins can bundle multiple skills with configuration, and workspace-level skills enable per-bot customization. Today, **all of this is CLI-only** — you need to know `clawhub install <name>` exists and run it in the terminal. Clawbox should make this ecosystem visual and approachable.
+OpenClaw's power comes from its ecosystem: [ClawHub](https://github.com/openclaw/clawhub) hosts **13,000+ community-built skills**, plugins can bundle multiple skills with configuration, and workspace-level skills enable per-bot customization. Today, **all of this is CLI-only** — you need to know `clawhub install <name>` exists and run it in the terminal. ClawPier should make this ecosystem visual and approachable.
 
-This is where Clawbox can uniquely differentiate: **no other tool in the space offers a GUI for browsing and managing OpenClaw skills.**
+This is where ClawPier can uniquely differentiate: **no other tool in the space offers a GUI for browsing and managing OpenClaw skills.**
 
 ### Features
 
@@ -237,7 +237,7 @@ This is where Clawbox can uniquely differentiate: **no other tool in the space o
 
 ### Adoption impact
 
-Turns Clawbox into the **app store experience for OpenClaw agents**. Users can browse 13,000+ skills, install with one click, and create their own — all without a terminal. This is a massive differentiator since no competitor offers a visual skill marketplace. It also drives ecosystem engagement: more skill installs from Clawbox users benefits the entire OpenClaw community.
+Turns ClawPier into the **app store experience for OpenClaw agents**. Users can browse 13,000+ skills, install with one click, and create their own — all without a terminal. This is a massive differentiator since no competitor offers a visual skill marketplace. It also drives ecosystem engagement: more skill installs from ClawPier users benefits the entire OpenClaw community.
 
 ---
 
@@ -277,11 +277,11 @@ Quality-of-life improvement that every user benefits from. Log search alone save
 
 ## Phase 6: Notifications & Alerts
 
-> *"I want to know immediately when something needs my attention — even if Clawbox is in the background."*
+> *"I want to know immediately when something needs my attention — even if ClawPier is in the background."*
 
 ### Why it matters
 
-Users run bots as background processes. Without notifications, they won't know a bot crashed until they open Clawbox and check manually — which could be hours later. Native notifications are a critical part of the "always-on agent" experience that users expect from a desktop app.
+Users run bots as background processes. Without notifications, they won't know a bot crashed until they open ClawPier and check manually — which could be hours later. Native notifications are a critical part of the "always-on agent" experience that users expect from a desktop app.
 
 ### Features
 
@@ -307,7 +307,7 @@ Users run bots as background processes. Without notifications, they won't know a
 
 ### Adoption impact
 
-Transforms Clawbox from an active-monitoring tool into a passive guardian. Users can minimize the app and trust it will tap them on the shoulder when something needs attention. This is a key expectation of native desktop apps that web-based competitors cannot match.
+Transforms ClawPier from an active-monitoring tool into a passive guardian. Users can minimize the app and trust it will tap them on the shoulder when something needs attention. This is a key expectation of native desktop apps that web-based competitors cannot match.
 
 ---
 
@@ -349,7 +349,7 @@ This phase lays the foundation for potential future billing, cost allocation, an
 
 ### Adoption impact
 
-Critical for users who run bots on behalf of a team or organization. Cost visibility drives informed decisions about scaling. This is a monetization-enabling feature — Clawbox could eventually offer a premium tier with extended analytics retention or team dashboards. The aggregate fleet view pairs with Phase 8 (Multi-Bot Orchestration) to give users a complete operational picture.
+Critical for users who run bots on behalf of a team or organization. Cost visibility drives informed decisions about scaling. This is a monetization-enabling feature — ClawPier could eventually offer a premium tier with extended analytics retention or team dashboards. The aggregate fleet view pairs with Phase 8 (Multi-Bot Orchestration) to give users a complete operational picture.
 
 ---
 
@@ -385,7 +385,7 @@ Power users and teams will run multiple bots for different purposes (production 
 
 ### Adoption impact
 
-Removes the ceiling for power users. Without fleet management, Clawbox maxes out at ~3 bots before the UX becomes painful. This phase raises that ceiling to dozens.
+Removes the ceiling for power users. Without fleet management, ClawPier maxes out at ~3 bots before the UX becomes painful. This phase raises that ceiling to dozens.
 
 ---
 
@@ -412,9 +412,9 @@ Phase 4.5  ██████      Plugin Lifecycle              — Completenes
 
 - **Resource limits + network mode** are quick wins that unlock the "configure your container" story.
 - **Chat sessions** are the highest-impact feature for user engagement and daily use.
-- **Skill browser & installation** follows naturally — once users chat with their bots, they want to extend what bots can do. This is also Clawbox's strongest competitive differentiator.
+- **Skill browser & installation** follows naturally — once users chat with their bots, they want to extend what bots can do. This is also ClawPier's strongest competitive differentiator.
 - **Log search** is immediate quality-of-life.
-- **Notifications** make Clawbox a passive guardian — critical for the "always-on agent" experience.
+- **Notifications** make ClawPier a passive guardian — critical for the "always-on agent" experience.
 - **Visual config editor** eliminates the last major reason to open a terminal.
 - **Usage analytics** enables cost visibility and future monetization.
 - **Multi-bot orchestration** unlocks scale for power users and teams.

@@ -39,7 +39,7 @@ impl BotProfile {
     }
 
     pub fn container_name(&self) -> String {
-        format!("clawbox-{}", self.id)
+        format!("clawpier-{}", self.id)
     }
 
     /// Migrate legacy `api_key_env` into `env_vars` if present.
@@ -132,7 +132,7 @@ mod tests {
     fn container_name_format() {
         let mut bot = BotProfile::new("Test".into(), None);
         bot.id = "abc-123".to_string();
-        assert_eq!(bot.container_name(), "clawbox-abc-123");
+        assert_eq!(bot.container_name(), "clawpier-abc-123");
     }
 
     #[test]

@@ -1,10 +1,10 @@
-# CLAUDE.md — Clawbox
+# CLAUDE.md — ClawPier
 
 Guidelines for AI assistants working on this codebase.
 
 ## Project Overview
 
-Clawbox is a macOS desktop app for managing sandboxed OpenClaw bot instances via Docker. Built with Tauri v2 (Rust backend + React frontend).
+ClawPier is a macOS desktop app for managing sandboxed OpenClaw bot instances via Docker. Built with Tauri v2 (Rust backend + React frontend).
 
 ## Tech Stack
 
@@ -23,6 +23,7 @@ pnpm tauri dev        # Run in dev mode with hot-reload
 pnpm tauri build      # Release build (.app + DMG)
 pnpm build            # Frontend-only build (tsc + vite)
 pnpm lint             # ESLint
+pnpm test             # Unit tests (vitest)
 ```
 
 ## Architecture
@@ -30,12 +31,13 @@ pnpm lint             # ESLint
 ### Rust Backend (`src-tauri/src/`)
 
 - `lib.rs` — Tauri app setup, plugin registration, 5s status polling loop
-- `main.rs` — Entry point, calls `clawbox_lib::run()`
-- `models.rs` — `BotProfile`, `BotStatus`, `BotWithStatus` (serde-serializable)
-- `docker_manager.rs` — Docker operations via bollard (start/stop/status/pull)
-- `bot_store.rs` — JSON persistence at `~/.config/clawbox/bots.json`
+- `main.rs` — Entry point, calls `clawpier_lib::run()`
+- `models.rs` — `BotProfile`, `BotStatus`, `BotWithStatus`, `ContainerStats`, `LogEntry`, `FileEntry` (serde-serializable)
+- `docker_manager.rs` — Docker operations via bollard (start/stop/status/pull/stats/logs/exec)
+- `bot_store.rs` — JSON persistence at `~/.config/clawpier/bots.json`
 - `commands.rs` — All `#[tauri::command]` IPC handlers
-- `state.rs` — `AppState` with `tokio::sync::Mutex<BotStore>` and `Mutex<DockerManager>`
+- `state.rs` — `AppState` with `tokio::sync::Mutex<BotStore>`, `Mutex<DockerManager>`, `Mutex<StreamManager>`
+- `streaming.rs` — Manages active log/stats streams and interactive terminal sessions per bot
 - `error.rs` — `AppError` enum with `thiserror`, implements `Serialize` for IPC
 
 ### Frontend (`src/`)
@@ -43,43 +45,56 @@ pnpm lint             # ESLint
 - `App.tsx` — Root: Docker check → welcome screen → bot list
 - `stores/bot-store.ts` — Zustand store for all bot state + actions
 - `hooks/use-bot-events.ts` — Subscribes to `bot-status-update` Tauri events
+- `hooks/use-container-logs.ts` — Continuous log streaming with requestAnimationFrame batching
+- `hooks/use-interactive-terminal.ts` — xterm.js PTY terminal via Docker exec
+- `hooks/use-zoom.ts` — Zoom in/out with Cmd+=/Cmd+-/Cmd+0
 - `lib/tauri.ts` — Typed `invoke()` wrappers for all IPC commands
 - `lib/types.ts` — TypeScript types mirroring Rust models
-- `components/` — 10 UI components (BotCard, BotList, Layout, NewBotSheet, etc.)
+- `components/` — UI components (BotCard, BotDetail, BotList, Layout, NewBotSheet, etc.)
 
 ### IPC Commands
 
 All defined in `commands.rs`, invoked from `lib/tauri.ts`:
-- `check_docker` — Verify Docker daemon is reachable
+- `check_docker` / `check_image` — Verify Docker daemon and image availability
 - `list_bots` — Get all bots with live status
-- `create_bot` — Add a new bot profile
-- `start_bot` / `stop_bot` — Container lifecycle
-- `delete_bot` — Remove profile + container
-- `rename_bot` — Update bot name (unique, case-insensitive)
+- `create_bot` / `delete_bot` / `rename_bot` — Bot profile CRUD
+- `start_bot` / `stop_bot` / `restart_bot` — Container lifecycle
 - `toggle_network` — Flip network isolation per bot
+- `set_workspace_path` — Configure workspace directory
+- `update_env_vars` — Set environment variables per bot
 - `pull_image` — Pull Docker image
+- `start_stats_stream` / `stop_stats_stream` — Live CPU/memory/network stats
+- `start_log_stream` / `stop_log_stream` — Real-time container log streaming
+- `start_terminal_session` / `write_terminal_input` / `resize_terminal` — Interactive PTY terminal
+- `exec_command` — Run a one-off command in a container
+- `list_workspace_files` / `read_workspace_file` — File browser
+- `get_bot_config` — Read OpenClaw config files
+- `resolve_telegram_bot` — Resolve Telegram bot info via API
 
 ## Key Patterns
 
 ### Tauri v2 Specifics
 - Must `use tauri::{Emitter, Manager}` in `lib.rs` for `handle.state()` and `handle.emit()`
 - Capabilities defined in `src-tauri/capabilities/default.json`
-- Identifier is `com.clawbox.manager` (not `.app` — conflicts with macOS)
+- Identifier is `com.clawpier.manager` (not `.app` — conflicts with macOS)
 
 ### Docker Conventions
-- Container names: `clawbox-{uuid}`
+- Container names: `clawpier-{uuid}`
 - Default: `--network none` (sandbox isolation)
 - Always injects: `OPENCLAW_GATEWAY_HOST=127.0.0.1`
 - Container matching uses exact name comparison via bollard filters
+- OpenClaw config persisted via host bind mounts at `~/.config/clawpier/data/{bot-id}/`
 
 ### State Management
-- Rust: `AppState` holds `Mutex<BotStore>` + `Mutex<DockerManager>`, accessed via `State<'_, AppState>`
+- Rust: `AppState` holds `Mutex<BotStore>` + `Mutex<DockerManager>` + `Mutex<StreamManager>`, accessed via `State<'_, AppState>`
 - Frontend: Zustand store with `actionInProgress` set for optimistic UI loading states
 - Status sync: Rust emits `bot-status-update` events every 5s; frontend listens via `@tauri-apps/api/event`
+- Streams: `StreamManager` tracks active log/stats streams and interactive sessions per bot; streams are cleaned up on bot stop/delete/restart
 
 ### Persistence
-- Bot profiles saved to `~/.config/clawbox/bots.json`
-- Auto-saves on every mutation (create, delete, rename, toggle network)
+- Bot profiles saved to `~/.config/clawpier/bots.json`
+- OpenClaw config data at `~/.config/clawpier/data/{bot-id}/`
+- Auto-saves on every mutation (create, delete, rename, toggle network, env vars, workspace path)
 - Name uniqueness enforced case-insensitively
 
 ## Build Gotchas

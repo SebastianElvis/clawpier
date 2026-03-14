@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 
-const ZOOM_KEY = "clawbox-zoom-level";
+const ZOOM_KEY = "clawpier-zoom-level";
 const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 1.6;
 const STEP = 0.1;

@@ -60,7 +60,7 @@ impl DockerManager {
     }
 
     pub async fn get_container_status(&self, bot_id: &str) -> BotStatus {
-        let container_name = format!("clawbox-{}", bot_id);
+        let container_name = format!("clawpier-{}", bot_id);
 
         let mut filters = HashMap::new();
         filters.insert("name".to_string(), vec![container_name.clone()]);
@@ -163,7 +163,7 @@ impl DockerManager {
     }
 
     pub async fn stop_bot(&self, bot_id: &str) -> Result<(), AppError> {
-        let container_name = format!("clawbox-{}", bot_id);
+        let container_name = format!("clawpier-{}", bot_id);
 
         let options = StopContainerOptions { t: 10 };
 
@@ -189,7 +189,7 @@ impl DockerManager {
     }
 
     pub async fn remove_container(&self, bot_id: &str) -> Result<(), AppError> {
-        let container_name = format!("clawbox-{}", bot_id);
+        let container_name = format!("clawpier-{}", bot_id);
 
         let options = RemoveContainerOptions {
             force: true,
@@ -379,7 +379,7 @@ impl DockerManager {
 fn config_dir_for_bot(bot_id: &str) -> Result<PathBuf, AppError> {
     let dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("clawbox")
+        .join("clawpier")
         .join("data")
         .join(bot_id);
     std::fs::create_dir_all(&dir)?;
@@ -524,20 +524,20 @@ mod tests {
     #[test]
     fn build_binds_always_includes_config_dir() {
         let profile = BotProfile::new("test".into(), None);
-        let config_dir = std::path::PathBuf::from("/tmp/clawbox-test");
+        let config_dir = std::path::PathBuf::from("/tmp/clawpier-test");
         let binds = build_binds(&profile, &config_dir);
         assert_eq!(binds.len(), 1);
-        assert_eq!(binds[0], "/tmp/clawbox-test:/home/node/.openclaw:rw");
+        assert_eq!(binds[0], "/tmp/clawpier-test:/home/node/.openclaw:rw");
     }
 
     #[test]
     fn build_binds_includes_workspace_when_set() {
         let profile = BotProfile::new("test".into(), Some("/my/workspace".into()));
-        let config_dir = std::path::PathBuf::from("/tmp/clawbox-test");
+        let config_dir = std::path::PathBuf::from("/tmp/clawpier-test");
         let binds = build_binds(&profile, &config_dir);
         assert_eq!(binds.len(), 2);
         assert_eq!(binds[0], "/my/workspace:/workspace:rw");
-        assert_eq!(binds[1], "/tmp/clawbox-test:/home/node/.openclaw:rw");
+        assert_eq!(binds[1], "/tmp/clawpier-test:/home/node/.openclaw:rw");
     }
 
     #[test]
@@ -566,10 +566,10 @@ mod tests {
 
         let test_id = uuid::Uuid::new_v4().to_string();
         let short_id = &test_id[..8];
-        let cname = format!("clawbox-inttest-{}", short_id);
+        let cname = format!("clawpier-inttest-{}", short_id);
 
         // Use a temp directory as the host bind mount
-        let host_dir = std::env::temp_dir().join(format!("clawbox-inttest-{}", short_id));
+        let host_dir = std::env::temp_dir().join(format!("clawpier-inttest-{}", short_id));
         std::fs::create_dir_all(&host_dir).expect("create host dir");
 
         // Cleanup from any previous failed run
@@ -728,11 +728,11 @@ mod tests {
 
         let test_id = uuid::Uuid::new_v4().to_string();
         let short_id = &test_id[..8];
-        let cname = format!("clawbox-perm-{}", short_id);
+        let cname = format!("clawpier-perm-{}", short_id);
 
         // Create host directory (same as config_dir_for_bot does)
         let host_dir =
-            std::env::temp_dir().join(format!("clawbox-perm-{}", short_id));
+            std::env::temp_dir().join(format!("clawpier-perm-{}", short_id));
         std::fs::create_dir_all(&host_dir).expect("create host dir");
 
         // On Linux CI (no Docker Desktop/virtiofs), the host dir is owned by

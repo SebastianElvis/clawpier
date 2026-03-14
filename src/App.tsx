@@ -10,7 +10,7 @@ import { DockerError } from "./components/DockerError";
 import { ImageMissing } from "./components/ImageMissing";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 
-const WELCOME_KEY = "clawbox-welcome-dismissed";
+const WELCOME_KEY = "clawpier-welcome-dismissed";
 
 function App() {
   const {

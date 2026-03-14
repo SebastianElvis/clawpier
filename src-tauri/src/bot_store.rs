@@ -12,7 +12,7 @@ impl BotStore {
     pub fn new() -> Result<Self, AppError> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("clawbox");
+            .join("clawpier");
 
         std::fs::create_dir_all(&config_dir)?;
 

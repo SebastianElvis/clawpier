@@ -1,12 +1,12 @@
 [package]
-name = "clawbox"
+name = "clawpier"
 version = "0.1.0"
 description = "OpenClaw Manager - Manage sandboxed OpenClaw bot instances"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "clawbox_lib"
+name = "clawpier_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

@@ -1,88 +1,47 @@
-# Clawbox
+# ClawPier
 
-A macOS desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw) bot instances via Docker.
+A native macOS desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw) bot instances via Docker.
 
 Built with **Tauri v2** (Rust backend + React frontend).
 
-## Features
+## What it does
 
-- **Multi-bot dashboard** — Create, start, stop, and delete bot instances from a clean UI
-- **Sandbox isolation** — Containers run with `--network none` by default; network access is opt-in per bot
-- **Real-time status** — Background polling (5s) shows live Running / Stopped / Error states
-- **Workspace mounting** — Optionally bind a local folder into the container
-- **Docker prerequisite check** — Friendly error screen if Docker Desktop isn't running
-- **Keyboard shortcuts** — `Cmd+N` to create a new bot
+ClawPier gives you a visual, approachable way to run OpenClaw AI agents — no terminal required.
 
-## Tech Stack
+- **Create and manage multiple bots** from a clean dashboard
+- **Sandbox by default** — containers run with `--network none`; network access is opt-in per bot
+- **Interactive terminal** — full PTY shell into any running container
+- **Live logs** — real-time streaming with timestamp display
+- **Dashboard** — see your bot's OpenClaw config, model, channels, and Telegram info at a glance
+- **File browser** — browse and preview files in your bot's workspace
+- **Resource monitoring** — live CPU, memory, and network I/O per bot
+- **Environment variables** — configure secrets and settings per bot without touching config files
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Tauri v2 |
-| Frontend | React 19, TypeScript, Tailwind CSS v4, Zustand |
-| Backend | Rust, bollard (Docker API), tokio, serde |
-| Package manager | pnpm |
-| Icons | lucide-react |
+## Install
 
-## Prerequisites
+### From release (recommended)
+
+Download the latest `.dmg` from [Releases](https://github.com/SebastianElvis/clawpier/releases), open it, and drag ClawPier to Applications.
+
+### Prerequisites
 
 - **macOS** (primary target)
 - **Docker Desktop** — must be installed and running
-- **Rust** toolchain (`rustup`)
-- **Node.js** ≥ 18 + **pnpm**
+- OpenClaw Docker image (ClawPier will prompt you to pull it on first launch)
 
-## Getting Started
+## Build from source
+
+Requires Rust toolchain (`rustup`), Node.js >= 18, and pnpm.
 
 ```bash
-# Install frontend dependencies
-pnpm install
-
-# Run in development mode (hot-reload)
-pnpm tauri dev
-
-# Build a release binary + .app bundle
-pnpm tauri build
+pnpm install          # Install frontend dependencies
+pnpm tauri dev        # Run in development mode (hot-reload)
+pnpm tauri build      # Build release .app + DMG
 ```
 
-The built app lands at `src-tauri/target/release/bundle/macos/Clawbox.app`.
+The built app is at `src-tauri/target/release/bundle/macos/ClawPier.app`.
 
-## Project Structure
-
-```
-clawbox/
-├── src/                          # React frontend
-│   ├── components/               # UI components
-│   │   ├── BotCard.tsx           # Bot card with inline rename, start/stop
-│   │   ├── BotList.tsx           # Grid of bot cards + loading skeleton
-│   │   ├── Layout.tsx            # App shell, header, drag region
-│   │   ├── NewBotSheet.tsx       # Create-bot modal form
-│   │   ├── DeleteConfirm.tsx     # Deletion confirmation dialog
-│   │   ├── StatusBadge.tsx       # Running / Stopped / Error indicator
-│   │   ├── NetworkBadge.tsx      # Network-enabled indicator
-│   │   ├── EmptyState.tsx        # Empty dashboard CTA
-│   │   ├── DockerError.tsx       # Docker-not-found screen
-│   │   └── WelcomeScreen.tsx     # First-launch onboarding
-│   ├── stores/bot-store.ts       # Zustand state management
-│   ├── hooks/use-bot-events.ts   # Tauri event listener
-│   ├── lib/tauri.ts              # Typed IPC invoke wrappers
-│   ├── lib/types.ts              # TypeScript types
-│   └── App.tsx                   # Root component
-├── src-tauri/                    # Rust backend
-│   ├── src/
-│   │   ├── docker_manager.rs     # Docker API via bollard
-│   │   ├── bot_store.rs          # JSON persistence (~/.config/clawbox/bots.json)
-│   │   ├── commands.rs           # Tauri IPC commands
-│   │   ├── models.rs             # BotProfile, BotStatus, BotWithStatus
-│   │   ├── state.rs              # Shared AppState (Mutex)
-│   │   ├── error.rs              # Error types
-│   │   ├── lib.rs                # Tauri setup + status polling
-│   │   └── main.rs               # Entry point
-│   └── tauri.conf.json           # Tauri config
-├── package.json
-├── vite.config.ts
-└── CLAUDE.md                     # AI assistant guidelines
-```
-
-## Architecture
+## How it works
 
 ```
 ┌─────────────────────────────────────┐
@@ -92,7 +51,7 @@ clawbox/
 │          Tauri IPC Bridge           │
 │    invoke() ↔ #[tauri::command]     │
 ├─────────────────────────────────────┤
-│           Rust Core                 │
+│           Rust Backend              │
 │  DockerManager · BotStore · State   │
 ├─────────────────────────────────────┤
 │      Docker Engine (bollard)        │
@@ -100,14 +59,24 @@ clawbox/
 └─────────────────────────────────────┘
 ```
 
-## Key Design Decisions
+- Each bot gets its own Docker container (`clawpier-{uuid}`)
+- Bot profiles are saved locally at `~/.config/clawpier/bots.json`
+- OpenClaw config persists across container restarts via host bind mounts
+- Status updates stream to the UI every 5 seconds via Tauri events
 
-- **Container naming**: `clawbox-{uuid}` — one container per bot profile
-- **Network isolation**: `--network none` by default; toggled per-bot
-- **Environment injection**: `OPENCLAW_GATEWAY_HOST=127.0.0.1` always set
-- **Persistence**: Simple JSON file at `~/.config/clawbox/bots.json`
-- **Status polling**: 5-second interval via Tauri events (`bot-status-update`)
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Tauri v2 |
+| Frontend | React 19, TypeScript, Tailwind CSS v4, Zustand |
+| Backend | Rust, bollard 0.18 (Docker API), tokio |
+| Package manager | pnpm |
+
+## Contributing
+
+Contributions are welcome. Please open an issue first to discuss what you'd like to change.
 
 ## License
 
-MIT
+[MIT](LICENSE)

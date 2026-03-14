@@ -21,7 +21,7 @@ export function DockerError() {
         Docker Not Detected
       </h1>
       <p className="mt-2 max-w-md text-center text-sm text-gray-500">
-        Clawbox requires Docker Desktop to run sandboxed bot instances. Please
+        ClawPier requires Docker Desktop to run sandboxed bot instances. Please
         make sure Docker Desktop is installed and running.
       </p>
       <div className="mt-6 flex items-center gap-3">
