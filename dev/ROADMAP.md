@@ -2,358 +2,430 @@
 
 > Last updated: 2026-03-14
 
+- [Clawbox Product Roadmap](#clawbox-product-roadmap)
+  - [Vision](#vision)
+  - [Scope: What OpenClaw Handles vs. What Clawbox Builds](#scope-what-openclaw-handles-vs-what-clawbox-builds)
+  - [Competitive Landscape](#competitive-landscape)
+  - [Phase 1: Container Resource Management](#phase-1-container-resource-management)
+    - [Why it matters](#why-it-matters)
+    - [Features](#features)
+    - [Adoption impact](#adoption-impact)
+  - [Phase 2: Chat Sessions](#phase-2-chat-sessions)
+    - [Why it matters](#why-it-matters-1)
+    - [Features](#features-1)
+    - [Adoption impact](#adoption-impact-1)
+  - [Phase 3: Advanced Network \& Security](#phase-3-advanced-network--security)
+    - [Why it matters](#why-it-matters-2)
+    - [Features](#features-2)
+    - [Adoption impact](#adoption-impact-2)
+  - [Phase 4: OpenClaw Skills \& Plugins](#phase-4-openclaw-skills--plugins)
+    - [Why it matters](#why-it-matters-3)
+    - [Features](#features-3)
+    - [Adoption impact](#adoption-impact-3)
+  - [Phase 5: Logs \& Operational Health](#phase-5-logs--operational-health)
+    - [Why it matters](#why-it-matters-4)
+    - [Features](#features-4)
+    - [Adoption impact](#adoption-impact-4)
+  - [Phase 6: Notifications \& Alerts](#phase-6-notifications--alerts)
+    - [Why it matters](#why-it-matters-5)
+    - [Features](#features-5)
+    - [Adoption impact](#adoption-impact-5)
+  - [Phase 7: Usage Analytics \& Metering](#phase-7-usage-analytics--metering)
+    - [Why it matters](#why-it-matters-6)
+    - [Features](#features-6)
+    - [Adoption impact](#adoption-impact-6)
+  - [Phase 8: Multi-Bot Orchestration](#phase-8-multi-bot-orchestration)
+    - [Why it matters](#why-it-matters-7)
+    - [Features](#features-7)
+    - [Adoption impact](#adoption-impact-7)
+  - [Priority \& Sequencing](#priority--sequencing)
+  - [Principles](#principles)
+
+---
+
 ## Vision
 
-Clawbox is the definitive desktop companion for managing sandboxed OpenClaw bot instances. The goal is to evolve from a container manager into a full agent operations platform — where users can configure, monitor, converse with, and orchestrate their bots from a single app.
+Clawbox is the definitive desktop companion for managing sandboxed OpenClaw bot instances. The goal is to evolve from a container manager into a full agent operations platform — where users can configure, monitor, converse with, and extend their bots from a single native app.
+
+---
+
+## Scope: What OpenClaw Handles vs. What Clawbox Builds
+
+OpenClaw is a full-featured agent runtime. Clawbox should **not** duplicate capabilities that OpenClaw already provides natively. Instead, Clawbox focuses on container operations, GUI management, and surfacing OpenClaw's capabilities in an accessible way.
+
+| Capability | Owner | Notes |
+|------------|-------|-------|
+| Scheduled tasks / cron jobs | **OpenClaw** | Users ask the agent to schedule tasks directly. |
+| Persistent memory / context | **OpenClaw** | Agent memory is managed by the runtime. Clawbox persists the data directory across restarts. |
+| LLM provider selection | **OpenClaw** | Configured via `openclaw.json`. Clawbox surfaces this read-only in the Dashboard. |
+| Channel integrations (Telegram, etc.) | **OpenClaw** | Configured via `openclaw configure`. Clawbox shows status in Dashboard. |
+| Skills & plugins | **OpenClaw** | Installed via `clawhub` CLI. Clawbox provides a visual browser & manager (Phase 4). |
+| Container lifecycle | **Clawbox** | Start, stop, restart, delete — Docker operations. |
+| Resource limits (CPU/memory) | **Clawbox** | Docker-level constraints — not an OpenClaw concept. |
+| Network isolation & security | **Clawbox** | Docker network modes, port mapping, sandboxing. |
+| Chat sessions (GUI) | **Clawbox** | Native chat UI to talk to the agent without external tools. |
+| Log streaming & search | **Clawbox** | Real-time logs with search, filtering, and export. |
+| File browser | **Clawbox** | Browse and manage the workspace bind mount. |
+| Multi-bot management | **Clawbox** | Groups, cloning, templates — container fleet operations. |
+
+---
+
+## Competitive Landscape
+
+| Feature | NanoClaw | ZeroClaw | Docker Desktop | Knolli | **Clawbox** |
+|---------|----------|----------|----------------|--------|-------------|
+| **Desktop GUI** | No (CLI) | No (CLI) | Partial | Web-only | **Yes** |
+| **Container isolation** | MicroVM | Process | MicroVM | Cloud | Docker |
+| **Chat with agent** | CLI | CLI | No | Web | **Planned** |
+| **Resource limits** | No | N/A (tiny) | Docker settings | Cloud | **Planned** |
+| **Network security** | Sandbox policy | Allowlists | MicroVM isolation | Scoped perms | Basic toggle |
+| **Skill ecosystem** | Via OpenClaw | MCP | MCP Toolkit | No | **Planned (visual)** |
+| **Scheduled tasks** | Via OpenClaw | No | No | Yes | Via OpenClaw |
+| **Persistent memory** | Yes | SQLite+vector | No | Cloud | Via OpenClaw |
+| **Multi-agent orchestration** | Per-channel | No | docker-agent | Workflows | **Planned** |
+
+**Clawbox's unique advantage:** None of the competitors have a native desktop GUI. NanoClaw, ZeroClaw, and docker-agent are all CLI tools. Knolli is web-only. Clawbox is the only polished native app for managing OpenClaw bots — the tool you recommend to users who want a visual, approachable experience.
 
 ---
 
 ## Phase 1: Container Resource Management
 
-> Give users control over the compute resources each bot consumes.
+> *"I want to control how much of my machine each bot uses."*
 
-### 1.1 CPU & Memory Limits
+### Why it matters
 
-**Goal:** Let users cap how much CPU and memory each bot container is allowed to use.
+Today, containers run with unlimited resources. A runaway bot can consume the entire machine's CPU and memory, degrading other apps. Users running multiple bots need resource guardrails. This is table-stakes functionality that Docker Desktop provides at the VM level — Clawbox should offer it per-bot.
 
-**Backend (`src-tauri/`):**
+### Features
 
-- Extend `BotProfile` in `models.rs` with new fields:
-  ```rust
-  pub cpu_limit: Option<f64>,       // e.g. 0.5 = half a core, 2.0 = two cores
-  pub memory_limit_mb: Option<u64>, // e.g. 512 = 512 MB
-  ```
-- In `docker_manager.rs` → `start_bot()`, map these into bollard's `HostConfig`:
-  ```rust
-  HostConfig {
-      nano_cpus: cpu_limit.map(|c| (c * 1_000_000_000.0) as i64),
-      memory: memory_limit_mb.map(|m| (m * 1024 * 1024) as i64),
-      ..existing
-  }
-  ```
-- Add `set_resource_limits` command in `commands.rs`:
-  ```rust
-  #[tauri::command]
-  pub async fn set_resource_limits(
-      state: State<'_, AppState>,
-      id: String,
-      cpu_limit: Option<f64>,
-      memory_limit_mb: Option<u64>,
-  ) -> Result<(), AppError>
-  ```
-- Register in `lib.rs`.
+**1.1 CPU & Memory Limits**
+- Per-bot settings for maximum CPU cores (e.g., 0.5 / 1 / 2 / 4) and memory (e.g., 256 MB / 512 MB / 1 GB / 2 GB).
+- "No limit" option for users who don't want constraints.
+- Changes take effect on next bot restart — clear indicator in the UI.
 
-**Frontend (`src/`):**
+**1.2 Resource Presets**
+- One-click presets: **Lightweight** (0.5 CPU, 256 MB), **Standard** (1 CPU, 512 MB), **Performance** (2 CPU, 1 GB).
+- Reduces friction for users who don't know what values to pick.
+- Presets populate the sliders; users can further customize.
 
-- Add TypeScript types for `cpu_limit` and `memory_limit_mb` in `lib/types.ts`.
-- Add `setResourceLimits` IPC wrapper in `lib/tauri.ts`.
-- Add `setResourceLimits` action to `stores/bot-store.ts`.
-- In `BotDetail.tsx` Settings tab, add a **Resource Limits** section:
-  - CPU slider: 0.25 / 0.5 / 1 / 2 / 4 cores (or "No limit")
-  - Memory dropdown: 256 MB / 512 MB / 1 GB / 2 GB / 4 GB (or "No limit")
-  - Yellow banner: "Changes take effect after restarting the bot."
+**1.3 Live Resource Sparklines**
+- Replace the current static progress bars with mini time-series charts (last 60 seconds).
+- At a glance, users can see if CPU is spiking or memory is climbing — not just the current value.
+- Helps users decide whether to adjust limits.
 
-**Files to modify:**
-- `src-tauri/src/models.rs` — add fields
-- `src-tauri/src/bot_store.rs` — add `set_resource_limits()` method
-- `src-tauri/src/docker_manager.rs` — wire into `HostConfig`
-- `src-tauri/src/commands.rs` — add command
-- `src-tauri/src/lib.rs` — register command
-- `src/lib/types.ts` — add fields
-- `src/lib/tauri.ts` — add IPC wrapper
-- `src/stores/bot-store.ts` — add store action
-- `src/components/BotDetail.tsx` — Settings tab UI
+### Adoption impact
 
-### 1.2 Resource Presets
-
-**Goal:** One-click presets for common configurations.
-
-- **Lightweight:** 0.5 CPU, 256 MB — for idle/monitoring bots
-- **Standard:** 1 CPU, 512 MB — default for most bots
-- **Performance:** 2 CPU, 1 GB — for bots doing heavy processing
-
-Implementation: Frontend-only feature. Preset buttons that populate the CPU/memory sliders. No backend changes needed beyond 1.1.
-
-### 1.3 Live Resource Sparklines
-
-**Goal:** Replace the simple progress bars with mini time-series charts (last 60s).
-
-- Store last 60 stats snapshots in the `useContainerStats` hook (ring buffer).
-- Render as a tiny SVG sparkline next to the CPU/MEM labels.
-- Library: hand-rolled SVG polyline (no dependency needed for a sparkline).
+Unlocks the "I can safely run 3 bots on my laptop" use case. Directly addresses the #3 competitive gap. Essential foundation for Phase 3 (network config) since both are container-level settings.
 
 ---
 
 ## Phase 2: Chat Sessions
 
-> Let users interact with their OpenClaw agents directly from Clawbox.
+> *"I want to talk to my bot directly from Clawbox — without opening Telegram or a terminal."*
 
-### 2.1 Data Model & Persistence
+### Why it matters
 
-**Backend:**
+Every competitor lets users interact with their agent — NanoClaw via CLI, ZeroClaw via CLI, Knolli via web. Clawbox has **zero chat ability** today. The terminal workaround is too technical for daily users. This is the #1 feature gap and the highest-value addition for user engagement.
 
-- New types in `models.rs`:
-  ```rust
-  #[derive(Debug, Serialize, Deserialize, Clone)]
-  pub struct Session {
-      pub id: String,
-      pub bot_id: String,
-      pub name: String,
-      pub created_at: String,    // ISO 8601
-      pub updated_at: String,
-      pub state: SessionState,   // Active | Archived
-  }
+### Features
 
-  #[derive(Debug, Serialize, Deserialize, Clone)]
-  pub struct ChatMessage {
-      pub id: String,
-      pub role: String,          // "user" | "assistant"
-      pub content: String,
-      pub timestamp: String,
-  }
-  ```
+**2.1 Chat Tab**
+- New tab in the bot detail view, available when the bot is running.
+- Familiar chat interface: user messages on the right, agent responses on the left.
+- Streaming responses — text appears as the agent generates it, not after.
 
-- New `SessionStore` in `session_store.rs`:
-  - Persistence path: `~/.config/clawbox/sessions/{bot_id}/`
-  - Each session is a separate JSON file: `{session_id}.json`
-  - Methods: `create_session()`, `list_sessions()`, `get_session()`, `add_message()`, `delete_session()`, `archive_session()`
+**2.2 Session Management**
+- Create, rename, and delete chat sessions.
+- Session list sidebar — switch between conversations.
+- Sessions persist across app restarts.
+- Auto-archive sessions when the bot stops; restore when it starts again.
 
-### 2.2 Backend Commands
+**2.3 Rich Messages**
+- Markdown rendering for agent responses: code blocks with syntax highlighting, links, lists, tables.
+- Copy individual messages.
+- Export a session as Markdown for sharing or documentation.
 
-New commands in `commands.rs`:
+**2.4 Session Search**
+- Search across all messages in a session.
+- Search across sessions to find past conversations.
 
-| Command | Signature | Description |
-|---------|-----------|-------------|
-| `create_session` | `(bot_id) -> Session` | Create a new chat session |
-| `list_sessions` | `(bot_id) -> Vec<Session>` | List all sessions for a bot |
-| `get_session` | `(bot_id, session_id) -> (Session, Vec<ChatMessage>)` | Get session with messages |
-| `send_message` | `(bot_id, session_id, content) -> ()` | Send a user message, get streamed response |
-| `delete_session` | `(bot_id, session_id) -> ()` | Delete a session and its messages |
-| `rename_session` | `(bot_id, session_id, name) -> ()` | Rename a session |
+### Adoption impact
 
-**Chat execution strategy:**
-- Use `exec_in_container` to invoke the OpenClaw CLI chat command inside the container.
-- Stream the response back via Tauri events: `chat-response-{bot_id}-{session_id}`.
-- Store both user and assistant messages in the session file.
-
-### 2.3 Frontend — Chat Tab
-
-**New components:**
-
-- `ChatTab.tsx` — Main chat view with session sidebar + message area
-- `SessionList.tsx` — Sidebar listing sessions with create/delete/rename
-- `ChatMessage.tsx` — Individual message bubble (user right-aligned, assistant left-aligned)
-- `ChatInput.tsx` — Text input with send button, loading state
-
-**New hook:**
-
-- `use-chat-session.ts` — Manages active session, message history, streaming state. Listens to `chat-response-{bot_id}-{session_id}` events.
-
-**Integration:**
-
-- Add `"chat"` to the `Tab` type in `BotDetail.tsx`
-- Insert between Terminal and Files: `Dashboard → Terminal → Chat → Files → Logs → Settings`
-- Only show when bot is running
-
-### 2.4 Chat Polish
-
-- Markdown rendering in assistant messages (code blocks, links, lists)
-- Copy message button
-- Export session as Markdown
-- Session search across messages
-- Token usage estimates per message (if available from OpenClaw)
+Transforms Clawbox from "a Docker manager" into "the place where I use my bot." Users will keep Clawbox open all day if they can chat with their agents directly. Dramatically increases session time and daily active use.
 
 ---
 
 ## Phase 3: Advanced Network & Security
 
-> Give power users fine-grained control over network isolation.
+> *"I want fine-grained control over what my bot can access on the network."*
 
-### 3.1 Network Mode Picker
+### Why it matters
 
-**Goal:** Replace the boolean `network_enabled` with a proper network mode selector.
+The current binary toggle (network on/off) is too blunt. Users running bots that need internet for Telegram but shouldn't have unrestricted access need more options. NanoClaw offers sandbox policies, ZeroClaw has allowlists — Clawbox should match or exceed them with a visual interface.
 
-**Backend:**
+### Features
 
-- Replace `network_enabled: bool` in `BotProfile` with:
-  ```rust
-  pub network_mode: NetworkMode,  // None | Bridge | Host | Custom(String)
-  ```
-- Maintain backward compatibility via `#[serde(deserialize_with = "...")]` that migrates `network_enabled: true` → `Bridge`, `false` → `None`.
-- Map to bollard's `HostConfig.network_mode` directly.
+**3.1 Network Mode Picker**
+- Replace the on/off toggle with a dropdown: **Sandboxed** (no network), **Bridge** (default Docker), **Host** (full access), **Custom** (named Docker network).
+- Security warning for Host mode.
+- Backward compatible — existing bots keep their current setting.
 
-**Frontend:**
+**3.2 Port Mapping**
+- Expose specific container ports to the host (e.g., for webhook-based bots).
+- Table editor in Settings: container port → host port, TCP/UDP.
+- Essential for bots that receive inbound connections (webhooks, API servers).
 
-- Settings tab: Replace toggle with dropdown: "Sandboxed (none)", "Bridge (default)", "Host", "Custom network..."
-- Custom network: text input for Docker network name.
-- Show warning for `host` mode (security implications).
+**3.3 Domain Allowlist** *(future)*
+- For sandboxed bots, allow traffic only to specific domains (e.g., `api.telegram.org`, `api.openai.com`).
+- Provides security without fully cutting off network access.
+- Significantly more complex — deferred until demand justifies it.
 
-### 3.2 Port Mapping
+### Adoption impact
 
-**Goal:** Expose container ports to the host for webhook-based bots.
-
-- Add `port_mappings: Vec<PortMapping>` to `BotProfile`:
-  ```rust
-  pub struct PortMapping {
-      pub container_port: u16,
-      pub host_port: u16,
-      pub protocol: String,  // "tcp" | "udp"
-  }
-  ```
-- Map to bollard's `HostConfig.port_bindings`.
-- Settings UI: table editor for port mappings.
-
-### 3.3 Domain Allowlist (Future)
-
-- For sandboxed bots, allow specific domains via iptables rules.
-- Requires a custom Docker network with DNS + firewall.
-- Significantly more complex — defer to later.
+Unlocks enterprise and security-conscious users who won't run bots without proper network controls. Port mapping enables webhook-based channel integrations that currently don't work in Clawbox.
 
 ---
 
-## Phase 4: Observability & Insights
+## Phase 4: OpenClaw Skills & Plugins
 
-> Help users understand what their bots are doing.
+> *"I want to discover and install new capabilities for my bot — without touching the terminal."*
 
-### 4.1 Log Search & Filter
+### Why it matters
 
-- Add a search bar above the log viewer.
-- Filter by stream (stdout / stderr / all).
-- Highlight matching terms.
-- Timestamp range filter (last 5m, 15m, 1h, all).
+OpenClaw's power comes from its ecosystem: [ClawHub](https://github.com/openclaw/clawhub) hosts **13,000+ community-built skills**, plugins can bundle multiple skills with configuration, and workspace-level skills enable per-bot customization. Today, **all of this is CLI-only** — you need to know `clawhub install <name>` exists and run it in the terminal. Clawbox should make this ecosystem visual and approachable.
 
-### 4.2 Log Export
+This is where Clawbox can uniquely differentiate: **no other tool in the space offers a GUI for browsing and managing OpenClaw skills.**
 
-- "Export" button in LogViewer toolbar.
-- Formats: `.log` (plain text) or `.json` (structured).
-- Uses Tauri dialog for save-as location.
+### Features
 
-### 4.3 Health Checks
+**4.1 ClawHub Skill Browser**
+- New **Skills** tab in the bot detail view.
+- Searchable, categorized gallery of skills from ClawHub.
+- Each skill card: name, description, author, install count, category tags.
+- Semantic search — "find me a skill for summarizing PDFs" — powered by ClawHub's vector search.
+- Filter by category: coding, productivity, communication, data, security, etc.
+- Link to skill documentation and source code.
 
-- Periodic exec of a configurable health command (e.g., `openclaw status`).
-- Store health state: Healthy / Unhealthy / Unknown.
-- Display health badge next to status badge.
-- Optional: auto-restart on consecutive health failures.
+**4.2 Skill Installation & Management**
+- One-click "Install" button on any skill card.
+- **Installed Skills** view showing everything currently active in the bot:
+  - Skill name, type (bundled / managed / workspace), version.
+  - Skill precedence indicator (workspace overrides managed overrides bundled).
+- Uninstall and update buttons for managed skills.
+- Dashboard refreshes automatically after install/uninstall.
 
-### 4.4 Usage Analytics Dashboard
+**4.3 Workspace Skill Development**
+- "New Skill" button that scaffolds a `SKILL.md` template in the bot's workspace.
+- Integrates with the File Browser for editing skill files.
+- Validation: warns if the skill structure is invalid (missing required fields, bad YAML frontmatter).
+- "Test Skill" quick action — sends a test prompt to the agent that exercises the new skill.
+- Lowers the barrier from "read the docs and use CLI" to "click a button and start editing."
 
-- Track per-bot: uptime hours, restart count, peak CPU/memory, total network I/O.
-- Store in `~/.config/clawbox/analytics/{bot_id}.json`.
-- Display as a dashboard card with sparklines and summary stats.
+**4.4 Visual Config Editor**
+- GUI form for editing `openclaw.json` — the core configuration file that controls models, channels, plugins, and agent behavior.
+- Structured sections: **Models** (provider, API keys, model selection), **Channels** (Telegram, Slack, Discord), **Plugins** (enable/disable), **Agents** (primary model, fallbacks).
+- Inline validation against OpenClaw's config schema.
+- "Apply & Restart" button — save and restart in one action.
+- Replaces the current workflow of: open terminal → `openclaw configure` → answer prompts → restart manually.
 
-### 4.5 macOS Notifications
+**4.5 Plugin Lifecycle Management**
+- List all installed OpenClaw plugins with their bundled skills and status (enabled/disabled).
+- Toggle plugins on/off from the GUI.
+- Plugin detail view: bundled skills, configuration options, documentation.
+- Install new plugins by name from the GUI.
+- Plugin health indicator: are all dependencies satisfied?
 
-- Use `tauri-plugin-notification` for:
-  - Bot crashed unexpectedly
-  - High CPU (>90% for 60s)
-  - Health check failed
-- Configurable per-bot in Settings.
+### Adoption impact
 
----
-
-## Phase 5: Multi-Bot Orchestration
-
-> Manage fleets of bots with shared configuration.
-
-### 5.1 Bot Groups
-
-- Organize bots into named groups (e.g., "Production", "Testing").
-- Bulk actions: start all, stop all, restart all.
-- Group view in the bot list sidebar.
-
-### 5.2 Config Templates
-
-- Define base configurations (env vars, resource limits, network mode).
-- Apply a template when creating a new bot.
-- Update template → option to propagate to all bots using it.
-
-### 5.3 Import/Export
-
-- Export bot configuration as YAML/JSON (profile + env vars + resource limits).
-- Import on another machine.
-- Includes workspace path mapping (prompt for local path on import).
-
-### 5.4 Bot Cloning
-
-- One-click duplicate: new UUID, same config, optional name suffix.
-- Clone without workspace (fresh) or with workspace (shared path).
+Turns Clawbox into the **app store experience for OpenClaw agents**. Users can browse 13,000+ skills, install with one click, and create their own — all without a terminal. This is a massive differentiator since no competitor offers a visual skill marketplace. It also drives ecosystem engagement: more skill installs from Clawbox users benefits the entire OpenClaw community.
 
 ---
 
-## Phase 6: Developer Experience
+## Phase 5: Logs & Operational Health
 
-> Make Clawbox the best tool for developing OpenClaw agents.
+> *"I want to quickly find what went wrong and keep my bots healthy."*
 
-### 6.1 Visual Config Editor
+### Why it matters
 
-- Parse `openclaw.json` from the container's config dir.
-- Render as a form with sections: Models, Channels, Plugins, Agents.
-- Validate against OpenClaw's config schema.
-- Save writes back to the bind-mounted config directory.
+Logs are currently a raw stream — no search, no filtering, no export. When something goes wrong, users have to scroll through hundreds of lines manually. Health monitoring is nonexistent — users find out a bot crashed only when they notice it's not responding. These are day-to-day operational necessities.
 
-### 6.2 Hot Reload (Dev Mode)
+### Features
 
-- Watch workspace files for changes via `notify` crate.
-- On change: auto-restart the bot (with debounce).
-- Toggle in Settings: "Dev Mode — auto-restart on file changes".
+**5.1 Log Search & Filter**
+- Full-text search bar above the log viewer.
+- Filter by stream: stdout, stderr, or both.
+- Highlight matching terms in the log output.
+- Time range filter: last 5 min, 15 min, 1 hour, or all.
 
-### 6.3 Plugin Browser
+**5.2 Log Export**
+- Export button in the log toolbar.
+- Save as `.log` (plain text) or `.json` (structured with timestamps).
+- Native save-as dialog for choosing the destination.
+- Essential for sharing logs with others when debugging.
 
-- Fetch plugin list from OpenClaw registry.
-- Install/uninstall plugins via `openclaw plugin install <name>`.
-- Display installed plugins in Dashboard card.
+**5.3 Health Checks**
+- Configurable health command per bot (e.g., `openclaw status`).
+- Periodic execution with status badge: Healthy / Unhealthy / Unknown.
+- Optional auto-restart after consecutive failures.
+- Keeps bots running reliably without manual monitoring.
 
-### 6.4 Image Management
+### Adoption impact
 
-- List available Docker images.
-- Pull latest OpenClaw image with progress bar.
-- Show changelog / release notes for new versions.
-- Auto-update check on app launch (optional).
-
-### 6.5 CLI Companion
-
-- `clawbox` CLI tool for headless management:
-  ```
-  clawbox list
-  clawbox start <bot-name>
-  clawbox stop <bot-name>
-  clawbox logs <bot-name> --follow
-  clawbox chat <bot-name> "Hello"
-  ```
-- Communicates with the running Tauri app via IPC or directly with Docker.
+Quality-of-life improvement that every user benefits from. Log search alone saves minutes of debugging time per incident. Health checks enable "set and forget" bot operation.
 
 ---
 
-## Implementation Priority
+## Phase 6: Notifications & Alerts
+
+> *"I want to know immediately when something needs my attention — even if Clawbox is in the background."*
+
+### Why it matters
+
+Users run bots as background processes. Without notifications, they won't know a bot crashed until they open Clawbox and check manually — which could be hours later. Native notifications are a critical part of the "always-on agent" experience that users expect from a desktop app.
+
+### Features
+
+**6.1 Crash Notifications**
+- macOS native notification when a bot stops unexpectedly (exit code ≠ 0).
+- Shows bot name, error context, and a "Restart" action button.
+- Most important notification — users need to know immediately.
+
+**6.2 Resource Alerts**
+- Notification when a bot sustains high CPU (>90%) or high memory (>85%) for a configurable duration.
+- Helps users catch runaway processes before they affect the whole machine.
+- Ties back to Phase 1 — alerts that suggest adjusting resource limits.
+
+**6.3 Health Check Alerts**
+- Notification when a health check fails (requires Phase 5.3).
+- "Your bot has been unhealthy for 5 minutes — restart?"
+- Pairs with auto-restart for fully autonomous recovery.
+
+**6.4 Notification Preferences**
+- Per-bot enable/disable — mute noisy bots during development.
+- Global Do Not Disturb mode.
+- Notification categories: critical (crash) vs. warning (high CPU) vs. info (health).
+
+### Adoption impact
+
+Transforms Clawbox from an active-monitoring tool into a passive guardian. Users can minimize the app and trust it will tap them on the shoulder when something needs attention. This is a key expectation of native desktop apps that web-based competitors cannot match.
+
+---
+
+## Phase 7: Usage Analytics & Metering
+
+> *"I want to understand how much my bots cost me and where the resources go."*
+
+### Why it matters
+
+Running AI agents costs money — LLM API calls, compute time, network egress. Users need visibility into per-bot resource consumption over time to make informed decisions about which bots to keep running, which to scale down, and how to budget. This is especially important for teams and users running multiple bots with paid LLM providers.
+
+This phase lays the foundation for potential future billing, cost allocation, and chargeback features.
+
+### Features
+
+**7.1 Per-Bot Usage Dashboard**
+- Dedicated analytics view per bot showing historical data:
+  - Total uptime hours (daily, weekly, monthly).
+  - CPU-hours and memory-hours consumed.
+  - Network I/O totals (bytes sent/received).
+  - Restart count and crash history.
+- Sparkline charts showing trends over time.
+
+**7.2 Cost Estimation** *(stretch)*
+- Estimate compute cost based on resource usage and configurable $/CPU-hour and $/GB-hour rates.
+- Users can set their own cost rates based on their infrastructure (e.g., cloud VM pricing).
+- "This bot cost ~$3.20 in compute this month."
+- Does NOT track LLM API costs (that's OpenClaw's domain) — focuses purely on infrastructure.
+
+**7.3 Aggregate Fleet View**
+- Summary across all bots: total uptime, total resource consumption, most expensive bot.
+- Pie chart or bar chart: which bots consume the most resources?
+- Helps users with 5+ bots identify which ones to optimize or shut down.
+
+**7.4 Export & Reporting**
+- Export usage data as CSV or JSON for external analysis.
+- Time range selector: last 7 days, 30 days, custom range.
+- Useful for teams that need to report on infrastructure costs or justify bot spending.
+
+### Adoption impact
+
+Critical for users who run bots on behalf of a team or organization. Cost visibility drives informed decisions about scaling. This is a monetization-enabling feature — Clawbox could eventually offer a premium tier with extended analytics retention or team dashboards. The aggregate fleet view pairs with Phase 8 (Multi-Bot Orchestration) to give users a complete operational picture.
+
+---
+
+## Phase 8: Multi-Bot Orchestration
+
+> *"I run 5+ bots and need to manage them as a fleet, not one at a time."*
+
+### Why it matters
+
+Power users and teams will run multiple bots for different purposes (production vs. testing, different channels, different models). Managing them individually becomes tedious. This phase addresses the "scale" dimension — going from 1 bot to many.
+
+### Features
+
+**8.1 Bot Groups**
+- Organize bots into named groups (e.g., "Production", "Testing", "Experiments").
+- Bulk actions: start all, stop all, restart all bots in a group.
+- Group view in the sidebar with collapse/expand.
+
+**8.2 Config Templates**
+- Define reusable base configurations: env vars, resource limits, network mode, image version.
+- Apply a template when creating a new bot — pre-populates all settings.
+- Update a template and optionally propagate changes to all bots using it.
+
+**8.3 Import / Export**
+- Export a bot's full configuration as a shareable file (JSON or YAML).
+- Import on another machine — prompts for local paths (workspace, etc.) that differ between machines.
+- Enables team collaboration: "here's my bot config, try it on your machine."
+
+**8.4 Bot Cloning**
+- One-click duplicate a bot with all its settings.
+- New identity (UUID, container), same configuration.
+- Option to share the workspace path or start fresh.
+
+### Adoption impact
+
+Removes the ceiling for power users. Without fleet management, Clawbox maxes out at ~3 bots before the UX becomes painful. This phase raises that ceiling to dozens.
+
+---
+
+## Priority & Sequencing
 
 ```
-Phase 1.1  ██████████  Container Resource Limits     (1-2 days)
-Phase 1.2  ████        Resource Presets               (0.5 day)
-Phase 2.1  ██████████  Chat Data Model                (1 day)
-Phase 2.2  ████████████ Chat Backend Commands          (2 days)
-Phase 2.3  ████████████████ Chat Frontend UI           (3 days)
-Phase 3.1  ██████████  Network Mode Picker            (1 day)
-Phase 4.1  ████████    Log Search & Filter            (1 day)
-Phase 4.2  ████        Log Export                     (0.5 day)
-Phase 3.2  ██████      Port Mapping                   (1 day)
-Phase 2.4  ██████      Chat Polish                    (1-2 days)
-Phase 1.3  ██████      Sparklines                     (1 day)
-Phase 4.3  ████████    Health Checks                  (1-2 days)
-Phase 6.1  ██████████  Visual Config Editor           (2-3 days)
-Phase 5.*  ████████████████ Multi-Bot Orchestration    (3-5 days)
-Phase 6.*  ████████████████ Developer Experience       (5+ days)
+Phase 1    ██████████  Resource Limits             — Quick win, safety foundation
+Phase 3.1  ██████████  Network Mode Picker          — Completes the "container config" story
+Phase 2    ██████████████████ Chat Sessions          — Highest-value user feature
+Phase 4.1  ██████████  ClawHub Skill Browser        — Ecosystem differentiator
+Phase 4.2  ████████    Skill Install & Management   — Pairs with browser
+Phase 5.1  ████████    Log Search & Filter          — Quality of life
+Phase 6    ██████████  Notifications & Alerts        — "Always-on guardian"
+Phase 4.4  ██████████  Visual Config Editor          — Major UX improvement
+Phase 3.2  ██████      Port Mapping                  — Enables webhooks
+Phase 5.3  ████████    Health Checks                 — Reliability
+Phase 4.3  ████████    Workspace Skill Dev           — Power users
+Phase 7    ██████████████ Usage Analytics & Metering  — Cost visibility, billing foundation
+Phase 8    ████████████████ Multi-Bot Orchestration   — Scale
+Phase 4.5  ██████      Plugin Lifecycle              — Completeness
 ```
 
-**Recommended order:** 1.1 → 3.1 → 2.1-2.3 → 4.1 → 1.2 → 3.2 → 2.4 → rest
+**Recommended sequence:** 1 → 3.1 → 2 → 4.1-4.2 → 5.1 → 6 → 4.4 → 3.2 → 5.3 → 7 → 8 → rest
 
-Resource limits and network mode are quick wins that unlock the "configure container" story. Chat sessions are the highest-value user-facing feature. Log improvements provide immediate quality-of-life benefits.
+- **Resource limits + network mode** are quick wins that unlock the "configure your container" story.
+- **Chat sessions** are the highest-impact feature for user engagement and daily use.
+- **Skill browser & installation** follows naturally — once users chat with their bots, they want to extend what bots can do. This is also Clawbox's strongest competitive differentiator.
+- **Log search** is immediate quality-of-life.
+- **Notifications** make Clawbox a passive guardian — critical for the "always-on agent" experience.
+- **Visual config editor** eliminates the last major reason to open a terminal.
+- **Usage analytics** enables cost visibility and future monetization.
+- **Multi-bot orchestration** unlocks scale for power users and teams.
 
 ---
 
-## Technical Principles
+## Principles
 
-1. **Incremental delivery** — Each sub-phase produces working, testable functionality.
-2. **Backward compatibility** — New `BotProfile` fields use `Option<T>` with `#[serde(default)]` so existing `bots.json` files still deserialize.
-3. **Consistent patterns** — Follow the existing architecture: Rust command → IPC wrapper → Zustand action → React component.
-4. **Separate concerns** — Sessions get their own store file (not in `bots.json`). Analytics get their own directory.
-5. **Test coverage** — Unit tests for all new Rust code. Integration tests for Docker interactions (marked `#[ignore]`).
+1. **Product-first** — Every feature should answer "what can the user do now that they couldn't before?" Implementation details live in task specs, not the roadmap.
+2. **Don't duplicate OpenClaw** — If OpenClaw already does it (memory, scheduling, providers), surface it in the GUI — don't rebuild it.
+3. **Incremental delivery** — Each sub-feature ships independently and is immediately useful.
+4. **Backward compatible** — Existing bot configurations always continue to work after an upgrade.
+5. **Developer experience is a cross-cutting concern** — Not a separate phase. Every feature ships with clear error messages, sensible defaults, and responsive UI. Consider DX in every PR.
+6. **Lean into the GUI advantage** — CLI competitors can't match the visual experience. Every feature should feel intuitive and approachable, especially for non-technical users.
