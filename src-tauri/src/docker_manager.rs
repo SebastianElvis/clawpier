@@ -722,6 +722,17 @@ mod tests {
             std::env::temp_dir().join(format!("clawbox-perm-{}", short_id));
         std::fs::create_dir_all(&host_dir).expect("create host dir");
 
+        // On Linux CI (no Docker Desktop/virtiofs), the host dir is owned by
+        // the runner user, so UID 1000 inside the container can't write to it.
+        // Make it world-writable to match the virtiofs UID-mapping behaviour
+        // that Docker Desktop provides on macOS.
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&host_dir, std::fs::Permissions::from_mode(0o777))
+                .expect("chmod host dir");
+        }
+
         let _ = client
             .remove_container(
                 &cname,

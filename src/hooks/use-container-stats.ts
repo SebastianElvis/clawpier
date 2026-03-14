@@ -8,7 +8,6 @@ export function useContainerStats(botId: string, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) {
-      setStats(null);
       return;
     }
 
@@ -25,9 +24,9 @@ export function useContainerStats(botId: string, enabled: boolean) {
     return () => {
       api.stopStatsStream(botId).catch(console.error);
       unlisten.then((fn) => fn());
-      setStats(null);
     };
   }, [botId, enabled]);
 
-  return stats;
+  // Derive null when disabled — no setState needed
+  return enabled ? stats : null;
 }

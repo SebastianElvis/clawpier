@@ -11,8 +11,6 @@ export function useContainerLogs(botId: string, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) {
-      setLogs([]);
-      logsRef.current = [];
       return;
     }
 
@@ -31,15 +29,17 @@ export function useContainerLogs(botId: string, enabled: boolean) {
     return () => {
       api.stopLogStream(botId).catch(console.error);
       unlisten.then((fn) => fn());
-      setLogs([]);
       logsRef.current = [];
     };
   }, [botId, enabled]);
+
+  // Derive empty logs when disabled — no setState needed
+  const effectiveLogs = enabled ? logs : [];
 
   const clearLogs = useCallback(() => {
     setLogs([]);
     logsRef.current = [];
   }, []);
 
-  return { logs, clearLogs };
+  return { logs: effectiveLogs, clearLogs };
 }
