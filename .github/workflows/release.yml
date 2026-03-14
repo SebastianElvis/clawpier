@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build for Apple Silicon (arm64)
+      - name: Build (aarch64)
+        run: pnpm tauri build --target aarch64-apple-darwin
+
+      # Build for Intel (x86_64)
+      - name: Build (x86_64)
+        run: pnpm tauri build --target x86_64-apple-darwin
+
+      - name: Collect artifacts
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          mkdir -p release-artifacts
+          cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "release-artifacts/ClawPier_${TAG_NAME}_aarch64.dmg"
+          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg "release-artifacts/ClawPier_${TAG_NAME}_x64.dmg"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: false
+          body_path: CHANGELOG.md
+          files: release-artifacts/*

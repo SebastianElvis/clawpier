@@ -4,6 +4,8 @@ A native macOS desktop app for managing sandboxed [OpenClaw](https://github.com/
 
 Built with **Tauri v2** (Rust backend + React frontend).
 
+![ClawPier screenshot](docs/screenshot.png)
+
 ## What it does
 
 ClawPier gives you a visual, approachable way to run OpenClaw AI agents — no terminal required.

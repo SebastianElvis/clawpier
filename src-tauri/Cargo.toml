@@ -2,7 +2,7 @@
 name = "clawpier"
 version = "0.1.0"
 description = "OpenClaw Manager - Manage sandboxed OpenClaw bot instances"
-authors = ["you"]
+authors = ["Runchao Han"]
 edition = "2021"
 
 [lib]
