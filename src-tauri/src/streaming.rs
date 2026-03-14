@@ -11,6 +11,7 @@ use tokio::sync::Mutex as TokioMutex;
 pub enum StreamKind {
     Stats,
     Logs,
+    Chat,
 }
 
 /// An active interactive shell session inside a container.

@@ -14,7 +14,7 @@ use futures_util::StreamExt;
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::{BotProfile, BotStatus, ContainerStats, ExecResult, LogEntry};
+use crate::models::{BotProfile, BotStatus, ContainerStats, ExecResult, LogEntry, NetworkMode};
 
 pub struct DockerManager {
     docker: Docker,
@@ -128,14 +128,28 @@ impl DockerManager {
         let bot_config_dir = config_dir_for_bot(&profile.id)?;
         let binds = build_binds(profile, &bot_config_dir);
 
+        // Network mode
+        let network_mode_str = match &profile.network_mode {
+            NetworkMode::None => "none".to_string(),
+            NetworkMode::Bridge => "bridge".to_string(),
+            NetworkMode::Host => "host".to_string(),
+            NetworkMode::Custom(name) => name.clone(),
+        };
+
+        // Port bindings
+        let (port_bindings, exposed_ports) = build_port_config(&profile.port_mappings);
+
         // Host config
         let host_config = HostConfig {
-            network_mode: if profile.network_enabled {
-                Some("bridge".to_string())
-            } else {
-                Some("none".to_string())
-            },
+            network_mode: Some(network_mode_str),
             binds: Some(binds),
+            nano_cpus: profile.cpu_limit.map(|c| (c * 1_000_000_000.0) as i64),
+            memory: profile.memory_limit.map(|m| m as i64),
+            port_bindings: if port_bindings.is_empty() {
+                None
+            } else {
+                Some(port_bindings)
+            },
             ..Default::default()
         };
 
@@ -143,6 +157,11 @@ impl DockerManager {
             image: Some(profile.image.clone()),
             env: Some(env.clone()),
             host_config: Some(host_config),
+            exposed_ports: if exposed_ports.is_empty() {
+                None
+            } else {
+                Some(exposed_ports)
+            },
             ..Default::default()
         };
 
@@ -398,6 +417,34 @@ fn build_binds(profile: &BotProfile, bot_config_dir: &std::path::Path) -> Vec<St
         bot_config_dir.display()
     ));
     binds
+}
+
+// ── Helper: build Docker port bindings from PortMapping vec ──────────
+fn build_port_config(
+    mappings: &[crate::models::PortMapping],
+) -> (
+    HashMap<String, Option<Vec<bollard::models::PortBinding>>>,
+    HashMap<String, HashMap<(), ()>>,
+) {
+    let mut port_bindings = HashMap::new();
+    let mut exposed_ports = HashMap::new();
+
+    for m in mappings {
+        let container_key = format!("{}/{}", m.container_port, m.protocol);
+        let binding = bollard::models::PortBinding {
+            host_ip: Some("0.0.0.0".to_string()),
+            host_port: Some(m.host_port.to_string()),
+        };
+        port_bindings
+            .entry(container_key.clone())
+            .or_insert_with(|| Some(Vec::new()))
+            .as_mut()
+            .unwrap()
+            .push(binding);
+        exposed_ports.insert(container_key, HashMap::new());
+    }
+
+    (port_bindings, exposed_ports)
 }
 
 // ── Helper: create log stream options ────────────────────────────────

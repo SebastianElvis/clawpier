@@ -1,30 +1,30 @@
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, Save, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import type { EnvVar } from "../lib/types";
-import { useBotStore } from "../stores/bot-store";
 
 interface EnvVarEditorProps {
-  botId: string;
   envVars: EnvVar[];
+  onChange: (vars: EnvVar[]) => void;
 }
 
-export function EnvVarEditor({ botId, envVars }: EnvVarEditorProps) {
-  const { updateEnvVars } = useBotStore();
-  const [vars, setVars] = useState<EnvVar[]>(() =>
-    envVars.length > 0 ? [...envVars] : []
-  );
+export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
+  // User override — null means "show prop default"
+  const [userVars, setUserVars] = useState<EnvVar[] | null>(null);
   const [showValues, setShowValues] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
+
+  // Effective value: user override → prop
+  const vars = userVars ?? envVars;
 
   const handleAdd = () => {
-    setVars([...vars, { key: "", value: "" }]);
-    setDirty(true);
+    const updated = [...vars, { key: "", value: "" }];
+    setUserVars(updated);
+    onChange(updated);
   };
 
   const handleRemove = (index: number) => {
-    setVars(vars.filter((_, i) => i !== index));
-    setDirty(true);
+    const updated = vars.filter((_, i) => i !== index);
+    setUserVars(updated);
+    onChange(updated);
   };
 
   const handleChange = (
@@ -34,23 +34,8 @@ export function EnvVarEditor({ botId, envVars }: EnvVarEditorProps) {
   ) => {
     const updated = [...vars];
     updated[index] = { ...updated[index], [field]: val };
-    setVars(updated);
-    setDirty(true);
-  };
-
-  const handleSave = async () => {
-    // Filter out empty rows
-    const filtered = vars.filter((v) => v.key.trim() !== "");
-    setSaving(true);
-    try {
-      await updateEnvVars(botId, filtered);
-      setVars(filtered);
-      setDirty(false);
-    } catch (e) {
-      console.error("Failed to save env vars:", e);
-    } finally {
-      setSaving(false);
-    }
+    setUserVars(updated);
+    onChange(updated);
   };
 
   return (
@@ -71,13 +56,6 @@ export function EnvVarEditor({ botId, envVars }: EnvVarEditorProps) {
           )}
         </button>
       </div>
-
-      {dirty && (
-        <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Changes take effect on next restart
-        </div>
-      )}
 
       <div className="space-y-2">
         {vars.map((v, i) => (
@@ -106,26 +84,13 @@ export function EnvVarEditor({ botId, envVars }: EnvVarEditorProps) {
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:border-gray-400 hover:text-gray-600"
-          onClick={handleAdd}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add variable
-        </button>
-
-        {dirty && (
-          <button
-            className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            <Save className="h-3.5 w-3.5" />
-            Save
-          </button>
-        )}
-      </div>
+      <button
+        className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:border-gray-400 hover:text-gray-600"
+        onClick={handleAdd}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add variable
+      </button>
     </div>
   );
 }

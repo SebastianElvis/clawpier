@@ -1,4 +1,5 @@
 mod bot_store;
+mod chat_store;
 mod commands;
 mod docker_manager;
 mod error;
@@ -7,6 +8,7 @@ mod state;
 mod streaming;
 
 use bot_store::BotStore;
+use chat_store::ChatStore;
 use docker_manager::DockerManager;
 use models::{BotStatus, BotWithStatus};
 use state::AppState;
@@ -16,13 +18,15 @@ use tauri::{Emitter, Manager};
 pub fn run() {
     let store = BotStore::new().expect("Failed to initialize bot store");
     let docker = DockerManager::new().expect("Failed to initialize Docker manager");
-    let app_state = AppState::new(store, docker);
+    let chat_store = ChatStore::new().expect("Failed to initialize chat store");
+    let app_state = AppState::new(store, docker, chat_store);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
+            commands::get_system_resources,
             commands::check_docker,
             commands::check_image,
             commands::list_bots,
@@ -36,6 +40,16 @@ pub fn run() {
             commands::set_workspace_path,
             commands::pull_image,
             commands::update_env_vars,
+            commands::update_resource_limits,
+            commands::set_network_mode,
+            commands::update_port_mappings,
+            commands::list_chat_sessions,
+            commands::create_chat_session,
+            commands::rename_chat_session,
+            commands::delete_chat_session,
+            commands::get_chat_messages,
+            commands::send_chat_message,
+            commands::stop_chat_response,
             commands::start_stats_stream,
             commands::stop_stats_stream,
             commands::start_log_stream,

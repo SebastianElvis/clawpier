@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { BotWithStatus, EnvVar } from "../lib/types";
+import type { BotWithStatus, EnvVar, NetworkMode, PortMapping } from "../lib/types";
 import * as api from "../lib/tauri";
 
 export const DEFAULT_IMAGE = "ghcr.io/openclaw/openclaw:latest";
@@ -21,15 +21,18 @@ interface BotStore {
   checkImage: () => Promise<boolean>;
   pullImage: () => Promise<void>;
   fetchBots: () => Promise<void>;
-  createBot: (name: string, workspacePath?: string) => Promise<void>;
+  createBot: (name: string, workspacePath?: string, opts?: { cpuLimit?: number | null; memoryLimit?: number | null; networkMode?: NetworkMode }) => Promise<void>;
   startBot: (id: string) => Promise<void>;
   stopBot: (id: string) => Promise<void>;
   restartBot: (id: string) => Promise<void>;
   deleteBot: (id: string) => Promise<void>;
   renameBot: (id: string, name: string) => Promise<void>;
   toggleNetwork: (id: string, enabled: boolean) => Promise<void>;
+  setNetworkMode: (id: string, mode: NetworkMode) => Promise<void>;
   updateEnvVars: (id: string, envVars: EnvVar[]) => Promise<void>;
   setWorkspacePath: (id: string, workspacePath: string | null) => Promise<void>;
+  updateResourceLimits: (id: string, cpuLimit: number | null, memoryLimit: number | null) => Promise<void>;
+  updatePortMappings: (id: string, portMappings: PortMapping[]) => Promise<void>;
 }
 
 export const useBotStore = create<BotStore>((set, get) => ({
@@ -91,8 +94,8 @@ export const useBotStore = create<BotStore>((set, get) => ({
     }
   },
 
-  createBot: async (name, workspacePath) => {
-    await api.createBot(name, workspacePath);
+  createBot: async (name, workspacePath, opts) => {
+    await api.createBot(name, workspacePath, opts);
     await get().fetchBots();
   },
 
@@ -141,6 +144,11 @@ export const useBotStore = create<BotStore>((set, get) => ({
     await get().fetchBots();
   },
 
+  setNetworkMode: async (id, mode) => {
+    await api.setNetworkMode(id, mode);
+    await get().fetchBots();
+  },
+
   updateEnvVars: async (id, envVars) => {
     await api.updateEnvVars(id, envVars);
     await get().fetchBots();
@@ -148,6 +156,16 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   setWorkspacePath: async (id, workspacePath) => {
     await api.setWorkspacePath(id, workspacePath);
+    await get().fetchBots();
+  },
+
+  updateResourceLimits: async (id, cpuLimit, memoryLimit) => {
+    await api.updateResourceLimits(id, cpuLimit, memoryLimit);
+    await get().fetchBots();
+  },
+
+  updatePortMappings: async (id, portMappings) => {
+    await api.updatePortMappings(id, portMappings);
     await get().fetchBots();
   },
 }));

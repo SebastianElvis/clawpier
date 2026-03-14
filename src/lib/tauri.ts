@@ -2,10 +2,19 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   BotProfile,
   BotWithStatus,
+  ChatMessage,
+  ChatSessionSummary,
   EnvVar,
   ExecResult,
   FileEntry,
+  NetworkMode,
+  PortMapping,
+  SystemResources,
 } from "./types";
+
+export async function getSystemResources(): Promise<SystemResources> {
+  return invoke<SystemResources>("get_system_resources");
+}
 
 export async function checkDocker(): Promise<boolean> {
   return invoke<boolean>("check_docker");
@@ -17,11 +26,19 @@ export async function listBots(): Promise<BotWithStatus[]> {
 
 export async function createBot(
   name: string,
-  workspacePath?: string
+  workspacePath?: string,
+  opts?: {
+    cpuLimit?: number | null;
+    memoryLimit?: number | null;
+    networkMode?: NetworkMode;
+  }
 ): Promise<BotProfile> {
   return invoke<BotProfile>("create_bot", {
     name,
     workspacePath: workspacePath ?? null,
+    cpuLimit: opts?.cpuLimit ?? null,
+    memoryLimit: opts?.memoryLimit ?? null,
+    networkMode: opts?.networkMode ?? null,
   });
 }
 
@@ -70,7 +87,7 @@ export async function pullImage(image: string): Promise<void> {
   return invoke("pull_image", { image });
 }
 
-// ── New commands ─────────────────────────────────────────────────────
+// ── Resource & config commands ──────────────────────────────────────
 
 export async function updateEnvVars(
   id: string,
@@ -78,6 +95,30 @@ export async function updateEnvVars(
 ): Promise<void> {
   return invoke("update_env_vars", { id, envVars });
 }
+
+export async function updateResourceLimits(
+  id: string,
+  cpuLimit: number | null,
+  memoryLimit: number | null
+): Promise<void> {
+  return invoke("update_resource_limits", { id, cpuLimit, memoryLimit });
+}
+
+export async function setNetworkMode(
+  id: string,
+  mode: NetworkMode
+): Promise<void> {
+  return invoke("set_network_mode", { id, mode });
+}
+
+export async function updatePortMappings(
+  id: string,
+  portMappings: PortMapping[]
+): Promise<void> {
+  return invoke("update_port_mappings", { id, portMappings });
+}
+
+// ── Stats & log streaming ───────────────────────────────────────────
 
 export async function startStatsStream(id: string): Promise<void> {
   return invoke("start_stats_stream", { id });
@@ -141,6 +182,55 @@ export async function resolveTelegramBot(
   id: string
 ): Promise<TelegramBotInfo> {
   return invoke<TelegramBotInfo>("resolve_telegram_bot", { id });
+}
+
+// ── Chat commands ─────────────────────────────────────────────────
+
+export async function listChatSessions(
+  id: string
+): Promise<ChatSessionSummary[]> {
+  return invoke<ChatSessionSummary[]>("list_chat_sessions", { id });
+}
+
+export async function createChatSession(
+  id: string,
+  name: string
+): Promise<ChatSessionSummary> {
+  return invoke<ChatSessionSummary>("create_chat_session", { id, name });
+}
+
+export async function renameChatSession(
+  id: string,
+  sessionId: string,
+  name: string
+): Promise<void> {
+  return invoke("rename_chat_session", { id, sessionId, name });
+}
+
+export async function deleteChatSession(
+  id: string,
+  sessionId: string
+): Promise<void> {
+  return invoke("delete_chat_session", { id, sessionId });
+}
+
+export async function getChatMessages(
+  id: string,
+  sessionId: string
+): Promise<ChatMessage[]> {
+  return invoke<ChatMessage[]>("get_chat_messages", { id, sessionId });
+}
+
+export async function sendChatMessage(
+  id: string,
+  sessionId: string,
+  message: string
+): Promise<void> {
+  return invoke("send_chat_message", { id, sessionId, message });
+}
+
+export async function stopChatResponse(id: string): Promise<void> {
+  return invoke("stop_chat_response", { id });
 }
 
 // ── Interactive terminal commands ──────────────────────────────────

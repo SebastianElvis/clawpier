@@ -4,15 +4,41 @@ use std::sync::Arc;
 
 use bollard::exec::{CreateExecOptions, ResizeExecOptions, StartExecResults};
 use futures_util::StreamExt;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex as TokioMutex;
 
 use crate::docker_manager::{self, DockerManager};
 use crate::error::AppError;
-use crate::models::{BotProfile, BotStatus, BotWithStatus, EnvVar, ExecResult, FileEntry};
+use crate::models::{
+    BotProfile, BotStatus, BotWithStatus, ChatMessage, ChatResponseChunk, ChatSessionSummary,
+    EnvVar, ExecResult, FileEntry, NetworkMode, PortMapping,
+};
 use crate::state::AppState;
 use crate::streaming::{InteractiveSession, StreamKind};
+
+// ── System info ──────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SystemResources {
+    pub cpu_cores: u32,
+    pub memory_bytes: u64,
+}
+
+#[tauri::command]
+pub fn get_system_resources() -> SystemResources {
+    use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
+    let sys = System::new_with_specifics(
+        RefreshKind::new()
+            .with_cpu(CpuRefreshKind::new())
+            .with_memory(MemoryRefreshKind::everything()),
+    );
+
+    SystemResources {
+        cpu_cores: sys.cpus().len() as u32,
+        memory_bytes: sys.total_memory(),
+    }
+}
 
 // ── Existing commands ────────────────────────────────────────────────
 
@@ -59,9 +85,21 @@ pub async fn create_bot(
     state: State<'_, AppState>,
     name: String,
     workspace_path: Option<String>,
+    cpu_limit: Option<f64>,
+    memory_limit: Option<u64>,
+    network_mode: Option<NetworkMode>,
 ) -> Result<BotProfile, AppError> {
     let mut store = state.store.lock().await;
-    let bot = BotProfile::new(name, workspace_path);
+    let mut bot = BotProfile::new(name, workspace_path);
+    if cpu_limit.is_some() {
+        bot.cpu_limit = cpu_limit;
+    }
+    if memory_limit.is_some() {
+        bot.memory_limit = memory_limit;
+    }
+    if let Some(mode) = network_mode {
+        bot.network_mode = mode;
+    }
     store.add(bot.clone())?;
     Ok(bot)
 }
@@ -191,6 +229,237 @@ pub async fn update_env_vars(
 ) -> Result<(), AppError> {
     let mut store = state.store.lock().await;
     store.update_env_vars(&id, env_vars)
+}
+
+#[tauri::command]
+pub async fn update_resource_limits(
+    state: State<'_, AppState>,
+    id: String,
+    cpu_limit: Option<f64>,
+    memory_limit: Option<u64>,
+) -> Result<(), AppError> {
+    let mut store = state.store.lock().await;
+    store.update_resource_limits(&id, cpu_limit, memory_limit)
+}
+
+#[tauri::command]
+pub async fn set_network_mode(
+    state: State<'_, AppState>,
+    id: String,
+    mode: NetworkMode,
+) -> Result<(), AppError> {
+    let mut store = state.store.lock().await;
+    store.set_network_mode(&id, mode)
+}
+
+#[tauri::command]
+pub async fn update_port_mappings(
+    state: State<'_, AppState>,
+    id: String,
+    port_mappings: Vec<PortMapping>,
+) -> Result<(), AppError> {
+    let mut store = state.store.lock().await;
+    store.update_port_mappings(&id, port_mappings)
+}
+
+// ── Chat commands ─────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn list_chat_sessions(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Vec<ChatSessionSummary>, AppError> {
+    let chat_store = state.chat_store.lock().await;
+    Ok(chat_store.list_sessions(&id))
+}
+
+#[tauri::command]
+pub async fn create_chat_session(
+    state: State<'_, AppState>,
+    id: String,
+    name: String,
+) -> Result<ChatSessionSummary, AppError> {
+    let mut chat_store = state.chat_store.lock().await;
+    chat_store.create_session(&id, &name)
+}
+
+#[tauri::command]
+pub async fn rename_chat_session(
+    state: State<'_, AppState>,
+    id: String,
+    session_id: String,
+    name: String,
+) -> Result<(), AppError> {
+    let mut chat_store = state.chat_store.lock().await;
+    chat_store.rename_session(&id, &session_id, &name)
+}
+
+#[tauri::command]
+pub async fn delete_chat_session(
+    state: State<'_, AppState>,
+    id: String,
+    session_id: String,
+) -> Result<(), AppError> {
+    let mut chat_store = state.chat_store.lock().await;
+    chat_store.delete_session(&id, &session_id)
+}
+
+#[tauri::command]
+pub async fn get_chat_messages(
+    state: State<'_, AppState>,
+    id: String,
+    session_id: String,
+) -> Result<Vec<ChatMessage>, AppError> {
+    let chat_store = state.chat_store.lock().await;
+    chat_store.get_messages(&id, &session_id)
+}
+
+#[tauri::command]
+pub async fn send_chat_message(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    session_id: String,
+    message: String,
+) -> Result<(), AppError> {
+    // Store user message
+    let user_msg = ChatMessage {
+        id: uuid::Uuid::new_v4().to_string(),
+        role: "user".to_string(),
+        content: message.clone(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    };
+    {
+        let mut chat_store = state.chat_store.lock().await;
+        chat_store.add_message(&id, &session_id, user_msg)?;
+    }
+
+    // Get container name and docker client
+    let container_name = {
+        let store = state.store.lock().await;
+        let bot = store
+            .get_by_id(&id)
+            .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
+        bot.container_name()
+    };
+
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    let bot_id = id.clone();
+    let sess_id = session_id.clone();
+    let event_name = format!("chat-response-{}", id);
+    let app_handle = app.clone();
+
+    // Spawn background task to exec chat command and stream response
+    let mut streams = state.streams.lock().await;
+    let handle = tauri::async_runtime::spawn(async move {
+        use bollard::exec::CreateExecOptions;
+
+        // Use an array-based command to avoid shell injection.
+        // Pass the message via stdin.
+        let config = CreateExecOptions {
+            attach_stdin: Some(true),
+            attach_stdout: Some(true),
+            attach_stderr: Some(true),
+            cmd: Some(vec!["openclaw", "chat", "--pipe"]),
+            ..Default::default()
+        };
+
+        let mut response_content = String::new();
+
+        match docker.create_exec(&container_name, config).await {
+            Ok(created) => {
+                match docker.start_exec(&created.id, None).await {
+                    Ok(bollard::exec::StartExecResults::Attached {
+                        output: mut stream,
+                        input,
+                    }) => {
+                        // Write the message to stdin and close it
+                        let mut writer = input;
+                        let _ =
+                            tokio::io::AsyncWriteExt::write_all(&mut writer, message.as_bytes())
+                                .await;
+                        let _ = tokio::io::AsyncWriteExt::shutdown(&mut writer).await;
+                        drop(writer);
+
+                        // Stream stdout
+                        while let Some(Ok(msg)) = stream.next().await {
+                            let text = match msg {
+                                bollard::container::LogOutput::StdOut { message } => {
+                                    String::from_utf8_lossy(&message).to_string()
+                                }
+                                _ => continue,
+                            };
+                            if !text.is_empty() {
+                                response_content.push_str(&text);
+                                let chunk = ChatResponseChunk {
+                                    session_id: sess_id.clone(),
+                                    content: text,
+                                    done: false,
+                                };
+                                let _ = app_handle.emit(&event_name, &chunk);
+                            }
+                        }
+                    }
+                    Ok(bollard::exec::StartExecResults::Detached) => {
+                        response_content =
+                            "Error: exec started in detached mode".to_string();
+                    }
+                    Err(e) => {
+                        response_content = format!("Error: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                response_content = format!("Error: {}", e);
+                let chunk = ChatResponseChunk {
+                    session_id: sess_id.clone(),
+                    content: response_content.clone(),
+                    done: false,
+                };
+                let _ = app_handle.emit(&event_name, &chunk);
+            }
+        }
+
+        // Send done signal
+        let done_chunk = ChatResponseChunk {
+            session_id: sess_id.clone(),
+            content: String::new(),
+            done: true,
+        };
+        let _ = app_handle.emit(&event_name, &done_chunk);
+
+        // Store assistant message
+        if !response_content.trim().is_empty() {
+            let assistant_msg = ChatMessage {
+                id: uuid::Uuid::new_v4().to_string(),
+                role: "assistant".to_string(),
+                content: response_content.trim().to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            };
+            let state = app_handle.state::<AppState>();
+            let mut chat_store: tokio::sync::MutexGuard<'_, crate::chat_store::ChatStore> =
+                state.chat_store.lock().await;
+            let _ = chat_store.add_message(&bot_id, &sess_id, assistant_msg);
+        }
+    });
+
+    streams.start(&id, StreamKind::Chat, handle);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_chat_response(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), AppError> {
+    let mut streams = state.streams.lock().await;
+    streams.stop(&id, StreamKind::Chat);
+    Ok(())
 }
 
 #[tauri::command]

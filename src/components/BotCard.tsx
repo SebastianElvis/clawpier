@@ -6,8 +6,6 @@ import {
   Loader2,
   FolderOpen,
   MoreVertical,
-  WifiOff,
-  Wifi,
   ChevronRight,
   Cpu,
   HardDrive,
@@ -17,6 +15,7 @@ import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
 import { StatusBadge } from "./StatusBadge";
 import { NetworkBadge } from "./NetworkBadge";
+import { Sparkline } from "./Sparkline";
 import { DeleteConfirm } from "./DeleteConfirm";
 
 interface BotCardProps {
@@ -25,7 +24,7 @@ interface BotCardProps {
 }
 
 export function BotCard({ bot, onSelect }: BotCardProps) {
-  const { startBot, stopBot, renameBot, toggleNetwork, actionInProgress } =
+  const { startBot, stopBot, renameBot, actionInProgress } =
     useBotStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(bot.name);
@@ -35,7 +34,9 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
   const isLoading = actionInProgress.has(bot.id);
   const isRunning = bot.status.type === "Running";
-  const stats = useContainerStats(bot.id, isRunning);
+  const { stats, statsHistory } = useContainerStats(bot.id, isRunning);
+
+  const hasNetwork = bot.network_mode !== "none";
 
   const handleStart = async () => {
     setError(null);
@@ -68,15 +69,6 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
       setEditName(bot.name);
     }
     setIsEditing(false);
-  };
-
-  const handleToggleNetwork = async () => {
-    setShowMenu(false);
-    try {
-      await toggleNetwork(bot.id, !bot.network_enabled);
-    } catch (e) {
-      setError(String(e));
-    }
   };
 
   return (
@@ -133,22 +125,6 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
                 />
                 <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                   <button
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-                    onClick={handleToggleNetwork}
-                  >
-                    {bot.network_enabled ? (
-                      <>
-                        <WifiOff className="h-3.5 w-3.5" />
-                        Disable network
-                      </>
-                    ) : (
-                      <>
-                        <Wifi className="h-3.5 w-3.5" />
-                        Enable network
-                      </>
-                    )}
-                  </button>
-                  <button
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
                     onClick={() => {
                       setShowMenu(false);
@@ -167,7 +143,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
         {/* Badges */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <StatusBadge status={bot.status} />
-          {bot.network_enabled && <NetworkBadge />}
+          {hasNetwork && <NetworkBadge mode={bot.network_mode} />}
           {bot.workspace_path && (
             <span
               className="inline-flex items-center gap-1 text-xs text-gray-400"
@@ -179,32 +155,30 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
           )}
         </div>
 
-        {/* Mini stats (when running) */}
+        {/* Mini stats with sparklines (when running) */}
         {isRunning && stats && (
           <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-500">
             <div className="flex items-center gap-1">
               <Cpu className="h-3 w-3" />
               <span>{stats.cpu_percent.toFixed(1)}%</span>
-              <div className="h-1 w-10 rounded-full bg-gray-200">
-                <div
-                  className="h-1 rounded-full bg-blue-500 transition-all"
-                  style={{
-                    width: `${Math.min(stats.cpu_percent, 100)}%`,
-                  }}
-                />
-              </div>
+              <Sparkline
+                data={statsHistory.map((s) => s.cpu_percent)}
+                max={100}
+                color="#3b82f6"
+                width={48}
+                height={12}
+              />
             </div>
             <div className="flex items-center gap-1">
               <HardDrive className="h-3 w-3" />
               <span>{stats.memory_percent.toFixed(1)}%</span>
-              <div className="h-1 w-10 rounded-full bg-gray-200">
-                <div
-                  className="h-1 rounded-full bg-emerald-500 transition-all"
-                  style={{
-                    width: `${Math.min(stats.memory_percent, 100)}%`,
-                  }}
-                />
-              </div>
+              <Sparkline
+                data={statsHistory.map((s) => s.memory_percent)}
+                max={100}
+                color="#10b981"
+                width={48}
+                height={12}
+              />
             </div>
           </div>
         )}

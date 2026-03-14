@@ -7,13 +7,40 @@ pub struct EnvVar {
     pub value: String,
 }
 
+// ── Network mode for containers ──────────────────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkMode {
+    None,
+    Bridge,
+    Host,
+    Custom(String),
+}
+
+impl Default for NetworkMode {
+    fn default() -> Self {
+        NetworkMode::Bridge
+    }
+}
+
+// ── Port mapping (container → host) ─────────────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PortMapping {
+    pub container_port: u16,
+    pub host_port: u16,
+    pub protocol: String, // "tcp" or "udp"
+}
+
 // ── Bot profile (persisted to bots.json) ─────────────────────────────
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BotProfile {
     pub id: String,
     pub name: String,
     pub image: String,
-    pub network_enabled: bool,
+    /// Legacy field — kept for backward-compat deserialization only.
+    /// Migrated to `network_mode` on load.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub network_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_path: Option<String>,
     /// Migrated: old field kept for backward-compat deserialization only.
@@ -23,6 +50,18 @@ pub struct BotProfile {
     /// Environment variables injected into the container on start.
     #[serde(default)]
     pub env_vars: Vec<EnvVar>,
+    /// CPU limit in cores (e.g., 0.5, 1.0, 2.0). None = no limit.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub cpu_limit: Option<f64>,
+    /// Memory limit in bytes. None = no limit.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub memory_limit: Option<u64>,
+    /// Network mode for the container.
+    #[serde(default)]
+    pub network_mode: NetworkMode,
+    /// Port mappings (container port → host port).
+    #[serde(default)]
+    pub port_mappings: Vec<PortMapping>,
 }
 
 impl BotProfile {
@@ -31,10 +70,14 @@ impl BotProfile {
             id: uuid::Uuid::new_v4().to_string(),
             name,
             image: "ghcr.io/openclaw/openclaw:latest".to_string(),
-            network_enabled: true,
+            network_enabled: None,
             workspace_path,
             api_key_env: None,
             env_vars: Vec::new(),
+            cpu_limit: None,
+            memory_limit: None,
+            network_mode: NetworkMode::Bridge,
+            port_mappings: Vec::new(),
         }
     }
 
@@ -42,12 +85,11 @@ impl BotProfile {
         format!("clawpier-{}", self.id)
     }
 
-    /// Migrate legacy `api_key_env` into `env_vars` if present.
+    /// Migrate legacy fields into their modern equivalents.
     pub fn migrate(&mut self) {
+        // Migrate api_key_env → env_vars
         if let Some(ref api_key) = self.api_key_env.take() {
-            // api_key_env was stored as "KEY=VALUE"
             if let Some((key, value)) = api_key.split_once('=') {
-                // Only add if not already present
                 if !self.env_vars.iter().any(|e| e.key == key) {
                     self.env_vars.push(EnvVar {
                         key: key.to_string(),
@@ -56,6 +98,19 @@ impl BotProfile {
                 }
             }
         }
+        // Migrate network_enabled → network_mode
+        if let Some(enabled) = self.network_enabled.take() {
+            self.network_mode = if enabled {
+                NetworkMode::Bridge
+            } else {
+                NetworkMode::None
+            };
+        }
+    }
+
+    /// Whether this profile has any legacy fields that need migration.
+    pub fn needs_migration(&self) -> bool {
+        self.api_key_env.is_some() || self.network_enabled.is_some()
     }
 }
 
@@ -111,6 +166,42 @@ pub struct FileEntry {
     pub size: Option<u64>,
 }
 
+// ── Chat message ─────────────────────────────────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub id: String,
+    pub role: String, // "user" or "assistant"
+    pub content: String,
+    pub timestamp: String, // ISO 8601
+}
+
+// ── Chat session (persisted per bot) ─────────────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ChatSession {
+    pub id: String,
+    pub bot_id: String,
+    pub name: String,
+    pub created_at: String,
+    pub messages: Vec<ChatMessage>,
+}
+
+// ── Chat session summary (returned in list, without messages) ────────
+#[derive(Debug, Serialize, Clone)]
+pub struct ChatSessionSummary {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
+    pub message_count: usize,
+}
+
+// ── Chat response chunk (streamed to frontend) ──────────────────────
+#[derive(Debug, Serialize, Clone)]
+pub struct ChatResponseChunk {
+    pub session_id: String,
+    pub content: String,
+    pub done: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,10 +212,13 @@ mod tests {
         let bot = BotProfile::new("TestBot".into(), None);
         assert_eq!(bot.name, "TestBot");
         assert_eq!(bot.image, "ghcr.io/openclaw/openclaw:latest");
-        assert!(bot.network_enabled);
+        assert_eq!(bot.network_mode, NetworkMode::Bridge);
         assert!(bot.env_vars.is_empty());
         assert!(bot.workspace_path.is_none());
         assert!(bot.api_key_env.is_none());
+        assert!(bot.cpu_limit.is_none());
+        assert!(bot.memory_limit.is_none());
+        assert!(bot.port_mappings.is_empty());
         assert!(!bot.id.is_empty());
     }
 

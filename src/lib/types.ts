@@ -3,14 +3,25 @@ export interface EnvVar {
   value: string;
 }
 
+export type NetworkMode = "none" | "bridge" | "host" | { custom: string };
+
+export interface PortMapping {
+  container_port: number;
+  host_port: number;
+  protocol: "tcp" | "udp";
+}
+
 export interface BotProfile {
   id: string;
   name: string;
   image: string;
-  network_enabled: boolean;
+  network_mode: NetworkMode;
   workspace_path?: string;
   api_key_env?: string;
   env_vars: EnvVar[];
+  cpu_limit?: number | null;
+  memory_limit?: number | null;
+  port_mappings: PortMapping[];
 }
 
 export type BotStatus =
@@ -48,4 +59,37 @@ export interface FileEntry {
   path: string;
   is_dir: boolean;
   size: number | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  name: string;
+  created_at: string;
+  message_count: number;
+}
+
+export interface ChatSession {
+  id: string;
+  bot_id: string;
+  name: string;
+  created_at: string;
+  messages: ChatMessage[];
+}
+
+export interface ChatResponseChunk {
+  session_id: string;
+  content: string;
+  done: boolean;
+}
+
+export interface SystemResources {
+  cpu_cores: number;
+  memory_bytes: number;
 }

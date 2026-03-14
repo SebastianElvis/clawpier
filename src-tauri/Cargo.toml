@@ -25,6 +25,8 @@ dirs = "6"
 thiserror = "2"
 futures-util = "0.3"
 reqwest = { version = "0.12", features = ["json"] }
+chrono = { version = "0.4", features = ["serde"] }
+sysinfo = "0.32"
 
 [dev-dependencies]
 bytes = "1"

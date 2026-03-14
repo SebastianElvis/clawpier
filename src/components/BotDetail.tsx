@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Play,
@@ -7,16 +7,20 @@ import {
   Terminal,
   ScrollText,
   FolderOpen,
-  Settings,
   Cpu,
   HardDrive,
   RotateCw,
   RefreshCw,
   LayoutDashboard,
   X,
+  MessageSquare,
+  AlertTriangle,
+  Box,
+  Save,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { BotWithStatus } from "../lib/types";
+import type { BotWithStatus, NetworkMode, PortMapping, EnvVar } from "../lib/types";
+import * as api from "../lib/tauri";
 import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
 import { useContainerLogs } from "../hooks/use-container-logs";
@@ -27,9 +31,14 @@ import { FileBrowser } from "./FileBrowser";
 import { ConfigDashboard } from "./ConfigDashboard";
 import { StatusBadge } from "./StatusBadge";
 import { NetworkBadge } from "./NetworkBadge";
+import { Sparkline } from "./Sparkline";
+import { ResourceLimitsEditor } from "./ResourceLimitsEditor";
+import { NetworkModePicker } from "./NetworkModePicker";
+import { PortMappingEditor } from "./PortMappingEditor";
+import { ChatTab } from "./ChatTab";
 import { useAutoRestart } from "../hooks/use-auto-restart";
 
-type Tab = "dashboard" | "logs" | "terminal" | "files" | "settings";
+type Tab = "dashboard" | "chat" | "logs" | "terminal" | "files" | "docker";
 
 interface BotDetailProps {
   bot: BotWithStatus;
@@ -37,7 +46,7 @@ interface BotDetailProps {
 }
 
 export function BotDetail({ bot, onBack }: BotDetailProps) {
-  const { startBot, stopBot, restartBot, setWorkspacePath, actionInProgress } =
+  const { startBot, stopBot, restartBot, actionInProgress } =
     useBotStore();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +66,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
   });
 
   // Stats streaming (only when running)
-  const stats = useContainerStats(bot.id, isRunning);
+  const { stats, statsHistory } = useContainerStats(bot.id, isRunning);
 
   // Log streaming (always when running — persists across tab switches)
   const { logs, clearLogs } = useContainerLogs(bot.id, isRunning);
@@ -91,12 +100,16 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
     }
   };
 
-  const tabs: { key: Tab; label: string; icon: typeof ScrollText }[] = [
+  const networkMode = bot.network_mode;
+  const hasNetwork = networkMode !== "none";
+
+  const tabs: { key: Tab; label: string; icon: typeof ScrollText; runningOnly?: boolean }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { key: "chat", label: "Chat", icon: MessageSquare, runningOnly: true },
     { key: "terminal", label: "Terminal", icon: Terminal },
     { key: "files", label: "Files", icon: FolderOpen },
     { key: "logs", label: "Logs", icon: ScrollText },
-    { key: "settings", label: "Settings", icon: Settings },
+    { key: "docker", label: "Docker", icon: Box },
   ];
 
   return (
@@ -122,7 +135,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
           <div className="flex items-center gap-2">
             <StatusBadge status={bot.status} />
-            {bot.network_enabled && <NetworkBadge />}
+            {hasNetwork && <NetworkBadge mode={networkMode} />}
           </div>
 
           {/* Start/Stop/Restart buttons */}
@@ -170,25 +183,24 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
           )}
         </div>
 
-        {/* Stats bar (when running) */}
+        {/* Stats bar with sparklines (when running) */}
         {isRunning && stats && (
           <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
             <div className="flex items-center gap-1.5">
               <Cpu className="h-3.5 w-3.5" />
               <span>
                 CPU {stats.cpu_percent.toFixed(1)}%
-                <span className="ml-1 text-gray-400">
-                  · {stats.cpu_cores} {stats.cpu_cores === 1 ? "core" : "cores"}
-                </span>
+                {bot.cpu_limit != null && (
+                  <span className="ml-1 text-gray-400">
+                    · {bot.cpu_limit} {bot.cpu_limit === 1 ? "core" : "cores"}
+                  </span>
+                )}
               </span>
-              <div className="h-1.5 w-16 rounded-full bg-gray-200">
-                <div
-                  className="h-1.5 rounded-full bg-blue-500 transition-all"
-                  style={{
-                    width: `${Math.min(stats.cpu_percent, 100)}%`,
-                  }}
-                />
-              </div>
+              <Sparkline
+                data={statsHistory.map((s) => s.cpu_percent)}
+                max={100}
+                color="#3b82f6"
+              />
             </div>
             <div className="flex items-center gap-1.5">
               <HardDrive className="h-3.5 w-3.5" />
@@ -196,14 +208,11 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
                 MEM {formatBytes(stats.memory_usage)} /{" "}
                 {formatBytes(stats.memory_limit)}
               </span>
-              <div className="h-1.5 w-16 rounded-full bg-gray-200">
-                <div
-                  className="h-1.5 rounded-full bg-emerald-500 transition-all"
-                  style={{
-                    width: `${Math.min(stats.memory_percent, 100)}%`,
-                  }}
-                />
-              </div>
+              <Sparkline
+                data={statsHistory.map((s) => s.memory_percent)}
+                max={100}
+                color="#10b981"
+              />
             </div>
           </div>
         )}
@@ -218,24 +227,54 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
       {/* Tab bar */}
       <div className="flex border-b border-gray-200">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            className={`inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
-              activeTab === key
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-            }`}
-            onClick={() => setActiveTab(key)}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </button>
-        ))}
+        {tabs.map(({ key, label, icon: Icon, runningOnly }) => {
+          if (runningOnly && !isRunning) return null;
+          return (
+            <button
+              key={key}
+              className={`inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
+                activeTab === key
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab(key)}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}
       <div className="min-h-0 flex-1">
+        {activeTab === "dashboard" && (
+          <div className="flex h-full flex-col">
+            <div className="min-h-0 flex-1">
+              <ConfigDashboard
+                botId={bot.id}
+                isRunning={isRunning}
+                onSwitchToTerminal={() => setActiveTab("terminal")}
+              />
+            </div>
+            {/* Bot Information */}
+            <div className="border-t border-gray-200 px-4 py-2">
+              <div className="flex items-center gap-6 text-xs text-gray-400">
+                <span>
+                  ID{" "}
+                  <span className="font-mono text-gray-500">{bot.id}</span>
+                </span>
+                <span>
+                  Image{" "}
+                  <span className="font-mono text-gray-500">{bot.image}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === "chat" && isRunning && (
+          <ChatTab botId={bot.id} />
+        )}
         {activeTab === "logs" && (
           <LogViewer logs={logs} onClear={clearLogs} />
         )}
@@ -254,108 +293,261 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
               <p>No workspace path configured.</p>
               <button
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                onClick={() => setActiveTab("settings")}
+                onClick={() => setActiveTab("docker")}
               >
-                <Settings className="h-3.5 w-3.5" />
-                Go to Settings
+                <Box className="h-3.5 w-3.5" />
+                Go to Docker
               </button>
             </div>
           )
         )}
-        {activeTab === "dashboard" && (
-          <ConfigDashboard
-            botId={bot.id}
-            isRunning={isRunning}
-            onSwitchToTerminal={() => setActiveTab("terminal")}
-          />
-        )}
-        {activeTab === "settings" && (
-          <div className="overflow-y-auto p-4">
-            {/* Workspace Path */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-700">
-                Workspace Path
-              </h3>
-              <p className="text-xs text-gray-400">
-                A local folder mounted into the container at{" "}
-                <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">
-                  /workspace
-                </code>
-                . The bot can read and write files here. Changes take
-                effect after restarting the bot.
-              </p>
-              <div className="flex items-center gap-2">
-                {bot.workspace_path ? (
-                  <>
-                    <span className="min-w-0 flex-1 truncate rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-600">
-                      {bot.workspace_path}
-                    </span>
-                    <button
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-                      onClick={async () => {
-                        const dir = await open({ directory: true });
-                        if (dir) await setWorkspacePath(bot.id, dir);
-                      }}
-                    >
-                      <FolderOpen className="h-3 w-3" />
-                      Change
-                    </button>
-                    <button
-                      className="inline-flex shrink-0 items-center rounded-md border border-gray-200 bg-white p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => setWorkspacePath(bot.id, null)}
-                      title="Remove workspace"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-                    onClick={async () => {
-                      const dir = await open({ directory: true });
-                      if (dir) await setWorkspacePath(bot.id, dir);
-                    }}
-                  >
-                    <FolderOpen className="h-3 w-3" />
-                    Choose Folder
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Env Vars */}
-            <div className="mt-6">
-              <EnvVarEditor botId={bot.id} envVars={bot.env_vars ?? []} />
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <h3 className="text-sm font-medium text-gray-700">
-                Bot Information
-              </h3>
-              <div className="space-y-2 text-xs text-gray-500">
-                <div className="flex justify-between">
-                  <span>ID</span>
-                  <span className="font-mono text-gray-600">{bot.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Image</span>
-                  <span className="font-mono text-gray-600">{bot.image}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Network</span>
-                  <span
-                    className={
-                      bot.network_enabled ? "text-orange-600" : "text-gray-600"
-                    }
-                  >
-                    {bot.network_enabled ? "Enabled" : "Disabled (sandboxed)"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {activeTab === "docker" && (
+          <DockerTab bot={bot} isRunning={isRunning} />
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Docker Tab ───────────────────────────────────────────────────────
+
+const MB = 1024 * 1024;
+const GB = 1024 * MB;
+const MIN_CPU = 2;
+const MIN_MEM = 4 * GB;
+
+const EMPTY_ENV_VARS: EnvVar[] = [];
+
+function DockerTab({
+  bot,
+  isRunning,
+}: {
+  bot: BotWithStatus;
+  isRunning: boolean;
+}) {
+  const {
+    updateResourceLimits,
+    setNetworkMode: storeSetNetworkMode,
+    updatePortMappings,
+    updateEnvVars,
+    setWorkspacePath,
+    restartBot,
+  } = useBotStore();
+
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // System resources for slider bounds
+  const [maxCpu, setMaxCpu] = useState(8);
+  const [maxMem, setMaxMem] = useState(16 * GB);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getSystemResources().then((res) => {
+      if (cancelled) return;
+      setMaxCpu(Math.max(res.cpu_cores, MIN_CPU));
+      setMaxMem(Math.max(res.memory_bytes, MIN_MEM));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Pending changes — null means no change from saved value
+  const [pendingResources, setPendingResources] = useState<{
+    cpu: number;
+    mem: number;
+  } | null>(null);
+  const [pendingNetworkMode, setPendingNetworkMode] =
+    useState<NetworkMode | null>(null);
+  const [pendingPortMappings, setPendingPortMappings] = useState<
+    PortMapping[] | null
+  >(null);
+  const [pendingEnvVars, setPendingEnvVars] = useState<EnvVar[] | null>(null);
+
+  // Determine if there are unsaved changes per section
+  const hasResourceChanges =
+    pendingResources !== null &&
+    (pendingResources.cpu !== (bot.cpu_limit ?? maxCpu) ||
+      pendingResources.mem !== (bot.memory_limit ?? maxMem));
+
+  const hasNetworkChanges =
+    pendingNetworkMode !== null &&
+    JSON.stringify(pendingNetworkMode) !==
+      JSON.stringify(bot.network_mode);
+
+  const hasPortChanges =
+    pendingPortMappings !== null &&
+    JSON.stringify(pendingPortMappings) !==
+      JSON.stringify(bot.port_mappings);
+
+  const hasEnvChanges =
+    pendingEnvVars !== null &&
+    JSON.stringify(
+      pendingEnvVars.filter((v) => v.key.trim())
+    ) !== JSON.stringify(bot.env_vars ?? []);
+
+  const hasChanges =
+    hasResourceChanges ||
+    hasNetworkChanges ||
+    hasPortChanges ||
+    hasEnvChanges;
+
+  // Disable save if custom network name is empty
+  const pendingModeIsCustomEmpty =
+    pendingNetworkMode !== null &&
+    typeof pendingNetworkMode === "object" &&
+    "custom" in pendingNetworkMode &&
+    !pendingNetworkMode.custom.trim();
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (hasResourceChanges && pendingResources) {
+        await updateResourceLimits(
+          bot.id,
+          pendingResources.cpu,
+          pendingResources.mem
+        );
+      }
+      if (hasNetworkChanges && pendingNetworkMode) {
+        await storeSetNetworkMode(bot.id, pendingNetworkMode);
+      }
+      if (hasPortChanges && pendingPortMappings) {
+        await updatePortMappings(bot.id, pendingPortMappings);
+      }
+      if (hasEnvChanges && pendingEnvVars) {
+        const filtered = pendingEnvVars.filter((v) => v.key.trim() !== "");
+        await updateEnvVars(bot.id, filtered);
+      }
+      if (isRunning) {
+        await restartBot(bot.id);
+      }
+    } catch (e) {
+      setSaveError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const effectiveNetworkMode = pendingNetworkMode ?? bot.network_mode;
+
+  return (
+    <div className="overflow-y-auto p-4 space-y-6">
+      {/* Top bar: restart warning + unified save button */}
+      {(isRunning || hasChanges) && (
+        <div className="flex items-center gap-3">
+          {isRunning && (
+            <div className="flex flex-1 items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <p className="text-xs text-amber-700">
+                Changes to Docker settings take effect after restarting the
+                bot.
+              </p>
+            </div>
+          )}
+          {hasChanges && (
+            <button
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={handleSave}
+              disabled={saving || pendingModeIsCustomEmpty}
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {isRunning ? "Save & Restart" : "Save"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {saveError && (
+        <p className="rounded bg-red-50 px-3 py-1.5 text-xs text-red-600">
+          {saveError}
+        </p>
+      )}
+
+      {/* Resource Limits */}
+      <ResourceLimitsEditor
+        cpuLimit={bot.cpu_limit ?? null}
+        memoryLimit={bot.memory_limit ?? null}
+        maxCpu={maxCpu}
+        maxMem={maxMem}
+        onChange={(cpu, mem) => setPendingResources({ cpu, mem })}
+      />
+
+      {/* Network Mode */}
+      <NetworkModePicker
+        networkMode={bot.network_mode}
+        onChange={setPendingNetworkMode}
+      />
+
+      {/* Port Mappings */}
+      <PortMappingEditor
+        portMappings={bot.port_mappings}
+        networkMode={effectiveNetworkMode}
+        onChange={setPendingPortMappings}
+      />
+
+      {/* Workspace Path */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-700">
+          Workspace Path
+        </h3>
+        <p className="text-xs text-gray-400">
+          A local folder mounted into the container at{" "}
+          <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">
+            /workspace
+          </code>
+          . The bot can read and write files here.
+        </p>
+        <div className="flex items-center gap-2">
+          {bot.workspace_path ? (
+            <>
+              <span className="min-w-0 flex-1 truncate rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-600">
+                {bot.workspace_path}
+              </span>
+              <button
+                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                onClick={async () => {
+                  const dir = await open({ directory: true });
+                  if (dir) await setWorkspacePath(bot.id, dir);
+                }}
+              >
+                <FolderOpen className="h-3 w-3" />
+                Change
+              </button>
+              <button
+                className="inline-flex shrink-0 items-center rounded-md border border-gray-200 bg-white p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                onClick={() => setWorkspacePath(bot.id, null)}
+                title="Remove workspace"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </>
+          ) : (
+            <button
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+              onClick={async () => {
+                const dir = await open({ directory: true });
+                if (dir) await setWorkspacePath(bot.id, dir);
+              }}
+            >
+              <FolderOpen className="h-3 w-3" />
+              Choose Folder
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Env Vars */}
+      <EnvVarEditor
+        envVars={bot.env_vars ?? EMPTY_ENV_VARS}
+        onChange={setPendingEnvVars}
+      />
     </div>
   );
 }
@@ -364,7 +556,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
 const QUICK_COMMANDS = [
   { label: "openclaw configure", command: "openclaw configure" },
-{ label: "openclaw status", command: "openclaw status" },
+  { label: "openclaw status", command: "openclaw status" },
   { label: "openclaw --help", command: "openclaw --help" },
   { label: "ls /workspace", command: "ls /workspace" },
   { label: "env", command: "env" },

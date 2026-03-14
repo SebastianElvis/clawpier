@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::{BotProfile, EnvVar};
+use crate::models::{BotProfile, EnvVar, NetworkMode, PortMapping};
 
 pub struct BotStore {
     bots: Vec<BotProfile>,
@@ -25,10 +25,10 @@ impl BotStore {
             Vec::new()
         };
 
-        // Migrate legacy api_key_env -> env_vars
+        // Migrate legacy fields (api_key_env, network_enabled)
         let mut migrated = false;
         for bot in &mut bots {
-            if bot.api_key_env.is_some() {
+            if bot.needs_migration() {
                 bot.migrate();
                 migrated = true;
             }
@@ -109,13 +109,24 @@ impl BotStore {
     }
 
     pub fn toggle_network(&mut self, id: &str, enabled: bool) -> Result<(), AppError> {
+        self.set_network_mode(
+            id,
+            if enabled {
+                NetworkMode::Bridge
+            } else {
+                NetworkMode::None
+            },
+        )
+    }
+
+    pub fn set_network_mode(&mut self, id: &str, mode: NetworkMode) -> Result<(), AppError> {
         let bot = self
             .bots
             .iter_mut()
             .find(|b| b.id == id)
             .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
 
-        bot.network_enabled = enabled;
+        bot.network_mode = mode;
         self.save()
     }
 
@@ -142,6 +153,38 @@ impl BotStore {
             .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
 
         bot.env_vars = env_vars;
+        self.save()
+    }
+
+    pub fn update_resource_limits(
+        &mut self,
+        id: &str,
+        cpu_limit: Option<f64>,
+        memory_limit: Option<u64>,
+    ) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.cpu_limit = cpu_limit;
+        bot.memory_limit = memory_limit;
+        self.save()
+    }
+
+    pub fn update_port_mappings(
+        &mut self,
+        id: &str,
+        port_mappings: Vec<PortMapping>,
+    ) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.port_mappings = port_mappings;
         self.save()
     }
 }

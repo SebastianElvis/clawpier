@@ -13,8 +13,9 @@ const makeBotWithStatus = (
   id,
   name,
   image: "ghcr.io/openclaw/openclaw:latest",
-  network_enabled: false,
+  network_mode: "none" as const,
   env_vars: [],
+  port_mappings: [],
   status: { type: status },
 });
 
