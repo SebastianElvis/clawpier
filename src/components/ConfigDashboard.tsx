@@ -14,8 +14,16 @@ import {
   HeartPulse,
   Cog,
   ChevronDown,
+  Send,
+  Shield,
+  Users,
+  Zap,
+  AtSign,
+  Check,
+  X,
 } from "lucide-react";
-import { getBotConfig } from "../lib/tauri";
+import { getBotConfig, resolveTelegramBot } from "../lib/tauri";
+import type { TelegramBotInfo } from "../lib/tauri";
 
 interface ConfigDashboardProps {
   botId: string;
@@ -137,15 +145,16 @@ export function ConfigDashboard({
     );
   }
 
-  const model = merged.model as Record<string, unknown> | undefined;
+  const models = merged.models as Record<string, unknown> | undefined;
+  const agents = merged.agents as Record<string, unknown> | undefined;
   const channels = merged.channels as Record<string, unknown> | undefined;
   const gateway = merged.gateway as Record<string, unknown> | undefined;
   const skills = merged.skills as Record<string, unknown> | undefined;
   const webTools = merged.web_tools as Record<string, unknown> | undefined;
-  const agents = merged.agents as Record<string, unknown> | undefined;
   const commands = merged.commands as Record<string, unknown> | undefined;
   const daemon = merged.daemon as Record<string, unknown> | undefined;
   const healthCheck = merged.health_check as Record<string, unknown> | undefined;
+  const plugins = merged.plugins as Record<string, unknown> | undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -192,15 +201,10 @@ export function ConfigDashboard({
           <HeroCard
             icon={Brain}
             label="Model"
-            configured={!!model}
-            summary={summarizeModel(model)}
+            configured={!!models}
+            summary={summarizeModel(models, agents)}
           />
-          <HeroCard
-            icon={MessageSquare}
-            label="Channels"
-            configured={!!channels}
-            summary={summarizeChannels(channels)}
-          />
+          <ChannelsCard botId={botId} channels={channels} />
         </div>
 
         {/* ── Secondary: inline rows ── */}
@@ -224,6 +228,11 @@ export function ConfigDashboard({
             icon={FileText}
             label="Agents"
             value={agents ? summarizeAgents(agents) : null}
+          />
+          <InfoRow
+            icon={Wrench}
+            label="Plugins"
+            value={plugins ? summarizePlugins(plugins) : null}
           />
 
           {/* Collapsible extras */}
@@ -305,6 +314,182 @@ function HeroCard({
   );
 }
 
+// ── Channels card with Telegram bot info ─────────────────────────────
+
+function ChannelsCard({
+  botId,
+  channels,
+}: {
+  botId: string;
+  channels: Record<string, unknown> | undefined;
+}) {
+  const [tgInfo, setTgInfo] = useState<TelegramBotInfo | null>(null);
+  const [tgLoading, setTgLoading] = useState(false);
+
+  const hasTelegram =
+    channels &&
+    typeof channels.telegram === "object" &&
+    channels.telegram !== null;
+  const tgConfig = hasTelegram
+    ? (channels.telegram as Record<string, unknown>)
+    : null;
+  const tgEnabled = tgConfig?.enabled !== false;
+
+  // Resolve Telegram bot info on mount
+  useEffect(() => {
+    if (!hasTelegram || !tgEnabled) return;
+    setTgLoading(true);
+    resolveTelegramBot(botId)
+      .then(setTgInfo)
+      .catch(() => setTgInfo(null))
+      .finally(() => setTgLoading(false));
+  }, [botId, hasTelegram, tgEnabled]);
+
+  const channelCount = channels ? Object.keys(channels).length : 0;
+
+  if (!channels || channelCount === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-3">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-[11px] font-semibold text-gray-700">
+            Channels
+          </span>
+          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[9px] text-gray-400">
+            not set
+          </span>
+        </div>
+        <p className="mt-1.5 text-[11px] text-gray-400 italic">
+          Not configured
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <div className="flex items-center gap-1.5">
+        <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
+        <span className="text-[11px] font-semibold text-gray-700">
+          Channels
+        </span>
+        <span className="ml-auto rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium text-blue-600">
+          {channelCount}
+        </span>
+      </div>
+
+      <div className="mt-2 space-y-1.5">
+        {/* ── Telegram channel ── */}
+        {tgConfig && (
+          <div className="rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5">
+            {/* Header row: icon + name + enabled badge */}
+            <div className="flex items-center gap-1.5">
+              <Send className="h-3 w-3 text-blue-500" />
+              <span className="text-[11px] font-medium text-gray-700">
+                Telegram
+              </span>
+              {tgEnabled ? (
+                <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-medium text-green-700">
+                  <Check className="h-2 w-2" /> on
+                </span>
+              ) : (
+                <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-600">
+                  <X className="h-2 w-2" /> off
+                </span>
+              )}
+            </div>
+
+            {/* Bot identity */}
+            {tgLoading ? (
+              <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-400">
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                Resolving bot...
+              </div>
+            ) : tgInfo ? (
+              <div className="mt-1 flex items-center gap-1.5">
+                <AtSign className="h-2.5 w-2.5 text-gray-400" />
+                <span className="font-mono text-[11px] text-blue-600">
+                  @{tgInfo.username ?? "unknown"}
+                </span>
+                <span className="text-[10px] text-gray-400">
+                  ({tgInfo.first_name})
+                </span>
+              </div>
+            ) : null}
+
+            {/* Policy chips */}
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {typeof tgConfig.dmPolicy === "string" && (
+                <PolicyChip
+                  icon={Shield}
+                  label={`DM: ${tgConfig.dmPolicy}`}
+                />
+              )}
+              {typeof tgConfig.groupPolicy === "string" && (
+                <PolicyChip
+                  icon={Users}
+                  label={`Group: ${tgConfig.groupPolicy}`}
+                />
+              )}
+              {typeof tgConfig.streaming === "string" && (
+                <PolicyChip
+                  icon={Zap}
+                  label={`Stream: ${tgConfig.streaming}`}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Other channels ── */}
+        {Object.entries(channels)
+          .filter(([name]) => name !== "telegram")
+          .map(([name, config]) => {
+            const enabled =
+              typeof config === "object" && config !== null
+                ? (config as Record<string, unknown>).enabled !== false
+                : true;
+            return (
+              <div
+                key={name}
+                className="flex items-center gap-1.5 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
+              >
+                <MessageSquare className="h-3 w-3 text-gray-400" />
+                <span className="text-[11px] font-medium text-gray-700">
+                  {name}
+                </span>
+                {enabled ? (
+                  <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-medium text-green-700">
+                    <Check className="h-2 w-2" /> on
+                  </span>
+                ) : (
+                  <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-600">
+                    <X className="h-2 w-2" /> off
+                  </span>
+                )}
+              </div>
+            );
+          })}
+      </div>
+    </div>
+  );
+}
+
+function PolicyChip({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Shield;
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded bg-white px-1.5 py-0.5 text-[9px] text-gray-500 ring-1 ring-gray-200">
+      <Icon className="h-2 w-2" />
+      {label}
+    </span>
+  );
+}
+
 // ── Compact info row ─────────────────────────────────────────────────
 
 function InfoRow({
@@ -332,17 +517,58 @@ function InfoRow({
 // ── Summarizers ──────────────────────────────────────────────────────
 
 function summarizeModel(
-  model: Record<string, unknown> | undefined
+  models: Record<string, unknown> | undefined,
+  agents: Record<string, unknown> | undefined,
 ): string[] {
-  if (!model) return [];
+  if (!models) return [];
   const lines: string[] = [];
-  if (model.provider) lines.push(`Provider: ${model.provider}`);
-  if (model.name || model.model)
-    lines.push(`Model: ${model.name ?? model.model}`);
-  if (model.endpoint) lines.push(`Endpoint: ${model.endpoint}`);
-  // Fallback: show all keys if nothing matched
+
+  // Build a lookup from "provider/id" → display name using models.providers
+  const providers = models.providers as Record<string, unknown> | undefined;
+  const aliasMap = new Map<string, string>();
+  if (providers) {
+    for (const [providerName, providerConfig] of Object.entries(providers)) {
+      const cfg = providerConfig as Record<string, unknown>;
+      const providerModels = cfg.models as Array<Record<string, unknown>> | undefined;
+      if (providerModels) {
+        for (const m of providerModels) {
+          const id = m.id as string | undefined;
+          const name = m.name as string | undefined;
+          if (id && name) aliasMap.set(`${providerName}/${id}`, name);
+        }
+      }
+    }
+  }
+
+  // Also check agents.defaults.models for aliases (e.g. { "kimi-coding/k2p5": { alias: "..." } })
+  const defaults = agents?.defaults as Record<string, unknown> | undefined;
+  const defaultModels = defaults?.models as Record<string, unknown> | undefined;
+  if (defaultModels) {
+    for (const [key, val] of Object.entries(defaultModels)) {
+      const cfg = val as Record<string, unknown>;
+      if (cfg.alias && !aliasMap.has(key)) aliasMap.set(key, cfg.alias as string);
+    }
+  }
+
+  // Extract primary model from agents.defaults.model.primary (e.g. "kimi-coding/k2p5")
+  const defaultModel = defaults?.model as Record<string, unknown> | undefined;
+  const primary = defaultModel?.primary as string | undefined;
+  if (primary) {
+    const displayName = aliasMap.get(primary);
+    lines.push(displayName ? `Primary: ${primary} (${displayName})` : `Primary: ${primary}`);
+  }
+
+  // Show fallbacks if configured
+  const fallbacks = defaultModel?.fallbacks as string[] | undefined;
+  if (fallbacks && fallbacks.length > 0) {
+    const names = fallbacks.map((f) => aliasMap.get(f) ?? f);
+    lines.push(`Fallbacks: ${names.join(", ")}`);
+  }
+
+  // Fallback: show provider list only when no primary is set
   if (lines.length === 0) {
-    for (const [k, v] of Object.entries(model)) {
+    if (models.mode) lines.push(`Mode: ${models.mode}`);
+    for (const [k, v] of Object.entries(models)) {
       if (typeof v === "string" || typeof v === "number")
         lines.push(`${k}: ${v}`);
       if (lines.length >= 3) break;
@@ -351,20 +577,6 @@ function summarizeModel(
   return lines;
 }
 
-function summarizeChannels(
-  channels: Record<string, unknown> | undefined
-): string[] {
-  if (!channels) return [];
-  const lines: string[] = [];
-  for (const [name, config] of Object.entries(channels)) {
-    const enabled =
-      typeof config === "object" && config !== null
-        ? (config as Record<string, unknown>).enabled !== false
-        : true;
-    lines.push(`${name}${enabled ? "" : " (disabled)"}`);
-  }
-  return lines.length > 0 ? lines : ["None"];
-}
 
 function summarizeGateway(
   gateway: Record<string, unknown> | undefined
@@ -378,8 +590,25 @@ function summarizeGateway(
 
 function summarizeAgents(agents: Record<string, unknown>): string | null {
   const defaults = agents.defaults as Record<string, unknown> | undefined;
-  if (defaults?.workspace) return `workspace: ${defaults.workspace}`;
-  return summarizeObject(agents);
+  if (!defaults) return summarizeObject(agents);
+  const parts: string[] = [];
+  const model = defaults.model as Record<string, unknown> | undefined;
+  if (model?.primary) parts.push(`model: ${model.primary}`);
+  if (defaults.workspace) parts.push(`workspace: ${defaults.workspace}`);
+  return parts.length > 0 ? parts.join(", ") : summarizeObject(agents);
+}
+
+function summarizePlugins(plugins: Record<string, unknown>): string | null {
+  const entries = plugins.entries as Record<string, unknown> | undefined;
+  if (!entries) return summarizeObject(plugins);
+  const enabled = Object.entries(entries)
+    .filter(([, cfg]) => {
+      const c = cfg as Record<string, unknown>;
+      return c.enabled !== false;
+    })
+    .map(([name]) => name);
+  if (enabled.length === 0) return "none enabled";
+  return enabled.join(", ");
 }
 
 function summarizeObject(obj: Record<string, unknown>): string {

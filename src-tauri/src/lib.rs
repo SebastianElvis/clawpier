@@ -43,6 +43,7 @@ pub fn run() {
             commands::list_workspace_files,
             commands::read_workspace_file,
             commands::get_bot_config,
+            commands::resolve_telegram_bot,
             commands::start_terminal_session,
             commands::write_terminal_input,
             commands::resize_terminal,

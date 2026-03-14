@@ -120,6 +120,19 @@ export async function getBotConfig(
   return invoke<Record<string, string>>("get_bot_config", { id });
 }
 
+export interface TelegramBotInfo {
+  id: number;
+  first_name: string;
+  username: string | null;
+  is_bot: boolean;
+}
+
+export async function resolveTelegramBot(
+  id: string
+): Promise<TelegramBotInfo> {
+  return invoke<TelegramBotInfo>("resolve_telegram_bot", { id });
+}
+
 // ── Interactive terminal commands ──────────────────────────────────
 
 export async function startTerminalSession(

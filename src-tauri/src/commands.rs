@@ -482,6 +482,85 @@ pub async fn get_bot_config(
     Ok(configs)
 }
 
+/// Info returned from the Telegram Bot API `getMe` endpoint.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TelegramBotInfo {
+    pub id: i64,
+    pub first_name: String,
+    pub username: Option<String>,
+    pub is_bot: bool,
+}
+
+#[tauri::command]
+pub async fn resolve_telegram_bot(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<TelegramBotInfo, AppError> {
+    // Read bot token from openclaw.json
+    let config_dir = {
+        let store = state.store.lock().await;
+        store
+            .get_by_id(&id)
+            .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
+        dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("clawbox")
+            .join("data")
+            .join(&id)
+    };
+
+    let config_path = config_dir.join("openclaw.json");
+    let content = tokio::fs::read_to_string(&config_path)
+        .await
+        .map_err(|_| AppError::Other("No openclaw.json found".into()))?;
+
+    let json: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| AppError::Other(e.to_string()))?;
+
+    let bot_token = json
+        .pointer("/channels/telegram/botToken")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| AppError::Other("No Telegram bot token configured".into()))?;
+
+    // Call Telegram Bot API getMe
+    let url = format!("https://api.telegram.org/bot{}/getMe", bot_token);
+    let resp: serde_json::Value = reqwest::get(&url)
+        .await
+        .map_err(|e| AppError::Other(format!("Telegram API request failed: {}", e)))?
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| AppError::Other(format!("Telegram API response parse error: {}", e)))?;
+
+    if resp.get("ok").and_then(serde_json::Value::as_bool) != Some(true) {
+        let desc = resp
+            .get("description")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("Unknown error");
+        return Err(AppError::Other(format!("Telegram API error: {}", desc)));
+    }
+
+    let result = resp
+        .get("result")
+        .ok_or_else(|| AppError::Other("Missing result in Telegram response".into()))?;
+
+    Ok(TelegramBotInfo {
+        id: result.get("id").and_then(serde_json::Value::as_i64).unwrap_or(0),
+        first_name: result
+            .get("first_name")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        username: result
+            .get("username")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        is_bot: result
+            .get("is_bot")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+    })
+}
+
 // ── Interactive terminal commands ──────────────────────────────────
 
 #[tauri::command]
