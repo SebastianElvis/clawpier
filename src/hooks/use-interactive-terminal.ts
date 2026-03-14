@@ -183,9 +183,6 @@ export function useInteractiveTerminal({
         if (lastError) throw lastError;
 
         if (!cancelled) {
-          // Clear xterm's internal buffer so the first prompt renders
-          // cleanly without selection/highlight artifacts.
-          term.clear();
           setIsConnected(true);
           setIsConnecting(false);
           setConnectionError(null);

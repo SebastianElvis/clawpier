@@ -270,9 +270,7 @@ pub async fn start_log_stream(
 
         while let Some(Ok(output)) = stream.next().await {
             let entry = DockerManager::parse_log_output(&output);
-            if !entry.message.is_empty() {
-                let _ = app.emit(&event_name, &entry);
-            }
+            let _ = app.emit(&event_name, &entry);
         }
     });
 

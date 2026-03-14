@@ -79,6 +79,7 @@ pub struct BotWithStatus {
 #[derive(Debug, Serialize, Clone)]
 pub struct ContainerStats {
     pub cpu_percent: f64,
+    pub cpu_cores: u32,
     pub memory_usage: u64,
     pub memory_limit: u64,
     pub memory_percent: f64,

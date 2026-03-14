@@ -276,16 +276,24 @@ impl DockerManager {
             - stats.precpu_stats.cpu_usage.total_usage as f64;
         let system_delta = stats.cpu_stats.system_cpu_usage.unwrap_or(0) as f64
             - stats.precpu_stats.system_cpu_usage.unwrap_or(0) as f64;
+        // Prefer online_cpus (newer Docker API), fall back to percpu_usage count
         let num_cpus = stats
             .cpu_stats
-            .cpu_usage
-            .percpu_usage
-            .as_ref()
-            .map(|v| v.len())
-            .unwrap_or(1) as f64;
+            .online_cpus
+            .filter(|&n| n > 0)
+            .unwrap_or_else(|| {
+                stats
+                    .cpu_stats
+                    .cpu_usage
+                    .percpu_usage
+                    .as_ref()
+                    .map(|v| v.len() as u64)
+                    .unwrap_or(1)
+            });
+        let num_cpus_f64 = num_cpus as f64;
 
         let cpu_percent = if system_delta > 0.0 {
-            (cpu_delta / system_delta) * num_cpus * 100.0
+            (cpu_delta / system_delta) * num_cpus_f64 * 100.0
         } else {
             0.0
         };
@@ -312,6 +320,7 @@ impl DockerManager {
 
         ContainerStats {
             cpu_percent,
+            cpu_cores: num_cpus as u32,
             memory_usage,
             memory_limit,
             memory_percent,
@@ -350,9 +359,13 @@ impl DockerManager {
     }
 
     /// Split a Docker log line with timestamps into (timestamp, message).
+    /// Docker timestamps are RFC3339 (e.g. `2024-01-15T10:30:45.123456789Z`)
+    /// which is typically 30 chars, followed by a space and the log message.
     fn split_timestamp(text: &str) -> (Option<String>, String) {
-        if text.len() > 31 && text.as_bytes()[0].is_ascii_digit() {
-            if let Some(space_idx) = text[..35].find(' ') {
+        // Minimum: 30-char timestamp + space + at least empty message = 31 chars
+        if text.len() >= 31 && text.as_bytes()[0].is_ascii_digit() {
+            let search_end = text.len().min(40);
+            if let Some(space_idx) = text[..search_end].find(' ') {
                 let ts = text[..space_idx].to_string();
                 let msg = text[space_idx + 1..].to_string();
                 return (Some(ts), msg);

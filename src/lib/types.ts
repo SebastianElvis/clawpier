@@ -24,6 +24,7 @@ export interface BotWithStatus extends BotProfile {
 
 export interface ContainerStats {
   cpu_percent: number;
+  cpu_cores: number;
   memory_usage: number;
   memory_limit: number;
   memory_percent: number;

@@ -59,11 +59,8 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
   // Stats streaming (only when running)
   const stats = useContainerStats(bot.id, isRunning);
 
-  // Log streaming (only when running and on logs/terminal tab)
-  const { logs, clearLogs } = useContainerLogs(
-    bot.id,
-    isRunning && (activeTab === "logs" || activeTab === "terminal")
-  );
+  // Log streaming (always when running — persists across tab switches)
+  const { logs, clearLogs } = useContainerLogs(bot.id, isRunning);
 
   const handleStart = async () => {
     setError(null);
@@ -178,7 +175,12 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
           <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
             <div className="flex items-center gap-1.5">
               <Cpu className="h-3.5 w-3.5" />
-              <span>CPU {stats.cpu_percent.toFixed(1)}%</span>
+              <span>
+                CPU {stats.cpu_percent.toFixed(1)}%
+                <span className="ml-1 text-gray-400">
+                  · {stats.cpu_cores} {stats.cpu_cores === 1 ? "core" : "cores"}
+                </span>
+              </span>
               <div className="h-1.5 w-16 rounded-full bg-gray-200">
                 <div
                   className="h-1.5 rounded-full bg-blue-500 transition-all"

@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { LogEntry } from "../lib/types";
 import * as api from "../lib/tauri";
 
-const MAX_LOGS = 1000;
+const MAX_LOGS = 2000;
 
 export function useContainerLogs(botId: string, enabled: boolean) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -14,26 +14,62 @@ export function useContainerLogs(botId: string, enabled: boolean) {
       return;
     }
 
-    // Start streaming with last 200 lines
-    api.startLogStream(botId, 200).catch(console.error);
+    let cancelled = false;
+    let unlistenFn: (() => void) | null = null;
 
-    const unlisten = listen<LogEntry>(
-      `container-log-${botId}`,
-      (event) => {
-        const entry = event.payload;
-        logsRef.current = [...logsRef.current, entry].slice(-MAX_LOGS);
-        setLogs(logsRef.current);
+    // Buffer incoming logs and flush to React state in animation frames
+    // to avoid excessive re-renders when hundreds of log lines arrive at once.
+    let pendingEntries: LogEntry[] = [];
+    let rafId: number | null = null;
+
+    const flushLogs = () => {
+      rafId = null;
+      if (cancelled || pendingEntries.length === 0) return;
+
+      const combined = logsRef.current.concat(pendingEntries);
+      pendingEntries = [];
+
+      // Trim to MAX_LOGS
+      logsRef.current =
+        combined.length > MAX_LOGS
+          ? combined.slice(combined.length - MAX_LOGS)
+          : combined;
+
+      setLogs(logsRef.current);
+    };
+
+    (async () => {
+      // Register listener FIRST to ensure no events are missed
+      unlistenFn = await listen<LogEntry>(
+        `container-log-${botId}`,
+        (event) => {
+          if (cancelled) return;
+          pendingEntries.push(event.payload);
+          // Batch updates via requestAnimationFrame
+          if (rafId === null) {
+            rafId = requestAnimationFrame(flushLogs);
+          }
+        }
+      );
+
+      if (cancelled) {
+        unlistenFn();
+        return;
       }
-    );
+
+      // THEN start the backend stream — listener is guaranteed to be ready
+      api.startLogStream(botId, 500).catch(console.error);
+    })();
 
     return () => {
+      cancelled = true;
+      if (rafId !== null) cancelAnimationFrame(rafId);
       api.stopLogStream(botId).catch(console.error);
-      unlisten.then((fn) => fn());
+      if (unlistenFn) unlistenFn();
       logsRef.current = [];
     };
   }, [botId, enabled]);
 
-  // Derive empty logs when disabled — no setState needed
   const effectiveLogs = enabled ? logs : [];
 
   const clearLogs = useCallback(() => {
