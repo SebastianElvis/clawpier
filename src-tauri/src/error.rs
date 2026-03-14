@@ -19,6 +19,9 @@ pub enum AppError {
 
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("{0}")]
+    Other(String),
 }
 
 impl Serialize for AppError {

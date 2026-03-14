@@ -41,6 +41,9 @@ pub fn run() {
             commands::exec_command,
             commands::list_workspace_files,
             commands::read_workspace_file,
+            commands::start_terminal_session,
+            commands::write_terminal_input,
+            commands::resize_terminal,
         ])
         .setup(|app| {
             // Spawn background status polling task

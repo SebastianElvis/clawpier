@@ -1,13 +1,18 @@
 use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::Arc;
 
+use bollard::exec::{CreateExecOptions, ResizeExecOptions, StartExecResults};
 use futures_util::StreamExt;
 use tauri::{AppHandle, Emitter, State};
+use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex as TokioMutex;
 
 use crate::docker_manager::{self, DockerManager};
 use crate::error::AppError;
 use crate::models::{BotProfile, BotStatus, BotWithStatus, EnvVar, ExecResult, FileEntry};
 use crate::state::AppState;
-use crate::streaming::StreamKind;
+use crate::streaming::{InteractiveSession, StreamKind};
 
 // ── Existing commands ────────────────────────────────────────────────
 
@@ -76,9 +81,10 @@ pub async fn start_bot(state: State<'_, AppState>, id: String) -> Result<(), App
 
 #[tauri::command]
 pub async fn stop_bot(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
-    // Stop any active streams for this bot
+    // Stop any active streams and interactive session for this bot
     let mut streams = state.streams.lock().await;
     streams.stop_all(&id);
+    streams.stop_session(&id);
     drop(streams);
 
     let docker = state.docker.lock().await;
@@ -87,9 +93,10 @@ pub async fn stop_bot(state: State<'_, AppState>, id: String) -> Result<(), AppE
 
 #[tauri::command]
 pub async fn delete_bot(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
-    // Stop streams
+    // Stop streams and interactive session
     let mut streams = state.streams.lock().await;
     streams.stop_all(&id);
+    streams.stop_session(&id);
     drop(streams);
 
     // Stop and remove container first
@@ -393,4 +400,165 @@ pub async fn read_workspace_file(
 
     let content = tokio::fs::read_to_string(&canonical_target).await?;
     Ok(content)
+}
+
+// ── Interactive terminal commands ──────────────────────────────────
+
+#[tauri::command]
+pub async fn start_terminal_session(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+) -> Result<(), AppError> {
+    // Don't start a new session if one already exists
+    {
+        let streams = state.streams.lock().await;
+        if streams.has_session(&id) {
+            return Ok(());
+        }
+    }
+
+    let container_name = {
+        let store = state.store.lock().await;
+        let bot = store
+            .get_by_id(&id)
+            .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
+        bot.container_name()
+    };
+
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    // Create exec instance with TTY
+    let exec_config = CreateExecOptions {
+        attach_stdin: Some(true),
+        attach_stdout: Some(true),
+        attach_stderr: Some(true),
+        tty: Some(true),
+        cmd: Some(vec!["/bin/sh"]),
+        ..Default::default()
+    };
+
+    let exec_created = docker.create_exec(&container_name, exec_config).await?;
+    let exec_id = exec_created.id.clone();
+
+    // Start exec and get attached streams
+    let start_result = docker.start_exec(&exec_created.id, None).await?;
+
+    match start_result {
+        StartExecResults::Attached { output, input } => {
+            // Resize to initial dimensions
+            let resize_opts = ResizeExecOptions {
+                width: cols,
+                height: rows,
+            };
+            let _ = docker.resize_exec(&exec_id, resize_opts).await;
+
+            // Wrap the stdin writer in Arc<Mutex<...>> for shared access
+            let input_writer: Arc<TokioMutex<Pin<Box<dyn tokio::io::AsyncWrite + Send>>>> =
+                Arc::new(TokioMutex::new(input));
+
+            // Spawn output streaming task
+            let bot_id = id.clone();
+            let event_name = format!("terminal-output-{}", id);
+            let output_task = tauri::async_runtime::spawn(async move {
+                let mut stream = output;
+                while let Some(Ok(msg)) = stream.next().await {
+                    // In TTY mode, bollard sends all output as StdOut
+                    let bytes = match msg {
+                        bollard::container::LogOutput::StdOut { message } => message,
+                        bollard::container::LogOutput::StdErr { message } => message,
+                        bollard::container::LogOutput::Console { message } => message,
+                        _ => continue,
+                    };
+                    // Send raw bytes as a string (terminal handles encoding)
+                    let text = String::from_utf8_lossy(&bytes).to_string();
+                    if !text.is_empty() {
+                        let _ = app.emit(&event_name, &text);
+                    }
+                }
+            });
+
+            // Store the session
+            let session = InteractiveSession {
+                input: input_writer,
+                output_task,
+                exec_id,
+            };
+
+            let mut streams = state.streams.lock().await;
+            streams.start_session(&bot_id, session);
+
+            Ok(())
+        }
+        StartExecResults::Detached => {
+            Err(AppError::Other("Exec started in detached mode unexpectedly".to_string()))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn write_terminal_input(
+    state: State<'_, AppState>,
+    id: String,
+    data: String,
+) -> Result<(), AppError> {
+    // Clone the Arc'd writer, releasing the StreamManager lock quickly
+    let writer = {
+        let streams = state.streams.lock().await;
+        streams.get_session_input(&id)
+    };
+
+    let writer = writer.ok_or_else(|| {
+        AppError::Other(format!("No active terminal session for bot {}", id))
+    })?;
+
+    // Lock the writer and send data
+    let mut w = writer.lock().await;
+    w.write_all(data.as_bytes())
+        .await
+        .map_err(|e| AppError::Other(format!("Failed to write to terminal: {}", e)))?;
+    w.flush()
+        .await
+        .map_err(|e| AppError::Other(format!("Failed to flush terminal: {}", e)))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn resize_terminal(
+    state: State<'_, AppState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+) -> Result<(), AppError> {
+    let exec_id = {
+        let streams = state.streams.lock().await;
+        streams.get_exec_id(&id)
+    };
+
+    let exec_id = exec_id.ok_or_else(|| {
+        AppError::Other(format!("No active terminal session for bot {}", id))
+    })?;
+
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    let resize_opts = ResizeExecOptions {
+        width: cols,
+        height: rows,
+    };
+
+    docker
+        .resize_exec(&exec_id, resize_opts)
+        .await
+        .map_err(|e| AppError::Other(format!("Failed to resize terminal: {}", e)))?;
+
+    Ok(())
 }

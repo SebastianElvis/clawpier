@@ -107,3 +107,28 @@ export async function readWorkspaceFile(
 ): Promise<string> {
   return invoke<string>("read_workspace_file", { id, path });
 }
+
+// ── Interactive terminal commands ──────────────────────────────────
+
+export async function startTerminalSession(
+  id: string,
+  cols: number,
+  rows: number
+): Promise<void> {
+  return invoke("start_terminal_session", { id, cols, rows });
+}
+
+export async function writeTerminalInput(
+  id: string,
+  data: string
+): Promise<void> {
+  return invoke("write_terminal_input", { id, data });
+}
+
+export async function resizeTerminal(
+  id: string,
+  cols: number,
+  rows: number
+): Promise<void> {
+  return invoke("resize_terminal", { id, cols, rows });
+}

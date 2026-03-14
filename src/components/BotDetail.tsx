@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   Play,
@@ -8,20 +8,19 @@ import {
   ScrollText,
   FolderOpen,
   Settings,
-  Send,
   Cpu,
   HardDrive,
 } from "lucide-react";
-import type { BotWithStatus, ExecResult } from "../lib/types";
+import type { BotWithStatus } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
 import { useContainerLogs } from "../hooks/use-container-logs";
+import { useInteractiveTerminal } from "../hooks/use-interactive-terminal";
 import { LogViewer } from "./LogViewer";
 import { EnvVarEditor } from "./EnvVarEditor";
 import { FileBrowser } from "./FileBrowser";
 import { StatusBadge } from "./StatusBadge";
 import { NetworkBadge } from "./NetworkBadge";
-import * as api from "../lib/tauri";
 
 type Tab = "logs" | "terminal" | "files" | "settings";
 
@@ -252,6 +251,14 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 }
 
 // ── Terminal Tab ──────────────────────────────────────────────────────
+
+const QUICK_COMMANDS = [
+  { label: "openclaw configure", command: "openclaw configure" },
+  { label: "openclaw --help", command: "openclaw --help" },
+  { label: "ls /workspace", command: "ls /workspace" },
+  { label: "env", command: "env" },
+];
+
 function TerminalTab({
   botId,
   isRunning,
@@ -259,44 +266,13 @@ function TerminalTab({
   botId: string;
   isRunning: boolean;
 }) {
-  const [command, setCommand] = useState("");
-  const [history, setHistory] = useState<
-    { command: string; result: ExecResult }[]
-  >([]);
-  const [executing, setExecuting] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const handleExec = async () => {
-    const cmd = command.trim();
-    if (!cmd || !isRunning) return;
-
-    setCommand("");
-    setExecuting(true);
-    try {
-      const result = await api.execCommand(botId, cmd);
-      setHistory((prev) => [...prev, { command: cmd, result }]);
-      // Scroll to bottom
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      }, 50);
-    } catch (e) {
-      setHistory((prev) => [
-        ...prev,
-        {
-          command: cmd,
-          result: { output: String(e), exit_code: -1 },
-        },
-      ]);
-    } finally {
-      setExecuting(false);
-    }
-  };
+  const { containerRef, isConnected, isConnecting, writeCommand } =
+    useInteractiveTerminal({ botId, isRunning });
 
   if (!isRunning) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-gray-400">
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-gray-400">
+        <Terminal className="h-8 w-8 text-gray-300" />
         Start the bot to use the terminal
       </div>
     );
@@ -304,63 +280,37 @@ function TerminalTab({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Output */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto bg-gray-950 p-3 font-mono text-xs leading-5"
-      >
-        {history.length === 0 ? (
-          <div className="text-gray-600">
-            Type a command below to run it inside the container.
-          </div>
-        ) : (
-          history.map((entry, i) => (
-            <div key={i} className="mb-2">
-              <div className="text-blue-400">$ {entry.command}</div>
-              <div
-                className={`whitespace-pre-wrap ${
-                  entry.result.exit_code !== 0
-                    ? "text-red-400"
-                    : "text-gray-200"
-                }`}
-              >
-                {entry.result.output || "(no output)"}
-              </div>
-              {entry.result.exit_code !== null &&
-                entry.result.exit_code !== 0 && (
-                  <div className="text-gray-600">
-                    exit code: {entry.result.exit_code}
-                  </div>
-                )}
-            </div>
-          ))
-        )}
+      {/* Quick command chips */}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-3 py-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+          Quick:
+        </span>
+        {QUICK_COMMANDS.map((qc) => (
+          <button
+            key={qc.command}
+            className="rounded-md border border-gray-200 bg-white px-2 py-0.5 font-mono text-[11px] text-gray-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40"
+            onClick={() => writeCommand(qc.command)}
+            disabled={!isConnected}
+          >
+            {qc.label}
+          </button>
+        ))}
       </div>
 
-      {/* Input */}
-      <div className="flex items-center gap-2 border-t border-gray-800 bg-gray-950 px-3 py-2">
-        <span className="text-xs text-blue-400">$</span>
-        <input
-          className="flex-1 bg-transparent font-mono text-xs text-gray-200 outline-none placeholder:text-gray-600"
-          placeholder="Enter command..."
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !executing) handleExec();
-          }}
-          disabled={executing}
+      {/* Terminal container */}
+      <div className="relative min-h-0 flex-1 bg-[#030712]">
+        {isConnecting && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-950/80">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting to container...
+            </div>
+          </div>
+        )}
+        <div
+          ref={containerRef}
+          className="h-full w-full p-1"
         />
-        <button
-          className="rounded p-1 text-gray-500 hover:text-blue-400 disabled:opacity-30"
-          onClick={handleExec}
-          disabled={executing || !command.trim()}
-        >
-          {executing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </button>
       </div>
     </div>
   );
