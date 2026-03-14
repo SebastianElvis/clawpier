@@ -324,7 +324,7 @@ function ChannelsCard({
   channels: Record<string, unknown> | undefined;
 }) {
   const [tgInfo, setTgInfo] = useState<TelegramBotInfo | null>(null);
-  const [tgLoading, setTgLoading] = useState(false);
+  const [tgResolvedKey, setTgResolvedKey] = useState<string | null>(null);
 
   const hasTelegram =
     channels &&
@@ -335,14 +335,31 @@ function ChannelsCard({
     : null;
   const tgEnabled = tgConfig?.enabled !== false;
 
-  // Resolve Telegram bot info on mount
+  const shouldFetchTg = !!(hasTelegram && tgEnabled);
+  const fetchKey = `${botId}:${hasTelegram}:${tgEnabled}`;
+  const tgLoading = shouldFetchTg && tgResolvedKey !== fetchKey;
+
+  // Resolve Telegram bot info when bot/channel config changes
   useEffect(() => {
     if (!hasTelegram || !tgEnabled) return;
-    setTgLoading(true);
+    let cancelled = false;
+    const key = `${botId}:${hasTelegram}:${tgEnabled}`;
     resolveTelegramBot(botId)
-      .then(setTgInfo)
-      .catch(() => setTgInfo(null))
-      .finally(() => setTgLoading(false));
+      .then((info) => {
+        if (!cancelled) {
+          setTgInfo(info);
+          setTgResolvedKey(key);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTgInfo(null);
+          setTgResolvedKey(key);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [botId, hasTelegram, tgEnabled]);
 
   const channelCount = channels ? Object.keys(channels).length : 0;

@@ -1,6 +1,6 @@
-# CLAUDE.md — ClawPier
+# CLAUDE.md
 
-Guidelines for AI assistants working on this codebase.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -26,7 +26,38 @@ pnpm lint             # ESLint
 pnpm test             # Unit tests (vitest)
 ```
 
+### Running Single Tests
+
+```bash
+# Frontend — filter by filename pattern
+pnpm test bot-store
+pnpm test use-auto-restart
+
+# Rust — all unit tests
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# Rust — single test by name
+cargo test --manifest-path src-tauri/Cargo.toml split_timestamp
+
+# Rust — integration tests only (requires Docker running)
+cargo test --manifest-path src-tauri/Cargo.toml -- --ignored
+```
+
+### Type-check Only
+
+```bash
+pnpm exec tsc -b
+```
+
 ## Architecture
+
+### Data Flow
+
+```
+React UI (Zustand store) ←→ Tauri IPC (invoke / events) ←→ Rust commands ←→ Docker (bollard)
+```
+
+The frontend calls typed `invoke()` wrappers in `lib/tauri.ts` which map to `#[tauri::command]` handlers in `commands.rs`. The Rust backend emits `bot-status-update` events every 5s; the frontend subscribes via `use-bot-events.ts` hook.
 
 ### Rust Backend (`src-tauri/src/`)
 
@@ -44,13 +75,10 @@ pnpm test             # Unit tests (vitest)
 
 - `App.tsx` — Root: Docker check → welcome screen → bot list
 - `stores/bot-store.ts` — Zustand store for all bot state + actions
-- `hooks/use-bot-events.ts` — Subscribes to `bot-status-update` Tauri events
-- `hooks/use-container-logs.ts` — Continuous log streaming with requestAnimationFrame batching
-- `hooks/use-interactive-terminal.ts` — xterm.js PTY terminal via Docker exec
-- `hooks/use-zoom.ts` — Zoom in/out with Cmd+=/Cmd+-/Cmd+0
+- `hooks/` — Custom hooks for Tauri event subscriptions, log/stats streaming, interactive terminal, zoom
 - `lib/tauri.ts` — Typed `invoke()` wrappers for all IPC commands
 - `lib/types.ts` — TypeScript types mirroring Rust models
-- `components/` — UI components (BotCard, BotDetail, BotList, Layout, NewBotSheet, etc.)
+- `components/` — One component per file (BotCard, BotDetail, ConfigDashboard, etc.)
 
 ### IPC Commands
 
@@ -97,6 +125,21 @@ All defined in `commands.rs`, invoked from `lib/tauri.ts`:
 - Auto-saves on every mutation (create, delete, rename, toggle network, env vars, workspace path)
 - Name uniqueness enforced case-insensitively
 
+## Testing
+
+### Frontend
+- Vitest with jsdom environment, configured in `vite.config.ts` (not a separate vitest config)
+- Setup file at `src/test/setup.ts` mocks `@tauri-apps/api/core` and `@tauri-apps/api/event`
+- Test files live in `__tests__/` subdirectories next to their source (e.g., `stores/__tests__/`, `hooks/__tests__/`)
+
+### Rust
+- Unit tests use `#[test]` and `#[tokio::test]` within `#[cfg(test)]` modules
+- Integration tests requiring Docker use `#[tokio::test]` + `#[ignore]` — CI runs them separately with `-- --ignored`
+- Test modules in: `models.rs`, `docker_manager.rs`, `streaming.rs`
+
+### CI Pipeline (`.github/workflows/ci.yml`)
+Three jobs: **frontend** (lint → type-check → vitest), **rust** (cargo test → cargo check --release), **integration** (pulls `busybox:latest`, runs `-- --ignored` tests)
+
 ## Build Gotchas
 
 - **Vite version**: Must use Vite 6 (not 8) — Vite 8 has esbuild issues with Tauri
@@ -104,6 +147,7 @@ All defined in `commands.rs`, invoked from `lib/tauri.ts`:
 - **pnpm esbuild**: Needs `"pnpm": { "onlyBuiltDependencies": ["esbuild"] }` in package.json
 - **Icons**: Must be RGBA PNGs (color type 6), not RGB
 - **Tailwind v4**: Uses `@import "tailwindcss"` in CSS, no `tailwind.config.js` needed
+- **ESLint**: Uses flat config (`eslint.config.js`); react-hooks v7 enforces `set-state-in-effect` — do not call `setState` synchronously inside `useEffect` bodies (async callbacks like `.then()` are fine)
 
 ## Code Style
 
