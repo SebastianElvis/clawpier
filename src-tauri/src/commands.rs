@@ -17,6 +17,24 @@ use crate::models::{
 use crate::state::AppState;
 use crate::streaming::{InteractiveSession, StreamKind};
 
+// ── Chat command helpers ─────────────────────────────────────────────
+
+/// Build the CLI arguments for `openclaw agent` with session persistence.
+/// Separated from the Tauri command so it can be unit-tested.
+pub(crate) fn build_openclaw_agent_cmd(session_id: &str, message: &str) -> Vec<String> {
+    let oc_session_id = format!("clawpier-{}", session_id);
+    vec![
+        "/usr/local/bin/openclaw".to_string(),
+        "agent".to_string(),
+        "--agent".to_string(),
+        "main".to_string(),
+        "--session-id".to_string(),
+        oc_session_id,
+        "--message".to_string(),
+        message.to_string(),
+    ]
+}
+
 // ── Validation helpers ────────────────────────────────────────────────
 
 /// Directories that must never be used as workspace paths.
@@ -494,13 +512,13 @@ pub async fn send_chat_message(
     let handle = tauri::async_runtime::spawn(async move {
         use bollard::exec::CreateExecOptions;
 
-        // Use an array-based command to avoid shell injection.
-        // Pass the message via stdin.
+        // Use `openclaw agent` via the gateway with session persistence.
+        let cmd = crate::commands::build_openclaw_agent_cmd(&sess_id, &message);
         let config = CreateExecOptions {
-            attach_stdin: Some(true),
+            attach_stdin: Some(false),
             attach_stdout: Some(true),
             attach_stderr: Some(true),
-            cmd: Some(vec!["/usr/local/bin/openclaw", "chat", "--pipe"]),
+            cmd: Some(cmd),
             ..Default::default()
         };
 
@@ -511,21 +529,19 @@ pub async fn send_chat_message(
                 match docker.start_exec(&created.id, None).await {
                     Ok(bollard::exec::StartExecResults::Attached {
                         output: mut stream,
-                        input,
+                        ..
                     }) => {
-                        // Write the message to stdin and close it
-                        let mut writer = input;
-                        let _ =
-                            tokio::io::AsyncWriteExt::write_all(&mut writer, message.as_bytes())
-                                .await;
-                        let _ = tokio::io::AsyncWriteExt::shutdown(&mut writer).await;
-                        drop(writer);
 
-                        // Stream stdout
+                        // Stream stdout and stderr
                         while let Some(Ok(msg)) = stream.next().await {
                             let text = match msg {
                                 bollard::container::LogOutput::StdOut { message } => {
                                     String::from_utf8_lossy(&message).to_string()
+                                }
+                                bollard::container::LogOutput::StdErr { message } => {
+                                    let stderr_text = String::from_utf8_lossy(&message).to_string();
+                                    // Include stderr so user can see errors
+                                    stderr_text
                                 }
                                 _ => continue,
                             };
@@ -1178,5 +1194,61 @@ mod tests {
         let json = serde_json::to_value(&res).unwrap();
         assert!(json["cpu_cores"].is_number());
         assert!(json["memory_bytes"].is_number());
+    }
+
+    // ── Chat / openclaw agent command tests ──────────────────────────
+
+    #[test]
+    fn build_openclaw_agent_cmd_basic() {
+        let cmd = build_openclaw_agent_cmd("session-abc", "Hello world");
+        assert_eq!(cmd[0], "/usr/local/bin/openclaw");
+        assert_eq!(cmd[1], "agent");
+        assert_eq!(cmd[2], "--agent");
+        assert_eq!(cmd[3], "main");
+        assert_eq!(cmd[4], "--session-id");
+        assert_eq!(cmd[5], "clawpier-session-abc");
+        assert_eq!(cmd[6], "--message");
+        assert_eq!(cmd[7], "Hello world");
+        assert_eq!(cmd.len(), 8);
+    }
+
+    #[test]
+    fn build_openclaw_agent_cmd_session_id_prefixed() {
+        let cmd = build_openclaw_agent_cmd("my-session", "hi");
+        // Session ID should always be prefixed with "clawpier-"
+        assert!(
+            cmd[5].starts_with("clawpier-"),
+            "session id must be prefixed: {}",
+            cmd[5]
+        );
+    }
+
+    #[test]
+    fn build_openclaw_agent_cmd_preserves_message_with_special_chars() {
+        let msg = "Hello! How are you? I'm fine & great <tag> \"quoted\"";
+        let cmd = build_openclaw_agent_cmd("s1", msg);
+        // Message must be passed verbatim — no shell escaping needed
+        // because bollard uses exec (not shell)
+        assert_eq!(cmd[7], msg);
+    }
+
+    #[test]
+    fn build_openclaw_agent_cmd_empty_message() {
+        let cmd = build_openclaw_agent_cmd("s1", "");
+        assert_eq!(cmd[7], "");
+    }
+
+    #[test]
+    fn build_openclaw_agent_cmd_multiline_message() {
+        let msg = "line1\nline2\nline3";
+        let cmd = build_openclaw_agent_cmd("s1", msg);
+        assert_eq!(cmd[7], msg, "multiline messages must be preserved");
+    }
+
+    #[test]
+    fn build_openclaw_agent_cmd_different_sessions_produce_different_ids() {
+        let cmd1 = build_openclaw_agent_cmd("aaa", "hi");
+        let cmd2 = build_openclaw_agent_cmd("bbb", "hi");
+        assert_ne!(cmd1[5], cmd2[5], "different sessions must yield different openclaw session ids");
     }
 }
