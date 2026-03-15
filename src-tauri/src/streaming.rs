@@ -95,11 +95,6 @@ impl StreamManager {
         self.sessions.get(bot_id).map(|s| s.exec_id.clone())
     }
 
-    /// Check if a bot has an active interactive session.
-    pub fn has_session(&self, bot_id: &str) -> bool {
-        self.sessions.contains_key(bot_id)
-    }
-
     /// Stop the interactive session for a bot.
     pub fn stop_session(&mut self, bot_id: &str) {
         if let Some(session) = self.sessions.remove(bot_id) {
@@ -125,7 +120,6 @@ mod tests {
     #[test]
     fn new_manager_is_empty() {
         let mgr = StreamManager::new();
-        assert!(!mgr.has_session("any"));
         assert!(mgr.get_exec_id("any").is_none());
         assert!(mgr.get_session_input("any").is_none());
     }
@@ -178,16 +172,14 @@ mod tests {
     #[test]
     fn session_lifecycle() {
         let mut mgr = StreamManager::new();
-        assert!(!mgr.has_session("bot1"));
+        assert!(mgr.get_exec_id("bot1").is_none());
 
         mgr.start_session("bot1", mock_session("exec-123"));
 
-        assert!(mgr.has_session("bot1"));
         assert_eq!(mgr.get_exec_id("bot1").unwrap(), "exec-123");
         assert!(mgr.get_session_input("bot1").is_some());
 
         mgr.stop_session("bot1");
-        assert!(!mgr.has_session("bot1"));
         assert!(mgr.get_exec_id("bot1").is_none());
     }
 

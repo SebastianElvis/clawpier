@@ -17,6 +17,131 @@ use crate::models::{
 use crate::state::AppState;
 use crate::streaming::{InteractiveSession, StreamKind};
 
+// ── Validation helpers ────────────────────────────────────────────────
+
+/// Directories that must never be used as workspace paths.
+const BLOCKED_WORKSPACE_PATHS: &[&str] = &[
+    "/", "/etc", "/var", "/usr", "/bin", "/sbin", "/lib",
+    "/System", "/Library", "/private", "/dev", "/proc", "/sys",
+    "/tmp", "/boot", "/root",
+];
+
+/// Environment variable keys that are blocked from user injection.
+const BLOCKED_ENV_KEYS: &[&str] = &[
+    "PATH", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH", "NODE_OPTIONS", "PYTHONPATH", "RUBYLIB",
+    "PERL5LIB", "CLASSPATH", "HOME", "USER", "SHELL",
+];
+
+/// Trusted image registries. Images must start with one of these prefixes
+/// or be a bare Docker Hub image name (no registry prefix).
+const TRUSTED_REGISTRIES: &[&str] = &[
+    "ghcr.io/openclaw/",
+    "docker.io/library/",
+    "busybox",
+];
+
+fn validate_workspace_path(path: &str) -> Result<(), AppError> {
+    let canonical = std::fs::canonicalize(path).map_err(|_| {
+        AppError::Validation(format!("Workspace path does not exist: {}", path))
+    })?;
+    let canonical_str = canonical.to_string_lossy();
+
+    for blocked in BLOCKED_WORKSPACE_PATHS {
+        if canonical_str == *blocked {
+            return Err(AppError::Validation(format!(
+                "Workspace path '{}' is a sensitive system directory",
+                blocked
+            )));
+        }
+    }
+
+    if !canonical.is_dir() {
+        return Err(AppError::Validation(
+            "Workspace path must be a directory".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_env_vars(env_vars: &[EnvVar]) -> Result<(), AppError> {
+    for ev in env_vars {
+        let upper = ev.key.to_uppercase();
+        if BLOCKED_ENV_KEYS.iter().any(|k| upper == *k) {
+            return Err(AppError::Validation(format!(
+                "Environment variable '{}' is blocked for security reasons",
+                ev.key
+            )));
+        }
+        if ev.key.is_empty() || ev.key.contains('=') || ev.key.contains('\0') {
+            return Err(AppError::Validation(format!(
+                "Invalid environment variable key: '{}'",
+                ev.key
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_port_mappings(mappings: &[PortMapping]) -> Result<(), AppError> {
+    for m in mappings {
+        if m.protocol != "tcp" && m.protocol != "udp" {
+            return Err(AppError::Validation(format!(
+                "Invalid protocol '{}': must be 'tcp' or 'udp'",
+                m.protocol
+            )));
+        }
+        if m.container_port == 0 || m.host_port == 0 {
+            return Err(AppError::Validation(
+                "Port numbers must be between 1 and 65535".into(),
+            ));
+        }
+        if m.host_port < 1024 {
+            return Err(AppError::Validation(format!(
+                "Host port {} is privileged (< 1024); use a port >= 1024",
+                m.host_port
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_resource_limits(
+    cpu_limit: Option<f64>,
+    memory_limit: Option<u64>,
+) -> Result<(), AppError> {
+    if let Some(cpu) = cpu_limit {
+        if cpu <= 0.0 || cpu > 128.0 {
+            return Err(AppError::Validation(
+                "CPU limit must be between 0.01 and 128 cores".into(),
+            ));
+        }
+    }
+    if let Some(mem) = memory_limit {
+        // Minimum 4MB (Docker's own minimum)
+        if mem < 4 * 1024 * 1024 {
+            return Err(AppError::Validation(
+                "Memory limit must be at least 4 MB".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_image_name(image: &str) -> Result<(), AppError> {
+    if image.is_empty() {
+        return Err(AppError::Validation("Image name must not be empty".into()));
+    }
+    if TRUSTED_REGISTRIES.iter().any(|r| image.starts_with(r)) {
+        return Ok(());
+    }
+    Err(AppError::Validation(format!(
+        "Image '{}' is not from a trusted registry",
+        image
+    )))
+}
+
 // ── System info ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -89,6 +214,10 @@ pub async fn create_bot(
     memory_limit: Option<u64>,
     network_mode: Option<NetworkMode>,
 ) -> Result<BotProfile, AppError> {
+    if let Some(ref path) = workspace_path {
+        validate_workspace_path(path)?;
+    }
+    validate_resource_limits(cpu_limit, memory_limit)?;
     let mut store = state.store.lock().await;
     let mut bot = BotProfile::new(name, workspace_path);
     if cpu_limit.is_some() {
@@ -209,12 +338,16 @@ pub async fn set_workspace_path(
     id: String,
     workspace_path: Option<String>,
 ) -> Result<(), AppError> {
+    if let Some(ref path) = workspace_path {
+        validate_workspace_path(path)?;
+    }
     let mut store = state.store.lock().await;
     store.set_workspace_path(&id, workspace_path)
 }
 
 #[tauri::command]
 pub async fn pull_image(state: State<'_, AppState>, image: String) -> Result<(), AppError> {
+    validate_image_name(&image)?;
     let docker = state.docker.lock().await;
     docker.pull_image(&image).await
 }
@@ -227,6 +360,7 @@ pub async fn update_env_vars(
     id: String,
     env_vars: Vec<EnvVar>,
 ) -> Result<(), AppError> {
+    validate_env_vars(&env_vars)?;
     let mut store = state.store.lock().await;
     store.update_env_vars(&id, env_vars)
 }
@@ -238,6 +372,7 @@ pub async fn update_resource_limits(
     cpu_limit: Option<f64>,
     memory_limit: Option<u64>,
 ) -> Result<(), AppError> {
+    validate_resource_limits(cpu_limit, memory_limit)?;
     let mut store = state.store.lock().await;
     store.update_resource_limits(&id, cpu_limit, memory_limit)
 }
@@ -258,6 +393,7 @@ pub async fn update_port_mappings(
     id: String,
     port_mappings: Vec<PortMapping>,
 ) -> Result<(), AppError> {
+    validate_port_mappings(&port_mappings)?;
     let mut store = state.store.lock().await;
     store.update_port_mappings(&id, port_mappings)
 }
@@ -364,7 +500,7 @@ pub async fn send_chat_message(
             attach_stdin: Some(true),
             attach_stdout: Some(true),
             attach_stderr: Some(true),
-            cmd: Some(vec!["openclaw", "chat", "--pipe"]),
+            cmd: Some(vec!["/usr/local/bin/openclaw", "chat", "--pipe"]),
             ..Default::default()
         };
 
@@ -563,8 +699,12 @@ pub async fn stop_log_stream(
 pub async fn exec_command(
     state: State<'_, AppState>,
     id: String,
-    command: String,
+    args: Vec<String>,
 ) -> Result<ExecResult, AppError> {
+    if args.is_empty() {
+        return Err(AppError::Validation("Command must not be empty".into()));
+    }
+
     let container_name = {
         let store = state.store.lock().await;
         let bot = store
@@ -578,7 +718,8 @@ pub async fn exec_command(
         dm.client()
     };
 
-    DockerManager::exec_in_container(&docker, &container_name, &command).await
+    let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    DockerManager::exec_in_container(&docker, &container_name, &arg_refs).await
 }
 
 #[tauri::command]
@@ -741,14 +882,34 @@ pub async fn get_bot_config(
         return Ok(configs);
     }
 
+    let canonical_config_dir = config_dir.canonicalize().map_err(|e| {
+        AppError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Config dir not found: {}", e),
+        ))
+    })?;
+
     let mut entries = tokio::fs::read_dir(&config_dir).await?;
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
-        if path.is_file() {
+        // Use symlink_metadata to detect symlinks without following them.
+        let sym_meta = tokio::fs::symlink_metadata(&path).await?;
+        if sym_meta.is_symlink() {
+            // Reject symlinks — a container could place one pointing to /etc/passwd
+            continue;
+        }
+        if sym_meta.is_file() {
+            // Canonicalize and verify the file stays within the config directory
+            if let Ok(canonical_path) = path.canonicalize() {
+                if !canonical_path.starts_with(&canonical_config_dir) {
+                    continue;
+                }
+            } else {
+                continue;
+            }
             let name = entry.file_name().to_string_lossy().to_string();
             // Only read text files up to 1MB
-            let metadata = tokio::fs::metadata(&path).await?;
-            if metadata.len() <= 1_048_576 {
+            if sym_meta.len() <= 1_048_576 {
                 if let Ok(content) = tokio::fs::read_to_string(&path).await {
                     configs.insert(name, content);
                 }
@@ -848,14 +1009,8 @@ pub async fn start_terminal_session(
     cols: u16,
     rows: u16,
 ) -> Result<(), AppError> {
-    // Don't start a new session if one already exists
-    {
-        let streams = state.streams.lock().await;
-        if streams.has_session(&id) {
-            return Ok(());
-        }
-    }
-
+    // Acquire the streams lock upfront to avoid a check-then-act race.
+    // If a session already exists, start_session will cleanly abort the old one.
     let container_name = {
         let store = state.store.lock().await;
         let bot = store

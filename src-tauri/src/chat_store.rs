@@ -3,6 +3,23 @@ use std::path::PathBuf;
 use crate::error::AppError;
 use crate::models::{ChatMessage, ChatSession, ChatSessionSummary};
 
+/// Validate that an ID is safe for use as a path component.
+/// Rejects path separators, `..`, and empty strings.
+fn validate_path_id(id: &str, label: &str) -> Result<(), AppError> {
+    if id.is_empty()
+        || id.contains('/')
+        || id.contains('\\')
+        || id.contains("..")
+        || id.contains('\0')
+    {
+        return Err(AppError::Validation(format!(
+            "Invalid {}: must not contain path separators or '..'",
+            label
+        )));
+    }
+    Ok(())
+}
+
 pub struct ChatStore {
     base_dir: PathBuf,
 }
@@ -26,6 +43,8 @@ impl ChatStore {
     }
 
     fn load_session(&self, bot_id: &str, session_id: &str) -> Result<ChatSession, AppError> {
+        validate_path_id(bot_id, "bot_id")?;
+        validate_path_id(session_id, "session_id")?;
         let path = self.session_path(bot_id, session_id);
         if !path.exists() {
             return Err(AppError::Other(format!(
@@ -39,6 +58,8 @@ impl ChatStore {
     }
 
     fn save_session(&self, session: &ChatSession) -> Result<(), AppError> {
+        validate_path_id(&session.bot_id, "bot_id")?;
+        validate_path_id(&session.id, "session_id")?;
         let dir = self.bot_dir(&session.bot_id);
         std::fs::create_dir_all(&dir)?;
         let path = dir.join(format!("{}.json", session.id));
@@ -48,6 +69,9 @@ impl ChatStore {
     }
 
     pub fn list_sessions(&self, bot_id: &str) -> Vec<ChatSessionSummary> {
+        if validate_path_id(bot_id, "bot_id").is_err() {
+            return Vec::new();
+        }
         let dir = self.bot_dir(bot_id);
         if !dir.exists() {
             return Vec::new();
@@ -110,6 +134,8 @@ impl ChatStore {
     }
 
     pub fn delete_session(&mut self, bot_id: &str, session_id: &str) -> Result<(), AppError> {
+        validate_path_id(bot_id, "bot_id")?;
+        validate_path_id(session_id, "session_id")?;
         let path = self.session_path(bot_id, session_id);
         if path.exists() {
             std::fs::remove_file(&path)?;

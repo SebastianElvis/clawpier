@@ -141,9 +141,9 @@ export async function stopLogStream(id: string): Promise<void> {
 
 export async function execCommand(
   id: string,
-  command: string
+  args: string[]
 ): Promise<ExecResult> {
-  return invoke<ExecResult>("exec_command", { id, command });
+  return invoke<ExecResult>("exec_command", { id, args });
 }
 
 export async function listWorkspaceFiles(

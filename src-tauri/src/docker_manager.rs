@@ -111,8 +111,16 @@ impl DockerManager {
         // Build environment variables — always inject gateway host
         let mut env = vec!["OPENCLAW_GATEWAY_HOST=127.0.0.1".to_string()];
 
-        // Add user-configured env vars
+        // Add user-configured env vars (skip blocked keys for safety)
+        const BLOCKED_KEYS: &[&str] = &[
+            "PATH", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+            "DYLD_LIBRARY_PATH", "NODE_OPTIONS", "PYTHONPATH", "RUBYLIB",
+            "PERL5LIB", "CLASSPATH", "HOME", "USER", "SHELL",
+        ];
         for ev in &profile.env_vars {
+            if BLOCKED_KEYS.iter().any(|k| ev.key.eq_ignore_ascii_case(k)) {
+                continue;
+            }
             env.push(format!("{}={}", ev.key, ev.value));
         }
 
@@ -247,15 +255,20 @@ impl DockerManager {
     }
 
     // ── Run a command inside a running container ─────────────────────
+    /// Executes a command as a direct argv array — no shell wrapping.
+    /// This prevents shell injection attacks via user-supplied input.
     pub async fn exec_in_container(
         docker: &Docker,
         container_name: &str,
-        command: &str,
+        args: &[&str],
     ) -> Result<ExecResult, AppError> {
+        if args.is_empty() {
+            return Err(AppError::Validation("Command must not be empty".into()));
+        }
         let config = CreateExecOptions {
             attach_stdout: Some(true),
             attach_stderr: Some(true),
-            cmd: Some(vec!["sh", "-c", command]),
+            cmd: Some(args.to_vec()),
             ..Default::default()
         };
 
@@ -432,7 +445,7 @@ fn build_port_config(
     for m in mappings {
         let container_key = format!("{}/{}", m.container_port, m.protocol);
         let binding = bollard::models::PortBinding {
-            host_ip: Some("0.0.0.0".to_string()),
+            host_ip: Some("127.0.0.1".to_string()),
             host_port: Some(m.host_port.to_string()),
         };
         port_bindings
@@ -589,7 +602,7 @@ mod tests {
         let binding_vec = bindings["8080/tcp"].as_ref().unwrap();
         assert_eq!(binding_vec.len(), 1);
         assert_eq!(binding_vec[0].host_port.as_deref(), Some("9090"));
-        assert_eq!(binding_vec[0].host_ip.as_deref(), Some("0.0.0.0"));
+        assert_eq!(binding_vec[0].host_ip.as_deref(), Some("127.0.0.1"));
         assert!(exposed.contains_key("8080/tcp"));
     }
 
@@ -1137,7 +1150,7 @@ mod tests {
         let result = DockerManager::exec_in_container(
             &dm.docker,
             &cname,
-            "echo 'Hello from ClawPier'",
+            &["echo", "Hello from ClawPier"],
         )
         .await
         .expect("exec must succeed");
