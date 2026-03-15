@@ -44,6 +44,8 @@ pub fn run() {
             commands::update_resource_limits,
             commands::set_network_mode,
             commands::update_port_mappings,
+            commands::export_config,
+            commands::import_config,
             commands::list_chat_sessions,
             commands::create_chat_session,
             commands::rename_chat_session,

@@ -122,6 +122,16 @@ export async function updatePortMappings(
   return invoke("update_port_mappings", { id, portMappings });
 }
 
+// ── Config backup/restore ───────────────────────────────────────────
+
+export async function exportConfig(): Promise<string> {
+  return invoke<string>("export_config");
+}
+
+export async function importConfig(json: string): Promise<BotWithStatus[]> {
+  return invoke<BotWithStatus[]>("import_config", { json });
+}
+
 // ── Stats & log streaming ───────────────────────────────────────────
 
 export async function startStatsStream(id: string): Promise<void> {

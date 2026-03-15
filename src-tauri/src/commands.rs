@@ -424,6 +424,56 @@ pub async fn update_port_mappings(
     store.update_port_mappings(&id, port_mappings)
 }
 
+// ── Config backup/restore commands ────────────────────────────────────
+
+#[tauri::command]
+pub async fn export_config(state: State<'_, AppState>) -> Result<String, AppError> {
+    let store = state.store.lock().await;
+    let bots = store.get_all();
+    serde_json::to_string_pretty(&bots).map_err(AppError::Json)
+}
+
+#[tauri::command]
+pub async fn import_config(
+    state: State<'_, AppState>,
+    json: String,
+) -> Result<Vec<BotWithStatus>, AppError> {
+    let imported_bots: Vec<BotProfile> =
+        serde_json::from_str(&json).map_err(AppError::Json)?;
+
+    // Validate imported data
+    for bot in &imported_bots {
+        if bot.name.trim().is_empty() {
+            return Err(AppError::Validation("Imported bot has empty name".into()));
+        }
+    }
+
+    let mut store = state.store.lock().await;
+    store.import_bots(imported_bots)?;
+
+    // Return updated list with status
+    let docker = state.docker.lock().await;
+    let bot_ids = store.get_bot_ids();
+    let statuses = docker.get_all_statuses(&bot_ids).await;
+
+    let result: Vec<BotWithStatus> = store
+        .get_all()
+        .iter()
+        .map(|bot| {
+            let status = statuses
+                .get(&bot.id)
+                .cloned()
+                .unwrap_or(BotStatus::Stopped);
+            BotWithStatus {
+                profile: bot.clone(),
+                status,
+            }
+        })
+        .collect();
+
+    Ok(result)
+}
+
 // ── Chat commands ─────────────────────────────────────────────────────
 
 #[tauri::command]
