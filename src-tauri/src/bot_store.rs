@@ -1,3 +1,5 @@
+use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 use crate::error::AppError;
@@ -18,12 +20,7 @@ impl BotStore {
 
         let config_path = config_dir.join("bots.json");
 
-        let mut bots: Vec<BotProfile> = if config_path.exists() {
-            let data = std::fs::read_to_string(&config_path)?;
-            serde_json::from_str(&data).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
+        let mut bots: Vec<BotProfile> = Self::load_with_recovery(&config_path)?;
 
         // Migrate legacy fields (api_key_env, network_enabled)
         let mut migrated = false;
@@ -45,9 +42,77 @@ impl BotStore {
     }
 
     fn save(&self) -> Result<(), AppError> {
-        let data = serde_json::to_string_pretty(&self.bots)?;
-        std::fs::write(&self.config_path, data)?;
+        let json = serde_json::to_string_pretty(&self.bots)?;
+
+        let dir = self
+            .config_path
+            .parent()
+            .ok_or_else(|| AppError::Other("Invalid config path".into()))?;
+        fs::create_dir_all(dir)?;
+
+        // Write to temp file first
+        let tmp_path = self.config_path.with_extension("json.tmp");
+        let mut file = fs::File::create(&tmp_path)?;
+        file.write_all(json.as_bytes())?;
+        file.sync_all()?;
+        drop(file);
+
+        // Rotate backups before overwriting
+        Self::rotate_backups(&self.config_path)?;
+
+        // Atomic rename
+        fs::rename(&tmp_path, &self.config_path)?;
+
         Ok(())
+    }
+
+    /// Rotate backup files, keeping the last 3 copies.
+    fn rotate_backups(path: &std::path::Path) -> Result<(), AppError> {
+        if !path.exists() {
+            return Ok(());
+        }
+
+        let bak3 = path.with_extension("json.bak.3");
+        let bak2 = path.with_extension("json.bak.2");
+        let bak1 = path.with_extension("json.bak.1");
+
+        // Rotate: .bak.2 -> .bak.3, .bak.1 -> .bak.2, current -> .bak.1
+        if bak2.exists() {
+            let _ = fs::rename(&bak2, &bak3);
+        }
+        if bak1.exists() {
+            let _ = fs::rename(&bak1, &bak2);
+        }
+        // Copy current to .bak.1 (copy, not rename — we still need the original until atomic rename)
+        let _ = fs::copy(path, &bak1);
+
+        Ok(())
+    }
+
+    /// Try loading bots from the main file, falling back to backups if corrupted.
+    fn load_with_recovery(path: &std::path::Path) -> Result<Vec<BotProfile>, AppError> {
+        // Try main file first
+        if let Ok(content) = fs::read_to_string(path) {
+            if let Ok(bots) = serde_json::from_str::<Vec<BotProfile>>(&content) {
+                return Ok(bots);
+            }
+            // Main file corrupted, try backups
+            eprintln!("Warning: bots.json is corrupted, trying backups...");
+        }
+
+        // Try backups in order
+        for i in 1..=3 {
+            let bak_path = path.with_extension(format!("json.bak.{}", i));
+            if let Ok(content) = fs::read_to_string(&bak_path) {
+                if let Ok(bots) = serde_json::from_str::<Vec<BotProfile>>(&content) {
+                    eprintln!("Recovered from backup .bak.{}", i);
+                    return Ok(bots);
+                }
+            }
+        }
+
+        // No valid file found — return empty
+        Ok(Vec::new())
     }
 
     pub fn get_all(&self) -> &[BotProfile] {
@@ -186,6 +251,23 @@ impl BotStore {
 
         bot.port_mappings = port_mappings;
         self.save()
+    }
+
+    /// Import bots, skipping any that already exist by ID.
+    pub fn import_bots(&mut self, bots: Vec<BotProfile>) -> Result<(), AppError> {
+        let existing_ids: std::collections::HashSet<String> =
+            self.bots.iter().map(|b| b.id.clone()).collect();
+        let mut added = 0;
+        for bot in bots {
+            if !existing_ids.contains(&bot.id) {
+                self.bots.push(bot);
+                added += 1;
+            }
+        }
+        if added > 0 {
+            self.save()?;
+        }
+        Ok(())
     }
 
     /// Test-only constructor that uses a custom path instead of dirs::config_dir().
@@ -429,5 +511,154 @@ mod tests {
 
         let ids = store.get_bot_ids();
         assert_eq!(ids.len(), 2);
+    }
+
+    #[test]
+    fn test_rotate_backups() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+        std::fs::write(&path, "original").unwrap();
+
+        BotStore::rotate_backups(&path).unwrap();
+
+        let bak1 = path.with_extension("json.bak.1");
+        assert!(bak1.exists());
+        assert_eq!(std::fs::read_to_string(&bak1).unwrap(), "original");
+    }
+
+    #[test]
+    fn test_rotate_backups_cascades() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+        let bak1 = path.with_extension("json.bak.1");
+        let bak2 = path.with_extension("json.bak.2");
+        let bak3 = path.with_extension("json.bak.3");
+
+        std::fs::write(&path, "current").unwrap();
+        std::fs::write(&bak1, "backup1").unwrap();
+        std::fs::write(&bak2, "backup2").unwrap();
+
+        BotStore::rotate_backups(&path).unwrap();
+
+        assert_eq!(std::fs::read_to_string(&bak1).unwrap(), "current");
+        assert_eq!(std::fs::read_to_string(&bak2).unwrap(), "backup1");
+        assert_eq!(std::fs::read_to_string(&bak3).unwrap(), "backup2");
+    }
+
+    #[test]
+    fn test_rotate_backups_no_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+        // No file exists — should be a no-op
+        BotStore::rotate_backups(&path).unwrap();
+    }
+
+    #[test]
+    fn test_load_with_recovery_valid_main() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+        std::fs::write(&path, "[]").unwrap();
+
+        let bots = BotStore::load_with_recovery(&path).unwrap();
+        assert!(bots.is_empty());
+    }
+
+    #[test]
+    fn test_load_with_recovery_from_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+
+        // Write corrupted main file
+        std::fs::write(&path, "not json").unwrap();
+
+        // Write valid backup
+        let bak1 = path.with_extension("json.bak.1");
+        std::fs::write(&bak1, "[]").unwrap();
+
+        let bots = BotStore::load_with_recovery(&path).unwrap();
+        assert!(bots.is_empty());
+    }
+
+    #[test]
+    fn test_load_with_recovery_from_second_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+
+        std::fs::write(&path, "corrupt").unwrap();
+
+        let bak1 = path.with_extension("json.bak.1");
+        std::fs::write(&bak1, "also corrupt").unwrap();
+
+        let bak2 = path.with_extension("json.bak.2");
+        std::fs::write(&bak2, "[]").unwrap();
+
+        let bots = BotStore::load_with_recovery(&path).unwrap();
+        assert!(bots.is_empty());
+    }
+
+    #[test]
+    fn test_load_with_recovery_no_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bots.json");
+
+        let bots = BotStore::load_with_recovery(&path).unwrap();
+        assert!(bots.is_empty());
+    }
+
+    #[test]
+    fn test_atomic_write_leaves_no_tmp_on_success() {
+        let (mut store, dir) = temp_store();
+        store.add(BotProfile::new("TmpTest".into(), None)).unwrap();
+
+        let tmp_path = dir.path().join("bots.json.tmp");
+        assert!(!tmp_path.exists(), ".json.tmp should not exist after save");
+    }
+
+    #[test]
+    fn test_save_creates_backup() {
+        let (mut store, dir) = temp_store();
+        store.add(BotProfile::new("First".into(), None)).unwrap();
+
+        // Second save should create .bak.1
+        store.add(BotProfile::new("Second".into(), None)).unwrap();
+
+        let bak1 = dir.path().join("bots.json.bak.1");
+        assert!(bak1.exists(), ".bak.1 should exist after second save");
+
+        // .bak.1 should contain the state before the second save (only "First")
+        let backup_data: Vec<BotProfile> =
+            serde_json::from_str(&std::fs::read_to_string(&bak1).unwrap()).unwrap();
+        assert_eq!(backup_data.len(), 1);
+        assert_eq!(backup_data[0].name, "First");
+    }
+
+    #[test]
+    fn test_import_bots_skips_duplicates() {
+        let (mut store, _dir) = temp_store();
+        let bot = BotProfile::new("Existing".into(), None);
+        let id = bot.id.clone();
+        store.add(bot).unwrap();
+
+        // Import a bot with the same ID — should be skipped
+        let dup = BotProfile {
+            id: id.clone(),
+            name: "Duplicate".into(),
+            image: "test".into(),
+            network_enabled: None,
+            workspace_path: None,
+            api_key_env: None,
+            env_vars: Vec::new(),
+            cpu_limit: None,
+            memory_limit: None,
+            network_mode: NetworkMode::Bridge,
+            port_mappings: Vec::new(),
+        };
+        let new_bot = BotProfile::new("NewBot".into(), None);
+        let new_id = new_bot.id.clone();
+
+        store.import_bots(vec![dup, new_bot]).unwrap();
+        assert_eq!(store.get_all().len(), 2);
+        assert_eq!(store.get_by_id(&id).unwrap().name, "Existing");
+        assert!(store.get_by_id(&new_id).is_some());
     }
 }
