@@ -12,6 +12,10 @@ import type {
   SystemResources,
 } from "./types";
 
+export async function getAppVersion(): Promise<string> {
+  return invoke<string>("get_app_version");
+}
+
 export async function getSystemResources(): Promise<SystemResources> {
   return invoke<SystemResources>("get_system_resources");
 }

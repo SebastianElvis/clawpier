@@ -184,6 +184,13 @@ pub fn get_system_resources() -> SystemResources {
     }
 }
 
+// ── App info ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn get_app_version() -> Result<String, AppError> {
+    Ok(env!("CARGO_PKG_VERSION").to_string())
+}
+
 // ── Existing commands ────────────────────────────────────────────────
 
 #[tauri::command]

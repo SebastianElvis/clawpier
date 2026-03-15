@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
+import { getAppVersion } from "../lib/tauri";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -7,6 +9,12 @@ interface LayoutProps {
 }
 
 export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAppVersion().then((v) => setVersion(v));
+  }, []);
+
   return (
     <div className="flex h-screen flex-col">
       {/* Header with drag region */}
@@ -21,9 +29,11 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
           >
             ClawPier
           </h1>
-          <span className="text-[10px] text-gray-400" data-tauri-drag-region>
-            v0.1.0
-          </span>
+          {version && (
+            <span className="text-[10px] text-gray-400" data-tauri-drag-region>
+              v{version}
+            </span>
+          )}
           {botCount > 0 && (
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
               {botCount} bot{botCount !== 1 ? "s" : ""}

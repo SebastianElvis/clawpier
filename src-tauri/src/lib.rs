@@ -26,6 +26,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
+            commands::get_app_version,
             commands::get_system_resources,
             commands::check_docker,
             commands::check_image,
