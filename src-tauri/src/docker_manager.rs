@@ -1049,4 +1049,172 @@ mod tests {
             .await;
         let _ = std::fs::remove_dir_all(&host_dir);
     }
+
+    // ── Phase 1: Resource limits applied to container ────────────────
+    // User story: "I want to control how much of my machine each bot uses."
+    //
+    // Verifies that CPU and memory limits set on a BotProfile are
+    // correctly forwarded to Docker when start_bot creates the container.
+    #[tokio::test]
+    #[ignore]
+    async fn resource_limits_applied_to_container() {
+        let dm = DockerManager::new().expect("Docker must be running");
+
+        let mut profile = BotProfile::new("inttest-rlimit".into(), None);
+        profile.image = "busybox:latest".to_string();
+        profile.cpu_limit = Some(0.5); // 0.5 cores → 500_000_000 nano_cpus
+        profile.memory_limit = Some(256 * 1024 * 1024); // 256 MB
+
+        // start_bot will fail to keep the container running (busybox default
+        // cmd exits), but the container is still inspectable.
+        let _ = dm.start_bot(&profile).await;
+
+        let info = dm
+            .docker
+            .inspect_container(&profile.container_name(), None)
+            .await
+            .expect("inspect container");
+
+        let hc = info.host_config.expect("host_config present");
+        assert_eq!(
+            hc.nano_cpus,
+            Some(500_000_000),
+            "CPU limit must be 0.5 cores in nano_cpus"
+        );
+        assert_eq!(
+            hc.memory,
+            Some(256 * 1024 * 1024),
+            "Memory limit must be 256 MB"
+        );
+
+        // Cleanup
+        let _ = dm.remove_container(&profile.id).await;
+        let config_dir = dirs::config_dir()
+            .unwrap_or_default()
+            .join("clawpier/data")
+            .join(&profile.id);
+        let _ = std::fs::remove_dir_all(&config_dir);
+    }
+
+    // ── Phase 2: Exec into a running container (chat mechanism) ─────
+    // User story: "I want to talk to my bot directly from ClawPier."
+    //
+    // The chat feature pipes messages through exec_in_container.
+    // Verifies that command execution works and returns correct output.
+    #[tokio::test]
+    #[ignore]
+    async fn exec_command_in_running_container() {
+        let dm = DockerManager::new().expect("Docker must be running");
+
+        let test_id = uuid::Uuid::new_v4().to_string();
+        let short_id = &test_id[..8];
+        let cname = format!("clawpier-chat-{}", short_id);
+
+        // Cleanup from prior failed run
+        let _ = dm.docker.remove_container(
+            &cname,
+            Some(RemoveContainerOptions { force: true, ..Default::default() }),
+        ).await;
+
+        // Create a long-running container so exec works
+        dm.docker
+            .create_container(
+                Some(CreateContainerOptions { name: cname.as_str(), platform: None }),
+                Config {
+                    image: Some("busybox:latest".to_string()),
+                    cmd: Some(vec!["sleep".into(), "300".into()]),
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("create container");
+        dm.docker
+            .start_container(&cname, None::<StartContainerOptions<String>>)
+            .await
+            .expect("start container");
+
+        // Execute a command — the same mechanism send_chat_message uses
+        let result = DockerManager::exec_in_container(
+            &dm.docker,
+            &cname,
+            "echo 'Hello from ClawPier'",
+        )
+        .await
+        .expect("exec must succeed");
+
+        assert!(
+            result.output.contains("Hello from ClawPier"),
+            "Exec output must contain the echoed message. Got: '{}'",
+            result.output.trim()
+        );
+        assert_eq!(result.exit_code, Some(0), "Exit code must be 0");
+
+        // Cleanup
+        let _ = dm.docker.stop_container(&cname, Some(StopContainerOptions { t: 1 })).await;
+        let _ = dm.docker.remove_container(
+            &cname,
+            Some(RemoveContainerOptions { force: true, ..Default::default() }),
+        ).await;
+    }
+
+    // ── Phase 3: Network mode and port mappings applied ──────────────
+    // User story: "I want fine-grained control over what my bot can
+    //              access on the network."
+    //
+    // Verifies that network_mode and port_mappings on a BotProfile are
+    // correctly forwarded to Docker.
+    #[tokio::test]
+    #[ignore]
+    async fn network_mode_and_port_mappings_applied() {
+        let dm = DockerManager::new().expect("Docker must be running");
+
+        let mut profile = BotProfile::new("inttest-net".into(), None);
+        profile.image = "busybox:latest".to_string();
+        profile.network_mode = NetworkMode::None; // full sandbox
+        profile.port_mappings = vec![
+            crate::models::PortMapping {
+                container_port: 8080,
+                host_port: 9090,
+                protocol: "tcp".into(),
+            },
+        ];
+
+        let _ = dm.start_bot(&profile).await;
+
+        let info = dm
+            .docker
+            .inspect_container(&profile.container_name(), None)
+            .await
+            .expect("inspect container");
+
+        let hc = info.host_config.expect("host_config present");
+        assert_eq!(
+            hc.network_mode.as_deref(),
+            Some("none"),
+            "Network mode must be 'none' for sandboxed bots"
+        );
+
+        // Verify port binding was set
+        let bindings = hc.port_bindings.expect("port_bindings present");
+        let key = "8080/tcp";
+        let bound = bindings
+            .get(key)
+            .expect("8080/tcp binding must exist")
+            .as_ref()
+            .expect("binding vec must be Some");
+        assert_eq!(bound.len(), 1);
+        assert_eq!(
+            bound[0].host_port.as_deref(),
+            Some("9090"),
+            "Host port must be 9090"
+        );
+
+        // Cleanup
+        let _ = dm.remove_container(&profile.id).await;
+        let config_dir = dirs::config_dir()
+            .unwrap_or_default()
+            .join("clawpier/data")
+            .join(&profile.id);
+        let _ = std::fs::remove_dir_all(&config_dir);
+    }
 }
