@@ -26,6 +26,7 @@ pub(crate) fn build_openclaw_agent_cmd(session_id: &str, message: &str) -> Vec<S
     vec![
         "/usr/local/bin/openclaw".to_string(),
         "agent".to_string(),
+        "--local".to_string(),
         "--agent".to_string(),
         "main".to_string(),
         "--session-id".to_string(),
@@ -523,6 +524,8 @@ pub async fn send_chat_message(
         };
 
         let mut response_content = String::new();
+        let mut stderr_content = String::new();
+        let mut got_stdout = false;
 
         match docker.create_exec(&container_name, config).await {
             Ok(created) => {
@@ -531,29 +534,44 @@ pub async fn send_chat_message(
                         output: mut stream,
                         ..
                     }) => {
-
-                        // Stream stdout and stderr
+                        // Stream stdout; collect stderr separately.
+                        // Stderr is only shown if no stdout was received
+                        // (i.e. a real error), to avoid gateway fallback
+                        // warnings polluting the chat response.
                         while let Some(Ok(msg)) = stream.next().await {
-                            let text = match msg {
+                            match msg {
                                 bollard::container::LogOutput::StdOut { message } => {
-                                    String::from_utf8_lossy(&message).to_string()
+                                    let text = String::from_utf8_lossy(&message).to_string();
+                                    if !text.is_empty() {
+                                        got_stdout = true;
+                                        response_content.push_str(&text);
+                                        let chunk = ChatResponseChunk {
+                                            session_id: sess_id.clone(),
+                                            content: text,
+                                            done: false,
+                                        };
+                                        let _ = app_handle.emit(&event_name, &chunk);
+                                    }
                                 }
                                 bollard::container::LogOutput::StdErr { message } => {
-                                    let stderr_text = String::from_utf8_lossy(&message).to_string();
-                                    // Include stderr so user can see errors
-                                    stderr_text
+                                    stderr_content.push_str(
+                                        &String::from_utf8_lossy(&message),
+                                    );
                                 }
-                                _ => continue,
-                            };
-                            if !text.is_empty() {
-                                response_content.push_str(&text);
-                                let chunk = ChatResponseChunk {
-                                    session_id: sess_id.clone(),
-                                    content: text,
-                                    done: false,
-                                };
-                                let _ = app_handle.emit(&event_name, &chunk);
+                                _ => {}
                             }
+                        }
+
+                        // If no stdout was received, show stderr as the
+                        // response so the user can see what went wrong.
+                        if !got_stdout && !stderr_content.is_empty() {
+                            response_content = stderr_content;
+                            let chunk = ChatResponseChunk {
+                                session_id: sess_id.clone(),
+                                content: response_content.clone(),
+                                done: false,
+                            };
+                            let _ = app_handle.emit(&event_name, &chunk);
                         }
                     }
                     Ok(bollard::exec::StartExecResults::Detached) => {
@@ -1203,23 +1221,34 @@ mod tests {
         let cmd = build_openclaw_agent_cmd("session-abc", "Hello world");
         assert_eq!(cmd[0], "/usr/local/bin/openclaw");
         assert_eq!(cmd[1], "agent");
-        assert_eq!(cmd[2], "--agent");
-        assert_eq!(cmd[3], "main");
-        assert_eq!(cmd[4], "--session-id");
-        assert_eq!(cmd[5], "clawpier-session-abc");
-        assert_eq!(cmd[6], "--message");
-        assert_eq!(cmd[7], "Hello world");
-        assert_eq!(cmd.len(), 8);
+        assert_eq!(cmd[2], "--local");
+        assert_eq!(cmd[3], "--agent");
+        assert_eq!(cmd[4], "main");
+        assert_eq!(cmd[5], "--session-id");
+        assert_eq!(cmd[6], "clawpier-session-abc");
+        assert_eq!(cmd[7], "--message");
+        assert_eq!(cmd[8], "Hello world");
+        assert_eq!(cmd.len(), 9);
+    }
+
+    #[test]
+    fn build_openclaw_agent_cmd_uses_local_flag() {
+        let cmd = build_openclaw_agent_cmd("s1", "hi");
+        assert!(
+            cmd.contains(&"--local".to_string()),
+            "must use --local to avoid gateway dependency"
+        );
     }
 
     #[test]
     fn build_openclaw_agent_cmd_session_id_prefixed() {
         let cmd = build_openclaw_agent_cmd("my-session", "hi");
         // Session ID should always be prefixed with "clawpier-"
+        let session_arg = cmd.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
         assert!(
-            cmd[5].starts_with("clawpier-"),
+            session_arg.starts_with("clawpier-"),
             "session id must be prefixed: {}",
-            cmd[5]
+            session_arg
         );
     }
 
@@ -1229,26 +1258,28 @@ mod tests {
         let cmd = build_openclaw_agent_cmd("s1", msg);
         // Message must be passed verbatim — no shell escaping needed
         // because bollard uses exec (not shell)
-        assert_eq!(cmd[7], msg);
+        assert_eq!(cmd.last().unwrap(), msg);
     }
 
     #[test]
     fn build_openclaw_agent_cmd_empty_message() {
         let cmd = build_openclaw_agent_cmd("s1", "");
-        assert_eq!(cmd[7], "");
+        assert_eq!(cmd.last().unwrap(), "");
     }
 
     #[test]
     fn build_openclaw_agent_cmd_multiline_message() {
         let msg = "line1\nline2\nline3";
         let cmd = build_openclaw_agent_cmd("s1", msg);
-        assert_eq!(cmd[7], msg, "multiline messages must be preserved");
+        assert_eq!(cmd.last().unwrap(), msg, "multiline messages must be preserved");
     }
 
     #[test]
     fn build_openclaw_agent_cmd_different_sessions_produce_different_ids() {
         let cmd1 = build_openclaw_agent_cmd("aaa", "hi");
         let cmd2 = build_openclaw_agent_cmd("bbb", "hi");
-        assert_ne!(cmd1[5], cmd2[5], "different sessions must yield different openclaw session ids");
+        let sid1 = cmd1.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
+        let sid2 = cmd2.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
+        assert_ne!(sid1, sid2, "different sessions must yield different openclaw session ids");
     }
 }

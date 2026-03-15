@@ -15,7 +15,7 @@ const MIN_CPU = 2;
 const MIN_MEM = 4 * GB;
 
 const PRESETS = [
-  { label: "Lightweight", icon: Feather, cpu: 2, memory: 4 * GB },
+  { label: "Lightweight", icon: Feather, cpu: 1, memory: 2 * GB },
   { label: "Standard", icon: Gauge, cpu: 4, memory: 8 * GB },
   { label: "Performance", icon: Zap, cpu: 8, memory: 16 * GB },
 ] as const;
