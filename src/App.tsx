@@ -9,6 +9,7 @@ import { NewBotSheet } from "./components/NewBotSheet";
 import { DockerError } from "./components/DockerError";
 import { ImageMissing } from "./components/ImageMissing";
 import { WelcomeScreen } from "./components/WelcomeScreen";
+import { ToastContainer } from "./components/Toast";
 
 const WELCOME_KEY = "clawpier-welcome-dismissed";
 
@@ -131,6 +132,7 @@ function App() {
 
       {showNewBot && <NewBotSheet onClose={() => setShowNewBot(false)} />}
       {showWelcome && <WelcomeScreen onDismiss={handleDismissWelcome} />}
+      <ToastContainer />
     </>
   );
 }
