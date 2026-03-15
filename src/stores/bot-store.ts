@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { BotWithStatus, EnvVar, NetworkMode, PortMapping } from "../lib/types";
 import * as api from "../lib/tauri";
+import { useToastStore } from "./toast-store";
 
 export const DEFAULT_IMAGE = "ghcr.io/openclaw/openclaw:latest";
 
@@ -79,8 +80,15 @@ export const useBotStore = create<BotStore>((set, get) => ({
   },
 
   pullImage: async () => {
-    await api.pullImage(DEFAULT_IMAGE);
-    set({ imageAvailable: true });
+    const toast = useToastStore.getState().addToast;
+    try {
+      toast({ type: "info", title: "Pulling image", description: "Downloading OpenClaw image..." });
+      await api.pullImage(DEFAULT_IMAGE);
+      set({ imageAvailable: true });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to pull image", description: String(e) });
+      throw e;
+    }
   },
 
   fetchBots: async () => {
@@ -95,43 +103,76 @@ export const useBotStore = create<BotStore>((set, get) => ({
   },
 
   createBot: async (name, workspacePath, opts) => {
-    await api.createBot(name, workspacePath, opts);
-    await get().fetchBots();
+    const toast = useToastStore.getState().addToast;
+    try {
+      await api.createBot(name, workspacePath, opts);
+      await get().fetchBots();
+      toast({ type: "success", title: "Bot created", description: `"${name}" is ready` });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to create bot", description: String(e) });
+      throw e;
+    }
   },
 
   startBot: async (id) => {
+    const toast = useToastStore.getState().addToast;
     get().setActionInProgress(id, true);
     try {
       await api.startBot(id);
       await get().fetchBots();
+      const bot = get().bots.find((b) => b.id === id);
+      toast({ type: "success", title: "Bot started", description: bot ? `"${bot.name}" is running` : undefined });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to start bot", description: String(e) });
+      throw e;
     } finally {
       get().setActionInProgress(id, false);
     }
   },
 
   stopBot: async (id) => {
+    const toast = useToastStore.getState().addToast;
     get().setActionInProgress(id, true);
     try {
+      const bot = get().bots.find((b) => b.id === id);
       await api.stopBot(id);
       await get().fetchBots();
+      toast({ type: "success", title: "Bot stopped", description: bot ? `"${bot.name}" has been stopped` : undefined });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to stop bot", description: String(e) });
+      throw e;
     } finally {
       get().setActionInProgress(id, false);
     }
   },
 
   restartBot: async (id) => {
+    const toast = useToastStore.getState().addToast;
     get().setActionInProgress(id, true);
     try {
       await api.restartBot(id);
       await get().fetchBots();
+      const bot = get().bots.find((b) => b.id === id);
+      toast({ type: "success", title: "Bot restarted", description: bot ? `"${bot.name}" is running` : undefined });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to restart bot", description: String(e) });
+      throw e;
     } finally {
       get().setActionInProgress(id, false);
     }
   },
 
   deleteBot: async (id) => {
-    await api.deleteBot(id);
-    await get().fetchBots();
+    const toast = useToastStore.getState().addToast;
+    const bot = get().bots.find((b) => b.id === id);
+    try {
+      await api.deleteBot(id);
+      await get().fetchBots();
+      toast({ type: "success", title: "Bot deleted", description: bot ? `"${bot.name}" has been removed` : undefined });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to delete bot", description: String(e) });
+      throw e;
+    }
   },
 
   renameBot: async (id, name) => {
@@ -140,8 +181,15 @@ export const useBotStore = create<BotStore>((set, get) => ({
   },
 
   toggleNetwork: async (id, enabled) => {
-    await api.toggleNetwork(id, enabled);
-    await get().fetchBots();
+    const toast = useToastStore.getState().addToast;
+    try {
+      await api.toggleNetwork(id, enabled);
+      await get().fetchBots();
+      toast({ type: "info", title: "Network updated", description: enabled ? "Network access enabled" : "Network access disabled" });
+    } catch (e) {
+      toast({ type: "error", title: "Failed to toggle network", description: String(e) });
+      throw e;
+    }
   },
 
   setNetworkMode: async (id, mode) => {
