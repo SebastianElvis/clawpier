@@ -305,4 +305,259 @@ mod tests {
         assert_eq!(restored.workspace_path, Some("/tmp/ws".to_string()));
         assert_eq!(restored.image, original.image);
     }
+
+    // ── Phase 1-3: Resource limits ──────────────────────────────────
+
+    #[test]
+    fn resource_limits_roundtrip() {
+        let mut bot = BotProfile::new("Res".into(), None);
+        bot.cpu_limit = Some(2.5);
+        bot.memory_limit = Some(4_294_967_296); // 4 GB
+
+        let json = serde_json::to_string(&bot).unwrap();
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.cpu_limit, Some(2.5));
+        assert_eq!(restored.memory_limit, Some(4_294_967_296));
+    }
+
+    #[test]
+    fn resource_limits_null_omitted() {
+        let bot = BotProfile::new("NoLimits".into(), None);
+        let json = serde_json::to_string(&bot).unwrap();
+        // null fields should be omitted (skip_serializing_if)
+        assert!(!json.contains("cpu_limit"));
+        assert!(!json.contains("memory_limit"));
+
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+        assert!(restored.cpu_limit.is_none());
+        assert!(restored.memory_limit.is_none());
+    }
+
+    // ── Phase 1-3: Network mode ─────────────────────────────────────
+
+    #[test]
+    fn network_mode_none_serde() {
+        let mode = NetworkMode::None;
+        let json = serde_json::to_value(&mode).unwrap();
+        assert_eq!(json, "none");
+        let restored: NetworkMode = serde_json::from_value(json).unwrap();
+        assert_eq!(restored, NetworkMode::None);
+    }
+
+    #[test]
+    fn network_mode_bridge_serde() {
+        let json = serde_json::to_value(&NetworkMode::Bridge).unwrap();
+        assert_eq!(json, "bridge");
+        assert_eq!(
+            serde_json::from_value::<NetworkMode>(json).unwrap(),
+            NetworkMode::Bridge
+        );
+    }
+
+    #[test]
+    fn network_mode_host_serde() {
+        let json = serde_json::to_value(&NetworkMode::Host).unwrap();
+        assert_eq!(json, "host");
+        assert_eq!(
+            serde_json::from_value::<NetworkMode>(json).unwrap(),
+            NetworkMode::Host
+        );
+    }
+
+    #[test]
+    fn network_mode_custom_serde() {
+        let mode = NetworkMode::Custom("my-network".to_string());
+        let json = serde_json::to_value(&mode).unwrap();
+        assert_eq!(json, serde_json::json!({"custom": "my-network"}));
+        let restored: NetworkMode = serde_json::from_value(json).unwrap();
+        assert_eq!(restored, NetworkMode::Custom("my-network".to_string()));
+    }
+
+    #[test]
+    fn network_mode_default_is_bridge() {
+        assert_eq!(NetworkMode::default(), NetworkMode::Bridge);
+    }
+
+    // ── Phase 1-3: Port mapping ─────────────────────────────────────
+
+    #[test]
+    fn port_mapping_roundtrip() {
+        let mapping = PortMapping {
+            container_port: 8080,
+            host_port: 9090,
+            protocol: "tcp".to_string(),
+        };
+        let json = serde_json::to_string(&mapping).unwrap();
+        let restored: PortMapping = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.container_port, 8080);
+        assert_eq!(restored.host_port, 9090);
+        assert_eq!(restored.protocol, "tcp");
+    }
+
+    #[test]
+    fn port_mapping_udp() {
+        let mapping = PortMapping {
+            container_port: 53,
+            host_port: 5353,
+            protocol: "udp".to_string(),
+        };
+        let json = serde_json::to_string(&mapping).unwrap();
+        let restored: PortMapping = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.protocol, "udp");
+    }
+
+    // ── Phase 1-3: Full bot profile ─────────────────────────────────
+
+    #[test]
+    fn bot_profile_with_all_phase1_3_fields() {
+        let mut bot = BotProfile::new("Full".into(), Some("/workspace".into()));
+        bot.cpu_limit = Some(4.0);
+        bot.memory_limit = Some(8_589_934_592);
+        bot.network_mode = NetworkMode::Custom("docker-net".into());
+        bot.port_mappings = vec![
+            PortMapping {
+                container_port: 80,
+                host_port: 8080,
+                protocol: "tcp".into(),
+            },
+            PortMapping {
+                container_port: 443,
+                host_port: 8443,
+                protocol: "tcp".into(),
+            },
+        ];
+        bot.env_vars = vec![EnvVar {
+            key: "TOKEN".into(),
+            value: "secret".into(),
+        }];
+
+        let json = serde_json::to_string(&bot).unwrap();
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(restored.cpu_limit, Some(4.0));
+        assert_eq!(restored.memory_limit, Some(8_589_934_592));
+        assert_eq!(
+            restored.network_mode,
+            NetworkMode::Custom("docker-net".into())
+        );
+        assert_eq!(restored.port_mappings.len(), 2);
+        assert_eq!(restored.env_vars.len(), 1);
+    }
+
+    #[test]
+    fn backward_compat_missing_new_fields() {
+        // Simulate JSON from an older version without Phase 1-3 fields
+        let json = r#"{
+            "id": "test-id",
+            "name": "OldBot",
+            "image": "ghcr.io/openclaw/openclaw:latest",
+            "env_vars": []
+        }"#;
+        let bot: BotProfile = serde_json::from_str(json).unwrap();
+
+        assert!(bot.cpu_limit.is_none());
+        assert!(bot.memory_limit.is_none());
+        assert_eq!(bot.network_mode, NetworkMode::Bridge); // default
+        assert!(bot.port_mappings.is_empty());
+    }
+
+    // ── Phase 1-3: Migration ────────────────────────────────────────
+
+    #[test]
+    fn migrate_network_enabled_true() {
+        let mut bot = BotProfile::new("Test".into(), None);
+        bot.network_enabled = Some(true);
+        bot.migrate();
+        assert_eq!(bot.network_mode, NetworkMode::Bridge);
+        assert!(bot.network_enabled.is_none());
+    }
+
+    #[test]
+    fn migrate_network_enabled_false() {
+        let mut bot = BotProfile::new("Test".into(), None);
+        bot.network_enabled = Some(false);
+        bot.migrate();
+        assert_eq!(bot.network_mode, NetworkMode::None);
+        assert!(bot.network_enabled.is_none());
+    }
+
+    // ── Phase 1-3: Chat types ───────────────────────────────────────
+
+    #[test]
+    fn chat_message_roundtrip() {
+        let msg = ChatMessage {
+            id: "msg-1".into(),
+            role: "user".into(),
+            content: "Hello world".into(),
+            timestamp: "2024-01-15T10:30:00Z".into(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let restored: ChatMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.id, "msg-1");
+        assert_eq!(restored.role, "user");
+        assert_eq!(restored.content, "Hello world");
+    }
+
+    #[test]
+    fn chat_session_roundtrip() {
+        let session = ChatSession {
+            id: "sess-1".into(),
+            bot_id: "bot-1".into(),
+            name: "My Chat".into(),
+            created_at: "2024-01-15T10:30:00Z".into(),
+            messages: vec![
+                ChatMessage {
+                    id: "m1".into(),
+                    role: "user".into(),
+                    content: "Hi".into(),
+                    timestamp: "2024-01-15T10:30:00Z".into(),
+                },
+                ChatMessage {
+                    id: "m2".into(),
+                    role: "assistant".into(),
+                    content: "Hello!".into(),
+                    timestamp: "2024-01-15T10:30:01Z".into(),
+                },
+            ],
+        };
+        let json = serde_json::to_string(&session).unwrap();
+        let restored: ChatSession = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.id, "sess-1");
+        assert_eq!(restored.messages.len(), 2);
+        assert_eq!(restored.messages[1].content, "Hello!");
+    }
+
+    #[test]
+    fn chat_session_summary_serialization() {
+        let summary = ChatSessionSummary {
+            id: "s1".into(),
+            name: "Summary Test".into(),
+            created_at: "2024-01-15T00:00:00Z".into(),
+            message_count: 5,
+        };
+        let json = serde_json::to_value(&summary).unwrap();
+        assert_eq!(json["message_count"], 5);
+        assert_eq!(json["name"], "Summary Test");
+    }
+
+    #[test]
+    fn chat_response_chunk_serialization() {
+        let chunk = ChatResponseChunk {
+            session_id: "sess-1".into(),
+            content: "Hello ".into(),
+            done: false,
+        };
+        let json = serde_json::to_value(&chunk).unwrap();
+        assert_eq!(json["done"], false);
+        assert_eq!(json["content"], "Hello ");
+
+        let done_chunk = ChatResponseChunk {
+            session_id: "sess-1".into(),
+            content: "".into(),
+            done: true,
+        };
+        let json = serde_json::to_value(&done_chunk).unwrap();
+        assert_eq!(json["done"], true);
+    }
 }

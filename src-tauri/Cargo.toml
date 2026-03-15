@@ -30,3 +30,4 @@ sysinfo = "0.32"
 
 [dev-dependencies]
 bytes = "1"
+tempfile = "3"

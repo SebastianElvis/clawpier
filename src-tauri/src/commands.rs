@@ -1005,3 +1005,23 @@ pub async fn resize_terminal(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_system_resources_returns_nonzero() {
+        let res = get_system_resources();
+        assert!(res.cpu_cores > 0, "CPU cores must be > 0");
+        assert!(res.memory_bytes > 0, "Memory bytes must be > 0");
+    }
+
+    #[test]
+    fn system_resources_serializable() {
+        let res = get_system_resources();
+        let json = serde_json::to_value(&res).unwrap();
+        assert!(json["cpu_cores"].is_number());
+        assert!(json["memory_bytes"].is_number());
+    }
+}

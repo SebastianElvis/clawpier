@@ -566,6 +566,117 @@ mod tests {
         assert!(!opts.one_shot);
     }
 
+    // ── build_port_config ──────────────────────────────────────────
+
+    #[test]
+    fn build_port_config_empty() {
+        let (bindings, exposed) = build_port_config(&[]);
+        assert!(bindings.is_empty());
+        assert!(exposed.is_empty());
+    }
+
+    #[test]
+    fn build_port_config_single_tcp() {
+        use crate::models::PortMapping;
+        let mappings = vec![PortMapping {
+            container_port: 8080,
+            host_port: 9090,
+            protocol: "tcp".into(),
+        }];
+        let (bindings, exposed) = build_port_config(&mappings);
+
+        assert!(bindings.contains_key("8080/tcp"));
+        let binding_vec = bindings["8080/tcp"].as_ref().unwrap();
+        assert_eq!(binding_vec.len(), 1);
+        assert_eq!(binding_vec[0].host_port.as_deref(), Some("9090"));
+        assert_eq!(binding_vec[0].host_ip.as_deref(), Some("0.0.0.0"));
+        assert!(exposed.contains_key("8080/tcp"));
+    }
+
+    #[test]
+    fn build_port_config_udp() {
+        use crate::models::PortMapping;
+        let mappings = vec![PortMapping {
+            container_port: 53,
+            host_port: 5353,
+            protocol: "udp".into(),
+        }];
+        let (bindings, _exposed) = build_port_config(&mappings);
+
+        assert!(bindings.contains_key("53/udp"));
+        assert!(!bindings.contains_key("53/tcp"));
+    }
+
+    #[test]
+    fn build_port_config_multiple() {
+        use crate::models::PortMapping;
+        let mappings = vec![
+            PortMapping {
+                container_port: 80,
+                host_port: 8080,
+                protocol: "tcp".into(),
+            },
+            PortMapping {
+                container_port: 443,
+                host_port: 8443,
+                protocol: "tcp".into(),
+            },
+        ];
+        let (bindings, exposed) = build_port_config(&mappings);
+
+        assert_eq!(bindings.len(), 2);
+        assert_eq!(exposed.len(), 2);
+        assert!(bindings.contains_key("80/tcp"));
+        assert!(bindings.contains_key("443/tcp"));
+    }
+
+    #[test]
+    fn build_port_config_duplicate_container_port() {
+        use crate::models::PortMapping;
+        // Two mappings for the same container port (e.g., mapping to two host ports)
+        let mappings = vec![
+            PortMapping {
+                container_port: 8080,
+                host_port: 9090,
+                protocol: "tcp".into(),
+            },
+            PortMapping {
+                container_port: 8080,
+                host_port: 9091,
+                protocol: "tcp".into(),
+            },
+        ];
+        let (bindings, _exposed) = build_port_config(&mappings);
+
+        // Both should be under the same key
+        let binding_vec = bindings["8080/tcp"].as_ref().unwrap();
+        assert_eq!(binding_vec.len(), 2);
+    }
+
+    #[test]
+    fn build_port_config_mixed_protocols() {
+        use crate::models::PortMapping;
+        let mappings = vec![
+            PortMapping {
+                container_port: 53,
+                host_port: 5353,
+                protocol: "tcp".into(),
+            },
+            PortMapping {
+                container_port: 53,
+                host_port: 5353,
+                protocol: "udp".into(),
+            },
+        ];
+        let (bindings, exposed) = build_port_config(&mappings);
+
+        // Same port but different protocols = different keys
+        assert_eq!(bindings.len(), 2);
+        assert!(bindings.contains_key("53/tcp"));
+        assert!(bindings.contains_key("53/udp"));
+        assert_eq!(exposed.len(), 2);
+    }
+
     // ── build_binds ─────────────────────────────────────────────────
 
     #[test]
