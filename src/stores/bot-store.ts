@@ -11,11 +11,13 @@ interface BotStore {
   dockerAvailable: boolean | null;
   imageAvailable: boolean | null; // null = not checked yet
   actionInProgress: Set<string>; // bot IDs with pending actions
+  dockerConnected: boolean;
 
   // Setters
   setBots: (bots: BotWithStatus[]) => void;
   setDockerAvailable: (available: boolean) => void;
   setActionInProgress: (id: string, inProgress: boolean) => void;
+  setDockerConnected: (connected: boolean) => void;
 
   // Actions
   checkDocker: () => Promise<boolean>;
@@ -42,10 +44,13 @@ export const useBotStore = create<BotStore>((set, get) => ({
   dockerAvailable: null,
   imageAvailable: null,
   actionInProgress: new Set(),
+  dockerConnected: true,
 
   setBots: (bots) => set({ bots }),
 
   setDockerAvailable: (available) => set({ dockerAvailable: available }),
+
+  setDockerConnected: (connected) => set({ dockerConnected: connected }),
 
   setActionInProgress: (id, inProgress) => {
     const current = new Set(get().actionInProgress);
@@ -116,6 +121,10 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   startBot: async (id) => {
     const toast = useToastStore.getState().addToast;
+    if (!get().dockerConnected) {
+      toast({ type: "warning", title: "Docker is unavailable" });
+      return;
+    }
     get().setActionInProgress(id, true);
     try {
       await api.startBot(id);
@@ -132,6 +141,10 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   stopBot: async (id) => {
     const toast = useToastStore.getState().addToast;
+    if (!get().dockerConnected) {
+      toast({ type: "warning", title: "Docker is unavailable" });
+      return;
+    }
     get().setActionInProgress(id, true);
     try {
       const bot = get().bots.find((b) => b.id === id);
@@ -148,6 +161,10 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   restartBot: async (id) => {
     const toast = useToastStore.getState().addToast;
+    if (!get().dockerConnected) {
+      toast({ type: "warning", title: "Docker is unavailable" });
+      return;
+    }
     get().setActionInProgress(id, true);
     try {
       await api.restartBot(id);

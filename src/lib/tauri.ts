@@ -24,6 +24,10 @@ export async function checkDocker(): Promise<boolean> {
   return invoke<boolean>("check_docker");
 }
 
+export async function checkDockerHealth(): Promise<boolean> {
+  return invoke<boolean>("check_docker_health");
+}
+
 export async function listBots(): Promise<BotWithStatus[]> {
   return invoke<BotWithStatus[]>("list_bots");
 }

@@ -12,6 +12,7 @@ use chat_store::ChatStore;
 use docker_manager::DockerManager;
 use models::{BotStatus, BotWithStatus};
 use state::AppState;
+use std::sync::atomic::Ordering;
 use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -29,6 +30,7 @@ pub fn run() {
             commands::get_app_version,
             commands::get_system_resources,
             commands::check_docker,
+            commands::check_docker_health,
             commands::check_image,
             commands::list_bots,
             commands::create_bot,
@@ -71,37 +73,86 @@ pub fn run() {
             // Spawn background status polling task
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                let mut consecutive_failures: u32 = 0;
+                let mut was_connected = true;
+
                 loop {
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
                     let state: tauri::State<'_, AppState> = handle.state::<AppState>();
 
-                    let bots_with_status = {
-                        let store: tokio::sync::MutexGuard<'_, BotStore> =
-                            state.store.lock().await;
-                        let docker: tokio::sync::MutexGuard<'_, DockerManager> =
-                            state.docker.lock().await;
-
-                        let bot_ids = store.get_bot_ids();
-                        let statuses = docker.get_all_statuses(&bot_ids).await;
-
-                        store
-                            .get_all()
-                            .iter()
-                            .map(|bot| {
-                                let status = statuses
-                                    .get(&bot.id)
-                                    .cloned()
-                                    .unwrap_or(BotStatus::Stopped);
-                                BotWithStatus {
-                                    profile: bot.clone(),
-                                    status,
-                                }
-                            })
-                            .collect::<Vec<_>>()
+                    // First, ping Docker to check connectivity
+                    let docker_ok = {
+                        let docker = state.docker.lock().await;
+                        docker.check_docker().await.is_ok()
                     };
 
-                    let _ = handle.emit("bot-status-update", &bots_with_status);
+                    if docker_ok {
+                        // Docker is reachable — reset failure tracking
+                        if !was_connected {
+                            state.docker_connected.store(true, Ordering::Relaxed);
+                            let _ = handle.emit("docker-connection-restored", ());
+                            was_connected = true;
+                        }
+                        consecutive_failures = 0;
+
+                        // Fetch and emit statuses as before
+                        let bots_with_status = {
+                            let store = state.store.lock().await;
+                            let docker = state.docker.lock().await;
+
+                            let bot_ids = store.get_bot_ids();
+                            let statuses = docker.get_all_statuses(&bot_ids).await;
+
+                            store
+                                .get_all()
+                                .iter()
+                                .map(|bot| {
+                                    let status = statuses
+                                        .get(&bot.id)
+                                        .cloned()
+                                        .unwrap_or(BotStatus::Stopped);
+                                    BotWithStatus {
+                                        profile: bot.clone(),
+                                        status,
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                        };
+
+                        let _ = handle.emit("bot-status-update", &bots_with_status);
+                    } else {
+                        consecutive_failures += 1;
+                        eprintln!(
+                            "Docker poll error (consecutive: {})",
+                            consecutive_failures
+                        );
+
+                        if consecutive_failures >= 3 && was_connected {
+                            state.docker_connected.store(false, Ordering::Relaxed);
+                            let _ = handle.emit("docker-connection-lost", ());
+                            was_connected = false;
+                        }
+
+                        // While disconnected, emit unknown/error statuses so UI updates
+                        if !was_connected {
+                            let bots_with_status = {
+                                let store = state.store.lock().await;
+                                store
+                                    .get_all()
+                                    .iter()
+                                    .map(|bot| BotWithStatus {
+                                        profile: bot.clone(),
+                                        status: BotStatus::Error(
+                                            "Docker unavailable".to_string(),
+                                        ),
+                                    })
+                                    .collect::<Vec<_>>()
+                            };
+
+                            let _ = handle.emit("bot-status-update", &bots_with_status);
+                        }
+                    }
                 }
             });
 
