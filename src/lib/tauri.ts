@@ -271,3 +271,13 @@ export async function resizeTerminal(
 ): Promise<void> {
   return invoke("resize_terminal", { id, cols, rows });
 }
+
+// ── Crash logging ──────────────────────────────────────────────────
+
+export async function logCrash(
+  message: string,
+  stack: string,
+  componentStack: string
+): Promise<void> {
+  return invoke<void>("log_crash", { message, stack, componentStack });
+}

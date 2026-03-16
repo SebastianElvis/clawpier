@@ -1252,6 +1252,35 @@ pub async fn resize_terminal(
     Ok(())
 }
 
+// ── Crash logging ────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn log_crash(
+    message: String,
+    stack: String,
+    component_stack: String,
+) -> Result<(), AppError> {
+    let dir = dirs::config_dir()
+        .ok_or_else(|| AppError::Other("Cannot find config directory".into()))?
+        .join("clawpier")
+        .join("crash-logs");
+
+    std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
+
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("crash_{}.log", timestamp);
+    let content = format!(
+        "Crash Report - {}\n\nMessage: {}\n\nStack:\n{}\n\nComponent Stack:\n{}\n",
+        chrono::Local::now().to_rfc3339(),
+        message,
+        stack,
+        component_stack
+    );
+
+    std::fs::write(dir.join(filename), content).map_err(AppError::Io)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
