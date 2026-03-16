@@ -1217,6 +1217,59 @@ pub async fn start_terminal_session(
 }
 
 #[tauri::command]
+pub async fn stop_terminal_session(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), AppError> {
+    // Grab the exec ID before stopping the session
+    let exec_id = {
+        let streams = state.streams.lock().await;
+        streams.get_exec_id(&id)
+    };
+
+    // Kill the exec's bash process inside the container by inspecting the exec
+    // to find its PID, then sending a kill signal.
+    if let Some(exec_id) = exec_id {
+        let docker = {
+            let dm = state.docker.lock().await;
+            dm.client()
+        };
+
+        // Try to gracefully close by inspecting exec — if it's still running,
+        // we need to kill the PID inside the container.
+        if let Ok(inspect) = docker.inspect_exec(&exec_id).await {
+            if let Some(pid) = inspect.pid {
+                if pid > 0 {
+                    // Get the container ID from the exec inspect
+                    if let Some(ref container_id) = inspect.container_id {
+                        let kill_cmd = CreateExecOptions {
+                            attach_stdout: Some(false),
+                            attach_stderr: Some(false),
+                            cmd: Some(vec![
+                                "kill".to_string(),
+                                "-TERM".to_string(),
+                                pid.to_string(),
+                            ]),
+                            ..Default::default()
+                        };
+                        // Best-effort kill — ignore errors (process may have already exited)
+                        if let Ok(created) = docker.create_exec(container_id, kill_cmd).await {
+                            let _ = docker.start_exec(&created.id, None).await;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Now clean up the session (aborts output task, drops input writer)
+    let mut streams = state.streams.lock().await;
+    streams.stop_session(&id);
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn write_terminal_input(
     state: State<'_, AppState>,
     id: String,

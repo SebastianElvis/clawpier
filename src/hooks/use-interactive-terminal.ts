@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   startTerminalSession,
+  stopTerminalSession,
   writeTerminalInput,
   resizeTerminal,
 } from "../lib/tauri";
@@ -237,6 +238,9 @@ export function useInteractiveTerminal({
         unlistenRef.current();
         unlistenRef.current = null;
       }
+
+      // Kill the bash process inside the container and clean up the backend session
+      stopTerminalSession(botId).catch(console.error);
 
       term.dispose();
       terminalRef.current = null;

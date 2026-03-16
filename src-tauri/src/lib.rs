@@ -65,6 +65,7 @@ pub fn run() {
             commands::get_bot_config,
             commands::resolve_telegram_bot,
             commands::start_terminal_session,
+            commands::stop_terminal_session,
             commands::write_terminal_input,
             commands::resize_terminal,
             commands::log_crash,

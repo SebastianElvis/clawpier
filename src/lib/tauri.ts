@@ -270,6 +270,10 @@ export async function startTerminalSession(
   return invoke("start_terminal_session", { id, cols, rows });
 }
 
+export async function stopTerminalSession(id: string): Promise<void> {
+  return invoke("stop_terminal_session", { id });
+}
+
 export async function writeTerminalInput(
   id: string,
   data: string
