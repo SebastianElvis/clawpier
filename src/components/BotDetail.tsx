@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ArrowLeft,
   Play,
@@ -17,6 +17,9 @@ import {
   AlertTriangle,
   Box,
   Save,
+  ChevronUp,
+  ChevronDown,
+  GripHorizontal,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { BotWithStatus, NetworkMode, PortMapping, EnvVar } from "../lib/types";
@@ -40,7 +43,7 @@ import { useAutoRestart } from "../hooks/use-auto-restart";
 import { useRestartProgress } from "../hooks/use-restart-progress";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-type Tab = "dashboard" | "chat" | "logs" | "terminal" | "files" | "docker";
+type Tab = "dashboard" | "chat" | "terminal" | "files" | "docker";
 
 interface BotDetailProps {
   bot: BotWithStatus;
@@ -108,12 +111,11 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
   const networkMode = bot.network_mode;
   const hasNetwork = networkMode !== "none";
 
-  const tabs: { key: Tab; label: string; icon: typeof ScrollText; runningOnly?: boolean }[] = [
+  const tabs: { key: Tab; label: string; icon: typeof LayoutDashboard; runningOnly?: boolean }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { key: "chat", label: "Chat", icon: MessageSquare, runningOnly: true },
     { key: "terminal", label: "Terminal", icon: Terminal },
     { key: "files", label: "Files", icon: FolderOpen },
-    { key: "logs", label: "Logs", icon: ScrollText },
     { key: "docker", label: "Docker", icon: Box },
   ];
 
@@ -252,7 +254,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
       </div>
 
       {/* Tab content */}
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden flex flex-col">
         {/* Restart overlay */}
         {isRestarting && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -268,75 +270,179 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
             </div>
           </div>
         )}
-        {activeTab === "dashboard" && (
-          <ErrorBoundary fallbackTitle="Dashboard error">
-            <div className="flex h-full flex-col">
-              <div className="min-h-0 flex-1">
-                <ConfigDashboard
-                  botId={bot.id}
-                  isRunning={isRunning}
-                  onSwitchToTerminal={() => setActiveTab("terminal")}
-                />
-              </div>
-              {/* Bot Information */}
-              <div className="border-t border-gray-200 px-4 py-2">
-                <div className="flex items-center gap-6 text-xs text-gray-400">
-                  <span>
-                    ID{" "}
-                    <span className="font-mono text-gray-500">{bot.id}</span>
-                  </span>
-                  <span>
-                    Image{" "}
-                    <span className="font-mono text-gray-500">{bot.image}</span>
-                  </span>
+
+        {/* Active tab content - takes remaining space */}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {activeTab === "dashboard" && (
+            <ErrorBoundary fallbackTitle="Dashboard error">
+              <div className="flex h-full flex-col">
+                <div className="min-h-0 flex-1">
+                  <ConfigDashboard
+                    botId={bot.id}
+                    isRunning={isRunning}
+                    onSwitchToTerminal={() => setActiveTab("terminal")}
+                  />
+                </div>
+                {/* Bot Information */}
+                <div className="border-t border-gray-200 px-4 py-2">
+                  <div className="flex items-center gap-6 text-xs text-gray-400">
+                    <span>
+                      ID{" "}
+                      <span className="font-mono text-gray-500">{bot.id}</span>
+                    </span>
+                    <span>
+                      Image{" "}
+                      <span className="font-mono text-gray-500">{bot.image}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </ErrorBoundary>
-        )}
-        {activeTab === "chat" && isRunning && (
-          <ErrorBoundary fallbackTitle="Chat error">
-            <ChatTab botId={bot.id} />
-          </ErrorBoundary>
-        )}
-        {activeTab === "logs" && (
-          <ErrorBoundary fallbackTitle="Logs error">
-            <LogViewer logs={logs} onClear={clearLogs} tail={tail} onTailChange={changeTail} />
-          </ErrorBoundary>
-        )}
-        {activeTab === "terminal" && (
-          <ErrorBoundary fallbackTitle="Terminal error">
-            <TerminalTab botId={bot.id} isRunning={isRunning} />
-          </ErrorBoundary>
-        )}
-        {activeTab === "files" && (
-          <ErrorBoundary fallbackTitle="Files error">
-            {bot.workspace_path ? (
-              <FileBrowser
-                botId={bot.id}
-                workspacePath={bot.workspace_path}
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
-                <FolderOpen className="h-8 w-8 text-gray-300" />
-                <p>No workspace path configured.</p>
-                <button
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                  onClick={() => setActiveTab("docker")}
-                >
-                  <Box className="h-3.5 w-3.5" />
-                  Go to Docker
-                </button>
-              </div>
-            )}
-          </ErrorBoundary>
-        )}
-        {activeTab === "docker" && (
-          <ErrorBoundary fallbackTitle="Docker settings error">
-            <DockerTab bot={bot} isRunning={isRunning} />
-          </ErrorBoundary>
-        )}
+            </ErrorBoundary>
+          )}
+          {activeTab === "chat" && isRunning && (
+            <ErrorBoundary fallbackTitle="Chat error">
+              <ChatTab botId={bot.id} />
+            </ErrorBoundary>
+          )}
+          {activeTab === "terminal" && (
+            <ErrorBoundary fallbackTitle="Terminal error">
+              <TerminalTab botId={bot.id} isRunning={isRunning} />
+            </ErrorBoundary>
+          )}
+          {activeTab === "files" && (
+            <ErrorBoundary fallbackTitle="Files error">
+              {bot.workspace_path ? (
+                <FileBrowser
+                  botId={bot.id}
+                  workspacePath={bot.workspace_path}
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
+                  <FolderOpen className="h-8 w-8 text-gray-300" />
+                  <p>No workspace path configured.</p>
+                  <button
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                    onClick={() => setActiveTab("docker")}
+                  >
+                    <Box className="h-3.5 w-3.5" />
+                    Go to Docker
+                  </button>
+                </div>
+              )}
+            </ErrorBoundary>
+          )}
+          {activeTab === "docker" && (
+            <ErrorBoundary fallbackTitle="Docker settings error">
+              <DockerTab bot={bot} isRunning={isRunning} />
+            </ErrorBoundary>
+          )}
+        </div>
+
+        {/* Log panel */}
+        <LogPanel
+          logs={logs}
+          onClear={clearLogs}
+          tail={tail}
+          onTailChange={changeTail}
+        />
       </div>
+    </div>
+  );
+}
+
+// ── Log Panel ────────────────────────────────────────────────────────
+
+const MIN_PANEL_HEIGHT = 150;
+const DEFAULT_PANEL_HEIGHT = 300;
+
+function LogPanel({
+  logs,
+  onClear,
+  tail,
+  onTailChange,
+}: {
+  logs: import("../lib/types").LogEntry[];
+  onClear: () => void;
+  tail: number;
+  onTailChange: (tail: number) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [panelHeight, setPanelHeight] = useState(DEFAULT_PANEL_HEIGHT);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+
+    const startY = e.clientY;
+    const startHeight = panelHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDragging.current) return;
+      const delta = startY - moveEvent.clientY;
+      const parentHeight = panelRef.current?.parentElement?.clientHeight ?? 600;
+      const maxHeight = parentHeight * 0.7;
+      const newHeight = Math.min(
+        maxHeight,
+        Math.max(MIN_PANEL_HEIGHT, startHeight + delta)
+      );
+      setPanelHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [panelHeight]);
+
+  return (
+    <div ref={panelRef} className="shrink-0 flex flex-col" style={isOpen ? { height: panelHeight } : undefined}>
+      {/* Header / collapsed bar */}
+      <button
+        className="flex w-full items-center gap-2 border-t border-gray-200 bg-gray-50 px-3 py-1.5 text-xs cursor-pointer hover:bg-gray-100 transition-colors"
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        {/* Drag handle (only when open) */}
+        {isOpen && (
+          <span
+            className="flex items-center text-gray-300 cursor-row-resize"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handleMouseDown(e);
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripHorizontal className="h-3.5 w-3.5" />
+          </span>
+        )}
+        <ScrollText className="h-3.5 w-3.5 text-gray-500" />
+        <span className="font-medium text-gray-600">Logs</span>
+        {logs.length > 0 && (
+          <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 leading-none">
+            {logs.length}
+          </span>
+        )}
+        <span className="flex-1" />
+        {isOpen ? (
+          <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+        ) : (
+          <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+        )}
+      </button>
+
+      {/* Expanded content */}
+      {isOpen && (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ErrorBoundary fallbackTitle="Logs error">
+            <LogViewer logs={logs} onClear={onClear} tail={tail} onTailChange={onTailChange} />
+          </ErrorBoundary>
+        </div>
+      )}
     </div>
   );
 }
