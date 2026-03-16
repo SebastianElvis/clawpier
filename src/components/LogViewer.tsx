@@ -196,10 +196,10 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-gray-700 px-3 py-1.5">
+      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-3 py-1.5">
         {/* Search input */}
         <div className="relative flex min-w-0 flex-1 items-center">
-          <Search className="absolute left-2 h-3.5 w-3.5 text-gray-500" />
+          <Search className="absolute left-2 h-3.5 w-3.5 text-gray-400" />
           <input
             ref={searchInputRef}
             type="text"
@@ -207,32 +207,32 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Search logs..."
-            className="w-full rounded-md border border-gray-700 bg-gray-800 py-1 pl-7 pr-20 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-gray-500"
+            className="w-full rounded-md border border-gray-200 bg-gray-50 py-1 pl-7 pr-20 text-xs text-gray-700 placeholder-gray-400 outline-none focus:border-blue-400"
           />
           {debouncedSearch && (
             <div className="absolute right-1 flex items-center gap-0.5">
-              <span className="mr-1 text-xs text-gray-500">
+              <span className="mr-1 text-xs text-gray-400">
                 {matchIndices.length > 0
                   ? `${currentMatchIndex + 1} of ${matchIndices.length}`
                   : "0 results"}
               </span>
               <button
                 onClick={() => navigateMatch("up")}
-                className="rounded p-0.5 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 title="Previous match (Shift+Enter)"
               >
                 <ChevronUp className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => navigateMatch("down")}
-                className="rounded p-0.5 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 title="Next match (Enter)"
               >
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setSearchTerm("")}
-                className="rounded p-0.5 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 title="Clear search (Esc)"
               >
                 <X className="h-3.5 w-3.5" />
@@ -242,15 +242,15 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
         </div>
 
         {/* Stream filter pills */}
-        <div className="flex gap-1 rounded-lg bg-gray-800 p-0.5">
+        <div className="flex gap-1 rounded-lg bg-gray-100 p-0.5">
           {(["all", "stdout", "stderr"] as const).map((filter) => (
             <button
               key={filter}
               onClick={() => setStreamFilter(filter)}
               className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
                 streamFilter === filter
-                  ? "bg-gray-600 text-white"
-                  : "text-gray-400 hover:text-gray-300"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               {filter}
@@ -262,7 +262,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
         <select
           value={tail}
           onChange={(e) => onTailChange(Number(e.target.value))}
-          className="rounded-md border border-gray-700 bg-gray-800 px-1.5 py-1 text-xs text-gray-300 outline-none"
+          className="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-600 outline-none"
           title="Lines to load"
         >
           {TAIL_OPTIONS.map((opt) => (
@@ -274,7 +274,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
 
         {/* Copy button */}
         <button
-          className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           onClick={handleCopy}
           title="Copy all visible logs"
         >
@@ -283,7 +283,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
 
         {/* Export button */}
         <button
-          className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           onClick={handleExport}
           title="Export logs to file"
         >
@@ -292,7 +292,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
 
         {/* Clear button */}
         <button
-          className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           onClick={onClear}
           title="Clear logs"
         >
@@ -302,7 +302,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
         {/* Scroll to bottom */}
         {!autoScroll && (
           <button
-            className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
             onClick={() => {
               setAutoScroll(true);
               if (containerRef.current) {
@@ -317,7 +317,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
         )}
 
         {/* Line count */}
-        <span className="whitespace-nowrap text-xs text-gray-500">
+        <span className="whitespace-nowrap text-xs text-gray-400">
           {streamFilteredLogs.length} {streamFilteredLogs.length === 1 ? "line" : "lines"}
         </span>
       </div>

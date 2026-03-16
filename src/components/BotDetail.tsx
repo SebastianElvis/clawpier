@@ -19,7 +19,6 @@ import {
   Save,
   ChevronUp,
   ChevronDown,
-  GripHorizontal,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { BotWithStatus, NetworkMode, PortMapping, EnvVar } from "../lib/types";
@@ -108,6 +107,8 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
     }
   };
 
+  const [idCopied, setIdCopied] = useState(false);
+
   const networkMode = bot.network_mode;
   const hasNetwork = networkMode !== "none";
 
@@ -135,9 +136,18 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
             <h1 className="truncate text-lg font-semibold text-gray-900">
               {bot.name}
             </h1>
-            <p className="truncate text-xs text-gray-400">
-              {bot.image.split("/").pop()}
-            </p>
+            <div className="flex items-center gap-3 text-xs text-gray-400">
+              <span className="truncate">{bot.image}</span>
+              <button
+                className={`shrink-0 cursor-pointer font-mono transition-colors ${idCopied ? "text-emerald-500" : "text-gray-300 hover:text-gray-500"}`}
+                title="Click to copy full ID"
+                onClick={() => {
+                  navigator.clipboard.writeText(bot.id);
+                  setIdCopied(true);
+                  setTimeout(() => setIdCopied(false), 1500);
+                }}
+              >{idCopied ? "copied!" : bot.id.slice(0, 8)}</button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -275,28 +285,11 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
         <div className="min-h-0 flex-1 overflow-hidden">
           {activeTab === "dashboard" && (
             <ErrorBoundary fallbackTitle="Dashboard error">
-              <div className="flex h-full flex-col">
-                <div className="min-h-0 flex-1">
-                  <ConfigDashboard
-                    botId={bot.id}
-                    isRunning={isRunning}
-                    onSwitchToTerminal={() => setActiveTab("terminal")}
-                  />
-                </div>
-                {/* Bot Information */}
-                <div className="border-t border-gray-200 px-4 py-2">
-                  <div className="flex items-center gap-6 text-xs text-gray-400">
-                    <span>
-                      ID{" "}
-                      <span className="font-mono text-gray-500">{bot.id}</span>
-                    </span>
-                    <span>
-                      Image{" "}
-                      <span className="font-mono text-gray-500">{bot.image}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <ConfigDashboard
+                botId={bot.id}
+                isRunning={isRunning}
+                onSwitchToTerminal={() => setActiveTab("terminal")}
+              />
             </ErrorBoundary>
           )}
           {activeTab === "chat" && isRunning && (
@@ -402,36 +395,39 @@ function LogPanel({
 
   return (
     <div ref={panelRef} className="shrink-0 flex flex-col" style={isOpen ? { height: panelHeight } : undefined}>
-      {/* Header / collapsed bar */}
+      {/* Resize handle (only when open) */}
+      {isOpen && (
+        <div
+          className="flex items-center justify-center cursor-row-resize hover:bg-gray-100 transition-colors"
+          style={{ height: 4 }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handleMouseDown(e);
+          }}
+        />
+      )}
+
+      {/* Header bar — mirrors the tab bar style */}
       <button
-        className="flex w-full items-center gap-2 border-t border-gray-200 bg-gray-50 px-3 py-1.5 text-xs cursor-pointer hover:bg-gray-100 transition-colors"
+        className={`inline-flex w-full cursor-pointer items-center gap-1.5 border-t-2 px-4 py-2.5 text-xs font-medium transition-colors ${
+          isOpen
+            ? "border-blue-600 text-blue-600"
+            : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+        }`}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        {/* Drag handle (only when open) */}
-        {isOpen && (
-          <span
-            className="flex items-center text-gray-300 cursor-row-resize"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              handleMouseDown(e);
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripHorizontal className="h-3.5 w-3.5" />
-          </span>
-        )}
-        <ScrollText className="h-3.5 w-3.5 text-gray-500" />
-        <span className="font-medium text-gray-600">Logs</span>
+        <ScrollText className="h-3.5 w-3.5" />
+        Logs
         {logs.length > 0 && (
-          <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 leading-none">
+          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 leading-none">
             {logs.length}
           </span>
         )}
         <span className="flex-1" />
         {isOpen ? (
-          <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+          <ChevronDown className="h-3.5 w-3.5" />
         ) : (
-          <ChevronUp className="h-3.5 w-3.5 text-gray-400" />
+          <ChevronUp className="h-3.5 w-3.5" />
         )}
       </button>
 
