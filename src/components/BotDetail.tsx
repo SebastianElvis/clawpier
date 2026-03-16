@@ -37,6 +37,7 @@ import { NetworkModePicker } from "./NetworkModePicker";
 import { PortMappingEditor } from "./PortMappingEditor";
 import { ChatTab } from "./ChatTab";
 import { useAutoRestart } from "../hooks/use-auto-restart";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 type Tab = "dashboard" | "chat" | "logs" | "terminal" | "files" | "docker";
 
@@ -249,60 +250,72 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
       {/* Tab content */}
       <div className="min-h-0 flex-1">
         {activeTab === "dashboard" && (
-          <div className="flex h-full flex-col">
-            <div className="min-h-0 flex-1">
-              <ConfigDashboard
-                botId={bot.id}
-                isRunning={isRunning}
-                onSwitchToTerminal={() => setActiveTab("terminal")}
-              />
-            </div>
-            {/* Bot Information */}
-            <div className="border-t border-gray-200 px-4 py-2">
-              <div className="flex items-center gap-6 text-xs text-gray-400">
-                <span>
-                  ID{" "}
-                  <span className="font-mono text-gray-500">{bot.id}</span>
-                </span>
-                <span>
-                  Image{" "}
-                  <span className="font-mono text-gray-500">{bot.image}</span>
-                </span>
+          <ErrorBoundary fallbackTitle="Dashboard error">
+            <div className="flex h-full flex-col">
+              <div className="min-h-0 flex-1">
+                <ConfigDashboard
+                  botId={bot.id}
+                  isRunning={isRunning}
+                  onSwitchToTerminal={() => setActiveTab("terminal")}
+                />
+              </div>
+              {/* Bot Information */}
+              <div className="border-t border-gray-200 px-4 py-2">
+                <div className="flex items-center gap-6 text-xs text-gray-400">
+                  <span>
+                    ID{" "}
+                    <span className="font-mono text-gray-500">{bot.id}</span>
+                  </span>
+                  <span>
+                    Image{" "}
+                    <span className="font-mono text-gray-500">{bot.image}</span>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </ErrorBoundary>
         )}
         {activeTab === "chat" && isRunning && (
-          <ChatTab botId={bot.id} />
+          <ErrorBoundary fallbackTitle="Chat error">
+            <ChatTab botId={bot.id} />
+          </ErrorBoundary>
         )}
         {activeTab === "logs" && (
-          <LogViewer logs={logs} onClear={clearLogs} />
+          <ErrorBoundary fallbackTitle="Logs error">
+            <LogViewer logs={logs} onClear={clearLogs} />
+          </ErrorBoundary>
         )}
         {activeTab === "terminal" && (
-          <TerminalTab botId={bot.id} isRunning={isRunning} />
+          <ErrorBoundary fallbackTitle="Terminal error">
+            <TerminalTab botId={bot.id} isRunning={isRunning} />
+          </ErrorBoundary>
         )}
         {activeTab === "files" && (
-          bot.workspace_path ? (
-            <FileBrowser
-              botId={bot.id}
-              workspacePath={bot.workspace_path}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
-              <FolderOpen className="h-8 w-8 text-gray-300" />
-              <p>No workspace path configured.</p>
-              <button
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-                onClick={() => setActiveTab("docker")}
-              >
-                <Box className="h-3.5 w-3.5" />
-                Go to Docker
-              </button>
-            </div>
-          )
+          <ErrorBoundary fallbackTitle="Files error">
+            {bot.workspace_path ? (
+              <FileBrowser
+                botId={bot.id}
+                workspacePath={bot.workspace_path}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
+                <FolderOpen className="h-8 w-8 text-gray-300" />
+                <p>No workspace path configured.</p>
+                <button
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                  onClick={() => setActiveTab("docker")}
+                >
+                  <Box className="h-3.5 w-3.5" />
+                  Go to Docker
+                </button>
+              </div>
+            )}
+          </ErrorBoundary>
         )}
         {activeTab === "docker" && (
-          <DockerTab bot={bot} isRunning={isRunning} />
+          <ErrorBoundary fallbackTitle="Docker settings error">
+            <DockerTab bot={bot} isRunning={isRunning} />
+          </ErrorBoundary>
         )}
       </div>
     </div>

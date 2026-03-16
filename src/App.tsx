@@ -10,6 +10,7 @@ import { DockerError } from "./components/DockerError";
 import { ImageMissing } from "./components/ImageMissing";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { ToastContainer } from "./components/Toast";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const WELCOME_KEY = "clawpier-welcome-dismissed";
 
@@ -114,24 +115,31 @@ function App() {
 
   return (
     <>
-      {selectedBot ? (
-        <div className="h-screen bg-white">
-          <BotDetail
-            bot={selectedBot}
-            onBack={() => setSelectedBotId(null)}
-          />
-        </div>
-      ) : (
-        <Layout onCreateBot={() => setShowNewBot(true)} botCount={bots.length}>
-          <BotList
-            onCreateBot={() => setShowNewBot(true)}
-            onSelectBot={setSelectedBotId}
-          />
-        </Layout>
-      )}
+      <ErrorBoundary fallbackTitle="ClawPier encountered an error">
+        {selectedBot ? (
+          <div className="h-screen bg-white">
+            <ErrorBoundary
+              fallbackTitle="Bot detail view error"
+              onReset={() => setSelectedBotId(null)}
+            >
+              <BotDetail
+                bot={selectedBot}
+                onBack={() => setSelectedBotId(null)}
+              />
+            </ErrorBoundary>
+          </div>
+        ) : (
+          <Layout onCreateBot={() => setShowNewBot(true)} botCount={bots.length}>
+            <BotList
+              onCreateBot={() => setShowNewBot(true)}
+              onSelectBot={setSelectedBotId}
+            />
+          </Layout>
+        )}
 
-      {showNewBot && <NewBotSheet onClose={() => setShowNewBot(false)} />}
-      {showWelcome && <WelcomeScreen onDismiss={handleDismissWelcome} />}
+        {showNewBot && <NewBotSheet onClose={() => setShowNewBot(false)} />}
+        {showWelcome && <WelcomeScreen onDismiss={handleDismissWelcome} />}
+      </ErrorBoundary>
       <ToastContainer />
     </>
   );
