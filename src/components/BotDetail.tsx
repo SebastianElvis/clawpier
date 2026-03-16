@@ -118,9 +118,9 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
   ];
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-b border-gray-200 px-4 py-3">
+      <div className="shrink-0 border-b border-gray-200 px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -231,7 +231,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex shrink-0 border-b border-gray-200">
         {tabs.map(({ key, label, icon: Icon, runningOnly }) => {
           if (runningOnly && !isRunning) return null;
           return (
@@ -252,7 +252,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
       </div>
 
       {/* Tab content */}
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {/* Restart overlay */}
         {isRestarting && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">

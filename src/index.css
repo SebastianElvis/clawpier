@@ -12,6 +12,13 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
 /* Tauri window drag region */
 [data-tauri-drag-region] {
   -webkit-app-region: drag;

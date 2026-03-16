@@ -117,9 +117,9 @@ function App() {
   return (
     <>
       <ErrorBoundary fallbackTitle="ClawPier encountered an error">
-        <DockerConnectionBanner />
         {selectedBot ? (
-          <div className="h-screen bg-white">
+          <div className="fixed inset-0 flex flex-col overflow-hidden bg-white">
+            <DockerConnectionBanner />
             <ErrorBoundary
               fallbackTitle="Bot detail view error"
               onReset={() => setSelectedBotId(null)}
@@ -132,6 +132,7 @@ function App() {
           </div>
         ) : (
           <Layout onCreateBot={() => setShowNewBot(true)} botCount={bots.length}>
+            <DockerConnectionBanner />
             <BotList
               onCreateBot={() => setShowNewBot(true)}
               onSelectBot={setSelectedBotId}
