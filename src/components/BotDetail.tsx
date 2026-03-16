@@ -37,6 +37,7 @@ import { NetworkModePicker } from "./NetworkModePicker";
 import { PortMappingEditor } from "./PortMappingEditor";
 import { ChatTab } from "./ChatTab";
 import { useAutoRestart } from "../hooks/use-auto-restart";
+import { useRestartProgress } from "../hooks/use-restart-progress";
 import { ErrorBoundary } from "./ErrorBoundary";
 
 type Tab = "dashboard" | "chat" | "logs" | "terminal" | "files" | "docker";
@@ -71,6 +72,9 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
 
   // Log streaming (always when running — persists across tab switches)
   const { logs, clearLogs } = useContainerLogs(bot.id, isRunning);
+
+  // Restart progress overlay
+  const { phase, isRestarting } = useRestartProgress(bot.id);
 
   const handleStart = async () => {
     setError(null);
@@ -248,7 +252,22 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
       </div>
 
       {/* Tab content */}
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
+        {/* Restart overlay */}
+        {isRestarting && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="rounded-xl bg-gray-800 p-6 text-center shadow-xl">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-gray-600 border-t-blue-400" />
+              <p className="mb-1 font-medium text-white">Restarting bot...</p>
+              <p className="text-sm text-gray-400">
+                {phase === "stopping" && "Stopping container..."}
+                {phase === "stopped" && "Container stopped"}
+                {phase === "starting" && "Starting container..."}
+                {phase === "running" && "Bot is ready!"}
+              </p>
+            </div>
+          </div>
+        )}
         {activeTab === "dashboard" && (
           <ErrorBoundary fallbackTitle="Dashboard error">
             <div className="flex h-full flex-col">

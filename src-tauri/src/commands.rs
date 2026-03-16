@@ -295,16 +295,31 @@ pub async fn restart_bot(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), AppError> {
+    // Phase 1: Stopping
+    let _ = app.emit(&format!("bot-restart-phase-{}", id), "stopping");
+
     // Clean up streams and terminal session
     let mut streams = state.streams.lock().await;
     streams.stop_all(&id);
     streams.stop_session(&id);
     drop(streams);
 
-    // Stop and remove the container
+    // Stop and remove the container with a 15-second timeout warning
     let docker = state.docker.lock().await;
+    let stop_start = std::time::Instant::now();
     let _ = docker.stop_bot(&id).await;
+    let stop_elapsed = stop_start.elapsed();
+    if stop_elapsed.as_secs() > 15 {
+        eprintln!(
+            "[warn] Stopping bot {} took {:.1}s (exceeded 15s threshold)",
+            id,
+            stop_elapsed.as_secs_f64()
+        );
+    }
     drop(docker);
+
+    // Phase 2: Stopped
+    let _ = app.emit(&format!("bot-restart-phase-{}", id), "stopped");
 
     // Re-read the profile and start a fresh container
     let store = state.store.lock().await;
@@ -314,9 +329,15 @@ pub async fn restart_bot(
         .clone();
     drop(store);
 
+    // Phase 3: Starting
+    let _ = app.emit(&format!("bot-restart-phase-{}", id), "starting");
+
     let docker = state.docker.lock().await;
     docker.start_bot(&bot).await?;
     drop(docker);
+
+    // Phase 4: Running
+    let _ = app.emit(&format!("bot-restart-phase-{}", id), "running");
 
     // Notify frontend AFTER the new container is running and ready for exec
     let _ = app.emit(&format!("terminal-disconnect-{}", id), "restart");

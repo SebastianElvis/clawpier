@@ -59,12 +59,14 @@ export function useInteractiveTerminal({
     let cancelled = false;
     let unlisten: UnlistenFn | null = null;
 
-    listen<string>(`terminal-disconnect-${botId}`, () => {
+    listen<string>(`terminal-disconnect-${botId}`, (event) => {
       if (!cancelled) {
-        // Write a disconnect notice into the terminal buffer
-        terminalRef.current?.write(
-          "\r\n\x1b[33m--- Session disconnected. Reconnecting... ---\x1b[0m\r\n"
-        );
+        // Show a specific message depending on why the session ended
+        const isRestart = event.payload === "restart";
+        const message = isRestart
+          ? "\r\n\x1b[33m--- Session ended due to restart. Reconnecting... ---\x1b[0m\r\n"
+          : "\r\n\x1b[33m--- Session disconnected. Reconnecting... ---\x1b[0m\r\n";
+        terminalRef.current?.write(message);
         setIsConnected(false);
         setConnectionError(null);
         isReconnectRef.current = true;

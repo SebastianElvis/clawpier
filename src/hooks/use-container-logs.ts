@@ -70,6 +70,27 @@ export function useContainerLogs(botId: string, enabled: boolean) {
     };
   }, [botId, enabled]);
 
+  // Auto-reconnect log stream after restart completes
+  useEffect(() => {
+    if (!enabled) return;
+
+    const unlisten = listen<string>(
+      `bot-restart-phase-${botId}`,
+      (event) => {
+        if (event.payload === "running") {
+          // Re-start the log stream after a brief delay to let the container initialize
+          setTimeout(() => {
+            api.startLogStream(botId, 500).catch(console.error);
+          }, 1000);
+        }
+      }
+    );
+
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [botId, enabled]);
+
   const effectiveLogs = enabled ? logs : [];
 
   const clearLogs = useCallback(() => {

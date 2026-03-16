@@ -38,6 +38,27 @@ export function useContainerStats(botId: string, enabled: boolean) {
     };
   }, [botId, enabled]);
 
+  // Auto-reconnect stats stream after restart completes
+  useEffect(() => {
+    if (!enabled) return;
+
+    const unlisten = listen<string>(
+      `bot-restart-phase-${botId}`,
+      (event) => {
+        if (event.payload === "running") {
+          // Re-start the stats stream after a brief delay to let the container initialize
+          setTimeout(() => {
+            api.startStatsStream(botId).catch(console.error);
+          }, 1000);
+        }
+      }
+    );
+
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, [botId, enabled]);
+
   if (!enabled) {
     return { stats: null, statsHistory: [] };
   }
