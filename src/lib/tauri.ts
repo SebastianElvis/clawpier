@@ -251,6 +251,15 @@ export async function stopChatResponse(id: string): Promise<void> {
   return invoke("stop_chat_response", { id });
 }
 
+// ── Log export ────────────────────────────────────────────────────
+
+export async function exportLogs(
+  path: string,
+  content: string
+): Promise<void> {
+  return invoke("export_logs", { path, content });
+}
+
 // ── Interactive terminal commands ──────────────────────────────────
 
 export async function startTerminalSession(

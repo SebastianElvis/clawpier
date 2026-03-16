@@ -70,7 +70,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
   const { stats, statsHistory } = useContainerStats(bot.id, isRunning);
 
   // Log streaming (always when running — persists across tab switches)
-  const { logs, clearLogs } = useContainerLogs(bot.id, isRunning);
+  const { logs, clearLogs, tail, changeTail } = useContainerLogs(bot.id, isRunning);
 
   const handleStart = async () => {
     setError(null);
@@ -282,7 +282,7 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
         )}
         {activeTab === "logs" && (
           <ErrorBoundary fallbackTitle="Logs error">
-            <LogViewer logs={logs} onClear={clearLogs} />
+            <LogViewer logs={logs} onClear={clearLogs} tail={tail} onTailChange={changeTail} />
           </ErrorBoundary>
         )}
         {activeTab === "terminal" && (
