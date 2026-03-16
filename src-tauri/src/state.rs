@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
 
 use crate::bot_store::BotStore;
@@ -10,6 +11,7 @@ pub struct AppState {
     pub docker: Mutex<DockerManager>,
     pub streams: Mutex<StreamManager>,
     pub chat_store: Mutex<ChatStore>,
+    pub docker_connected: AtomicBool,
 }
 
 impl AppState {
@@ -19,6 +21,15 @@ impl AppState {
             docker: Mutex::new(docker),
             streams: Mutex::new(StreamManager::new()),
             chat_store: Mutex::new(chat_store),
+            docker_connected: AtomicBool::new(true),
         }
+    }
+
+    pub fn is_docker_connected(&self) -> bool {
+        self.docker_connected.load(Ordering::Relaxed)
+    }
+
+    pub fn set_docker_connected(&self, connected: bool) {
+        self.docker_connected.store(connected, Ordering::Relaxed);
     }
 }

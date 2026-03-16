@@ -200,6 +200,11 @@ pub async fn check_docker(state: State<'_, AppState>) -> Result<bool, AppError> 
 }
 
 #[tauri::command]
+pub async fn check_docker_health(state: State<'_, AppState>) -> Result<bool, AppError> {
+    Ok(state.is_docker_connected())
+}
+
+#[tauri::command]
 pub async fn check_image(state: State<'_, AppState>, image: String) -> Result<bool, AppError> {
     let docker = state.docker.lock().await;
     docker.check_image(&image).await

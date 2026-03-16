@@ -10,6 +10,7 @@ import { DockerError } from "./components/DockerError";
 import { ImageMissing } from "./components/ImageMissing";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { ToastContainer } from "./components/Toast";
+import { DockerConnectionBanner } from "./components/DockerConnectionBanner";
 
 const WELCOME_KEY = "clawpier-welcome-dismissed";
 
@@ -114,6 +115,7 @@ function App() {
 
   return (
     <>
+      <DockerConnectionBanner />
       {selectedBot ? (
         <div className="h-screen bg-white">
           <BotDetail
