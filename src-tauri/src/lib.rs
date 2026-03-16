@@ -68,6 +68,7 @@ pub fn run() {
             commands::write_terminal_input,
             commands::resize_terminal,
             commands::log_crash,
+            commands::export_logs,
         ])
         .setup(|app| {
             // Spawn background status polling task

@@ -1278,6 +1278,16 @@ pub async fn resize_terminal(
     Ok(())
 }
 
+// ── Log export ───────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn export_logs(path: String, content: String) -> Result<(), AppError> {
+    tokio::fs::write(&path, content)
+        .await
+        .map_err(AppError::Io)?;
+    Ok(())
+}
+
 // ── Crash logging ────────────────────────────────────────────────────
 
 #[tauri::command]

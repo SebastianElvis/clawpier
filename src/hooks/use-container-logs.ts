@@ -3,10 +3,11 @@ import { listen } from "@tauri-apps/api/event";
 import type { LogEntry } from "../lib/types";
 import * as api from "../lib/tauri";
 
-const MAX_LOGS = 2000;
+const MAX_LOGS = 5000;
 
 export function useContainerLogs(botId: string, enabled: boolean) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [tail, setTail] = useState(500);
   const logsRef = useRef<LogEntry[]>([]);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export function useContainerLogs(botId: string, enabled: boolean) {
       }
 
       // THEN start the backend stream — listener is guaranteed to be ready
-      api.startLogStream(botId, 500).catch(console.error);
+      api.startLogStream(botId, tail).catch(console.error);
     })();
 
     return () => {
@@ -68,7 +69,7 @@ export function useContainerLogs(botId: string, enabled: boolean) {
       if (unlistenFn) unlistenFn();
       logsRef.current = [];
     };
-  }, [botId, enabled]);
+  }, [botId, enabled, tail]);
 
   // Auto-reconnect log stream after restart completes
   useEffect(() => {
@@ -98,5 +99,12 @@ export function useContainerLogs(botId: string, enabled: boolean) {
     logsRef.current = [];
   }, []);
 
-  return { logs: effectiveLogs, clearLogs };
+  const changeTail = useCallback((newTail: number) => {
+    setTail(newTail);
+    // Clear logs when changing tail so we get a fresh load
+    setLogs([]);
+    logsRef.current = [];
+  }, []);
+
+  return { logs: effectiveLogs, clearLogs, tail, changeTail };
 }
