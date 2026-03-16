@@ -28,8 +28,4 @@ impl AppState {
     pub fn is_docker_connected(&self) -> bool {
         self.docker_connected.load(Ordering::Relaxed)
     }
-
-    pub fn set_docker_connected(&self, connected: bool) {
-        self.docker_connected.store(connected, Ordering::Relaxed);
-    }
 }
