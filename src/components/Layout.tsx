@@ -16,10 +16,10 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
   }, []);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Header with drag region */}
       <header
-        className="sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-3"
+        className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-3"
         data-tauri-drag-region
       >
         <div className="flex items-center gap-3" data-tauri-drag-region>
