@@ -95,6 +95,19 @@ export async function pullImage(image: string): Promise<void> {
   return invoke("pull_image", { image });
 }
 
+// ── Auto-start commands ─────────────────────────────────────────────
+
+export async function setAutoStart(
+  id: string,
+  autoStart: boolean
+): Promise<void> {
+  return invoke("set_auto_start", { id, autoStart });
+}
+
+export async function autoStartBots(): Promise<string[]> {
+  return invoke<string[]>("auto_start_bots");
+}
+
 // ── Resource & config commands ──────────────────────────────────────
 
 export async function updateEnvVars(

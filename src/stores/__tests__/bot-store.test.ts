@@ -16,6 +16,7 @@ const makeBotWithStatus = (
   network_mode: "none" as const,
   env_vars: [],
   port_mappings: [],
+  auto_start: false,
   status: { type: status },
 });
 
@@ -317,6 +318,32 @@ describe("bot-store", () => {
       expect(mockedInvoke).toHaveBeenCalledWith("update_env_vars", {
         id: "bot-1",
         envVars: vars,
+      });
+    });
+  });
+
+  describe("setAutoStart", () => {
+    it("invokes set_auto_start and refreshes", async () => {
+      mockedInvoke.mockResolvedValueOnce(undefined); // set_auto_start
+      mockedInvoke.mockResolvedValueOnce([]); // list_bots
+
+      await useBotStore.getState().setAutoStart("bot-1", true);
+
+      expect(mockedInvoke).toHaveBeenCalledWith("set_auto_start", {
+        id: "bot-1",
+        autoStart: true,
+      });
+    });
+
+    it("can disable auto-start", async () => {
+      mockedInvoke.mockResolvedValueOnce(undefined); // set_auto_start
+      mockedInvoke.mockResolvedValueOnce([]); // list_bots
+
+      await useBotStore.getState().setAutoStart("bot-1", false);
+
+      expect(mockedInvoke).toHaveBeenCalledWith("set_auto_start", {
+        id: "bot-1",
+        autoStart: false,
       });
     });
   });

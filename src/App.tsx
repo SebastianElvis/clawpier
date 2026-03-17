@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useBotStore } from "./stores/bot-store";
+import { useToastStore } from "./stores/toast-store";
+import { autoStartBots } from "./lib/tauri";
 import { useBotEvents } from "./hooks/use-bot-events";
 import { useZoom } from "./hooks/use-zoom";
 import { Layout } from "./components/Layout";
@@ -44,14 +46,29 @@ function App() {
   // Zoom in/out with Cmd+=/Cmd+-/Cmd+0
   useZoom();
 
-  // Initial check on mount: Docker → Image → fetch bots
+  // Initial check on mount: Docker → Image → fetch bots → auto-start
   useEffect(() => {
+    const toast = useToastStore.getState().addToast;
     const init = async () => {
       const dockerOk = await checkDocker();
       if (dockerOk) {
         const imageOk = await checkImage();
         if (imageOk) {
           await fetchBots();
+          // Auto-start bots configured with auto_start: true
+          autoStartBots().then((errors) => {
+            if (errors.length > 0) {
+              for (const err of errors) {
+                toast({
+                  type: "error",
+                  title: "Auto-start failed",
+                  description: err,
+                });
+              }
+            }
+            // Refresh bot list to reflect newly started bots
+            fetchBots();
+          });
         }
       }
     };

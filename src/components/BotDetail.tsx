@@ -491,6 +491,7 @@ function DockerTab({
     updateEnvVars,
     setWorkspacePath,
     restartBot,
+    setAutoStart,
   } = useBotStore();
 
   const [saving, setSaving] = useState(false);
@@ -628,6 +629,37 @@ function DockerTab({
           {saveError}
         </p>
       )}
+
+      {/* Auto-start on launch */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-700">
+          Start on Launch
+        </h3>
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+          <div>
+            <p className="text-xs font-medium text-gray-700">
+              Auto-start this bot
+            </p>
+            <p className="text-[11px] text-gray-400">
+              Automatically start this bot when ClawPier launches
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={bot.auto_start}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+              bot.auto_start ? "bg-blue-600" : "bg-gray-200"
+            }`}
+            onClick={() => setAutoStart(bot.id, !bot.auto_start)}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+                bot.auto_start ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
 
       {/* Resource Limits */}
       <ResourceLimitsEditor

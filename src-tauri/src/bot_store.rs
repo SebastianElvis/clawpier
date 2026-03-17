@@ -253,6 +253,25 @@ impl BotStore {
         self.save()
     }
 
+    pub fn set_auto_start(&mut self, id: &str, auto_start: bool) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.auto_start = auto_start;
+        self.save()
+    }
+
+    pub fn get_auto_start_bots(&self) -> Vec<BotProfile> {
+        self.bots
+            .iter()
+            .filter(|b| b.auto_start)
+            .cloned()
+            .collect()
+    }
+
     /// Import bots, skipping any that already exist by ID.
     pub fn import_bots(&mut self, bots: Vec<BotProfile>) -> Result<(), AppError> {
         let existing_ids: std::collections::HashSet<String> =
@@ -504,6 +523,45 @@ mod tests {
     }
 
     #[test]
+    fn set_auto_start() {
+        let (mut store, _dir) = temp_store();
+        let bot = BotProfile::new("AutoBot".into(), None);
+        let id = bot.id.clone();
+        store.add(bot).unwrap();
+
+        assert!(!store.get_by_id(&id).unwrap().auto_start);
+
+        store.set_auto_start(&id, true).unwrap();
+        assert!(store.get_by_id(&id).unwrap().auto_start);
+
+        store.set_auto_start(&id, false).unwrap();
+        assert!(!store.get_by_id(&id).unwrap().auto_start);
+    }
+
+    #[test]
+    fn set_auto_start_nonexistent_bot() {
+        let (mut store, _dir) = temp_store();
+        assert!(store.set_auto_start("ghost", true).is_err());
+    }
+
+    #[test]
+    fn get_auto_start_bots() {
+        let (mut store, _dir) = temp_store();
+        let bot1 = BotProfile::new("Bot1".into(), None);
+        let bot2 = BotProfile::new("Bot2".into(), None);
+        let id1 = bot1.id.clone();
+        store.add(bot1).unwrap();
+        store.add(bot2).unwrap();
+
+        assert!(store.get_auto_start_bots().is_empty());
+
+        store.set_auto_start(&id1, true).unwrap();
+        let auto_bots = store.get_auto_start_bots();
+        assert_eq!(auto_bots.len(), 1);
+        assert_eq!(auto_bots[0].id, id1);
+    }
+
+    #[test]
     fn get_bot_ids() {
         let (mut store, _dir) = temp_store();
         store.add(BotProfile::new("A".into(), None)).unwrap();
@@ -652,6 +710,7 @@ mod tests {
             memory_limit: None,
             network_mode: NetworkMode::Bridge,
             port_mappings: Vec::new(),
+            auto_start: false,
         };
         let new_bot = BotProfile::new("NewBot".into(), None);
         let new_id = new_bot.id.clone();
