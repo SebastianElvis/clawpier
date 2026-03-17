@@ -99,6 +99,7 @@ describe("filterBots", () => {
       network_mode: "none",
       env_vars: [],
       port_mappings: [],
+      auto_start: false,
       status: { type: "Running" },
     },
     {
@@ -108,6 +109,7 @@ describe("filterBots", () => {
       network_mode: "none",
       env_vars: [],
       port_mappings: [],
+      auto_start: false,
       status: { type: "Stopped" },
     },
     {
@@ -117,6 +119,7 @@ describe("filterBots", () => {
       network_mode: "none",
       env_vars: [],
       port_mappings: [],
+      auto_start: false,
       status: { type: "Running" },
     },
     {
@@ -126,6 +129,7 @@ describe("filterBots", () => {
       network_mode: "none",
       env_vars: [],
       port_mappings: [],
+      auto_start: false,
       status: { type: "Error", message: "Something went wrong" },
     },
   ];
