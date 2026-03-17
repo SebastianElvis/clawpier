@@ -17,6 +17,7 @@ import {
 import { open } from "@tauri-apps/plugin-dialog";
 import type { NetworkMode } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
+import { FocusTrap } from "./FocusTrap";
 import * as api from "../lib/tauri";
 
 interface NewBotSheetProps {
@@ -167,6 +168,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <FocusTrap>
       <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
@@ -405,6 +407,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
           </div>
         </form>
       </div>
+      </FocusTrap>
     </div>
   );
 }

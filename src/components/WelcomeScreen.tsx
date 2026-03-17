@@ -1,4 +1,5 @@
 import { Bot, Shield, Box } from "lucide-react";
+import { FocusTrap } from "./FocusTrap";
 
 interface WelcomeScreenProps {
   onDismiss: () => void;
@@ -7,6 +8,7 @@ interface WelcomeScreenProps {
 export function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <FocusTrap>
       <div className="w-full max-w-lg rounded-xl bg-white p-8 shadow-xl">
         <div className="flex justify-center">
           <div className="rounded-2xl bg-blue-50 p-4">
@@ -56,6 +58,7 @@ export function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
           Get Started
         </button>
       </div>
+      </FocusTrap>
     </div>
   );
 }

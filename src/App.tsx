@@ -1,8 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useBotStore } from "./stores/bot-store";
 import { useToastStore } from "./stores/toast-store";
 import { autoStartBots } from "./lib/tauri";
 import { useBotEvents } from "./hooks/use-bot-events";
+import { useStatusNotifications } from "./hooks/use-status-notifications";
+import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useZoom } from "./hooks/use-zoom";
 import { Layout } from "./components/Layout";
 import { BotList } from "./components/BotList";
@@ -43,8 +45,43 @@ function App() {
   // Subscribe to real-time status updates
   useBotEvents();
 
+  // Subscribe to status transition notifications (crash/stop alerts)
+  useStatusNotifications();
+
   // Zoom in/out with Cmd+=/Cmd+-/Cmd+0
   useZoom();
+
+  // Tab change callback ref — BotDetail registers its setActiveTab here
+  const tabChangeRef = useRef<((tab: string) => void) | null>(null);
+
+  const handleTabChange = useCallback((tab: string) => {
+    tabChangeRef.current?.(tab);
+  }, []);
+
+  // Find selected bot for keyboard shortcuts
+  const selectedBotForShortcuts = selectedBotId
+    ? bots.find((b) => b.id === selectedBotId)
+    : null;
+
+  const { startBot, stopBot, restartBot, actionInProgress } = useBotStore();
+
+  // Keyboard shortcuts for bot detail navigation and actions
+  useKeyboardShortcuts({
+    selectedBotId,
+    isRunning: selectedBotForShortcuts?.status.type === "Running",
+    isLoading: selectedBotId ? actionInProgress.has(selectedBotId) : false,
+    onBack: useCallback(() => selectBot(null), [selectBot]),
+    onTabChange: handleTabChange,
+    onStartBot: useCallback(() => {
+      if (selectedBotId) startBot(selectedBotId);
+    }, [selectedBotId, startBot]),
+    onStopBot: useCallback(() => {
+      if (selectedBotId) stopBot(selectedBotId);
+    }, [selectedBotId, stopBot]),
+    onRestartBot: useCallback(() => {
+      if (selectedBotId) restartBot(selectedBotId);
+    }, [selectedBotId, restartBot]),
+  });
 
   // Initial check on mount: Docker → Image → fetch bots → auto-start
   useEffect(() => {
@@ -152,6 +189,7 @@ function App() {
               <BotDetail
                 bot={selectedBot}
                 onBack={() => selectBot(null)}
+                tabChangeRef={tabChangeRef}
               />
             </ErrorBoundary>
           </div>

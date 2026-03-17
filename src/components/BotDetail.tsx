@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type MutableRefObject } from "react";
 import {
   ArrowLeft,
   Play,
@@ -48,9 +48,10 @@ type Tab = "dashboard" | "chat" | "terminal" | "files" | "docker";
 interface BotDetailProps {
   bot: BotWithStatus;
   onBack: () => void;
+  tabChangeRef?: MutableRefObject<((tab: string) => void) | null>;
 }
 
-export function BotDetail({ bot, onBack }: BotDetailProps) {
+export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
   const { startBot, stopBot, restartBot, actionInProgress } =
     useBotStore();
   const [activeTab, setActiveTabState] = useState<Tab>(() => {
@@ -64,6 +65,22 @@ export function BotDetail({ bot, onBack }: BotDetailProps) {
     setActiveTabState(tab);
     saveWindowState({ activeTab: tab });
   }, []);
+
+  // Register tab change callback for keyboard shortcuts
+  useEffect(() => {
+    if (tabChangeRef) {
+      tabChangeRef.current = (tab: string) => {
+        const validTabs: Tab[] = ["dashboard", "chat", "terminal", "files", "docker"];
+        if (validTabs.includes(tab as Tab)) {
+          setActiveTab(tab as Tab);
+        }
+      };
+      return () => {
+        tabChangeRef.current = null;
+      };
+    }
+  }, [tabChangeRef, setActiveTab]);
+
   const [error, setError] = useState<string | null>(null);
 
   const isRunning = bot.status.type === "Running";

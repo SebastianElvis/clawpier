@@ -94,3 +94,10 @@ export interface SystemResources {
   cpu_cores: number;
   memory_bytes: number;
 }
+
+export interface StatusChangedEvent {
+  bot_id: string;
+  bot_name: string;
+  from: string;
+  to: string;
+}
