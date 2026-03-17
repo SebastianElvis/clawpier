@@ -12,6 +12,7 @@ import { WelcomeScreen } from "./components/WelcomeScreen";
 import { ToastContainer } from "./components/Toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DockerConnectionBanner } from "./components/DockerConnectionBanner";
+import { loadWindowState, saveWindowState } from "./lib/window-state";
 
 const WELCOME_KEY = "clawpier-welcome-dismissed";
 
@@ -25,10 +26,17 @@ function App() {
     bots,
   } = useBotStore();
   const [showNewBot, setShowNewBot] = useState(false);
-  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(
+    () => loadWindowState().selectedBotId ?? null
+  );
   const [showWelcome, setShowWelcome] = useState(
     () => !localStorage.getItem(WELCOME_KEY)
   );
+
+  const selectBot = useCallback((id: string | null) => {
+    setSelectedBotId(id);
+    saveWindowState({ selectedBotId: id ?? undefined });
+  }, []);
 
   // Subscribe to real-time status updates
   useBotEvents();
@@ -111,7 +119,7 @@ function App() {
 
   // If selected bot was deleted, go back to list
   if (selectedBotId && !selectedBot) {
-    setSelectedBotId(null);
+    selectBot(null);
   }
 
   return (
@@ -122,11 +130,11 @@ function App() {
             <DockerConnectionBanner />
             <ErrorBoundary
               fallbackTitle="Bot detail view error"
-              onReset={() => setSelectedBotId(null)}
+              onReset={() => selectBot(null)}
             >
               <BotDetail
                 bot={selectedBot}
-                onBack={() => setSelectedBotId(null)}
+                onBack={() => selectBot(null)}
               />
             </ErrorBoundary>
           </div>
@@ -135,7 +143,7 @@ function App() {
             <DockerConnectionBanner />
             <BotList
               onCreateBot={() => setShowNewBot(true)}
-              onSelectBot={setSelectedBotId}
+              onSelectBot={selectBot}
             />
           </Layout>
         )}

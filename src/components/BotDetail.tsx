@@ -41,6 +41,7 @@ import { ChatTab } from "./ChatTab";
 import { useAutoRestart } from "../hooks/use-auto-restart";
 import { useRestartProgress } from "../hooks/use-restart-progress";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { loadWindowState, saveWindowState } from "../lib/window-state";
 
 type Tab = "dashboard" | "chat" | "terminal" | "files" | "docker";
 
@@ -52,7 +53,17 @@ interface BotDetailProps {
 export function BotDetail({ bot, onBack }: BotDetailProps) {
   const { startBot, stopBot, restartBot, actionInProgress } =
     useBotStore();
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeTab, setActiveTabState] = useState<Tab>(() => {
+    const saved = loadWindowState().activeTab;
+    const validTabs: Tab[] = ["dashboard", "chat", "terminal", "files", "docker"];
+    if (saved && validTabs.includes(saved as Tab)) return saved as Tab;
+    return "dashboard";
+  });
+
+  const setActiveTab = useCallback((tab: Tab) => {
+    setActiveTabState(tab);
+    saveWindowState({ activeTab: tab });
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   const isRunning = bot.status.type === "Running";
@@ -359,8 +370,22 @@ function LogPanel({
   tail: number;
   onTailChange: (tail: number) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [panelHeight, setPanelHeight] = useState(DEFAULT_PANEL_HEIGHT);
+  const [isOpen, setIsOpenState] = useState(() => {
+    return loadWindowState().logPanelOpen ?? false;
+  });
+  const [panelHeight, setPanelHeightState] = useState(() => {
+    return loadWindowState().logPanelHeight ?? DEFAULT_PANEL_HEIGHT;
+  });
+
+  const setIsOpen = useCallback((open: boolean) => {
+    setIsOpenState(open);
+    saveWindowState({ logPanelOpen: open });
+  }, []);
+
+  const setPanelHeight = useCallback((height: number) => {
+    setPanelHeightState(height);
+    saveWindowState({ logPanelHeight: height });
+  }, []);
   const panelRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
@@ -391,7 +416,7 @@ function LogPanel({
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, [panelHeight]);
+  }, [panelHeight, setPanelHeight]);
 
   return (
     <div ref={panelRef} className="shrink-0 flex flex-col" style={isOpen ? { height: panelHeight } : undefined}>
@@ -414,7 +439,7 @@ function LogPanel({
             ? "border-blue-600 text-blue-600"
             : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
         }`}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => setIsOpen(!isOpen)}
       >
         <ScrollText className="h-3.5 w-3.5" />
         Logs
