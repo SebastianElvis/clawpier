@@ -385,6 +385,38 @@ pub async fn toggle_network(
 }
 
 #[tauri::command]
+pub async fn set_auto_start(
+    state: State<'_, AppState>,
+    id: String,
+    auto_start: bool,
+) -> Result<(), AppError> {
+    let mut store = state.store.lock().await;
+    store.set_auto_start(&id, auto_start)
+}
+
+#[tauri::command]
+pub async fn auto_start_bots(state: State<'_, AppState>) -> Result<Vec<String>, AppError> {
+    let store = state.store.lock().await;
+    let bots = store.get_auto_start_bots();
+    drop(store);
+
+    let mut errors: Vec<String> = Vec::new();
+
+    for (i, bot) in bots.iter().enumerate() {
+        if i > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+
+        let docker = state.docker.lock().await;
+        if let Err(e) = docker.start_bot(bot).await {
+            errors.push(format!("{}: {}", bot.name, e));
+        }
+    }
+
+    Ok(errors)
+}
+
+#[tauri::command]
 pub async fn set_workspace_path(
     state: State<'_, AppState>,
     id: String,

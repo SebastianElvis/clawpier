@@ -22,6 +22,7 @@ export interface BotProfile {
   cpu_limit?: number | null;
   memory_limit?: number | null;
   port_mappings: PortMapping[];
+  auto_start: boolean;
 }
 
 export type BotStatus =

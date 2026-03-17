@@ -62,6 +62,9 @@ pub struct BotProfile {
     /// Port mappings (container port → host port).
     #[serde(default)]
     pub port_mappings: Vec<PortMapping>,
+    /// Whether to auto-start this bot when the app launches.
+    #[serde(default)]
+    pub auto_start: bool,
 }
 
 impl BotProfile {
@@ -78,6 +81,7 @@ impl BotProfile {
             memory_limit: None,
             network_mode: NetworkMode::Bridge,
             port_mappings: Vec::new(),
+            auto_start: false,
         }
     }
 
@@ -443,6 +447,26 @@ mod tests {
         );
         assert_eq!(restored.port_mappings.len(), 2);
         assert_eq!(restored.env_vars.len(), 1);
+    }
+
+    #[test]
+    fn auto_start_defaults_false() {
+        let bot = BotProfile::new("AutoBot".into(), None);
+        assert!(!bot.auto_start);
+
+        let json = serde_json::to_string(&bot).unwrap();
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+        assert!(!restored.auto_start);
+    }
+
+    #[test]
+    fn auto_start_roundtrip() {
+        let mut bot = BotProfile::new("AutoBot".into(), None);
+        bot.auto_start = true;
+
+        let json = serde_json::to_string(&bot).unwrap();
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+        assert!(restored.auto_start);
     }
 
     #[test]

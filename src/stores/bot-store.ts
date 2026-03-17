@@ -36,6 +36,7 @@ interface BotStore {
   setWorkspacePath: (id: string, workspacePath: string | null) => Promise<void>;
   updateResourceLimits: (id: string, cpuLimit: number | null, memoryLimit: number | null) => Promise<void>;
   updatePortMappings: (id: string, portMappings: PortMapping[]) => Promise<void>;
+  setAutoStart: (id: string, autoStart: boolean) => Promise<void>;
 }
 
 export const useBotStore = create<BotStore>((set, get) => ({
@@ -231,6 +232,11 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   updatePortMappings: async (id, portMappings) => {
     await api.updatePortMappings(id, portMappings);
+    await get().fetchBots();
+  },
+
+  setAutoStart: async (id, autoStart) => {
+    await api.setAutoStart(id, autoStart);
     await get().fetchBots();
   },
 }));
