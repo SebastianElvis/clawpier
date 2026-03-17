@@ -31,44 +31,44 @@ export function BotListHeader({
   const isFiltered = searchQuery !== "" || statusFilter !== "all";
 
   return (
-    <div className="mb-4 space-y-3">
-      {/* Search input */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="Search bots..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              onSearchChange("");
-              inputRef.current?.blur();
-            }
-          }}
-          className="w-full rounded-lg border border-gray-200 bg-white py-1.5 pl-8 pr-8 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-        />
-        {searchQuery && (
-          <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
-            onClick={() => {
-              onSearchChange("");
-              inputRef.current?.focus();
+    <div className="sticky top-0 z-10 -mx-6 mb-3 space-y-2 bg-white px-6 pb-2 pt-1">
+      {/* Search + filters row */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search bots..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                onSearchChange("");
+                inputRef.current?.blur();
+              }
             }}
-            aria-label="Clear search"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
+            className="w-full rounded-md border border-gray-200 bg-white py-1 pl-7 pr-7 text-xs text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+          />
+          {searchQuery && (
+            <button
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                onSearchChange("");
+                inputRef.current?.focus();
+              }}
+              aria-label="Clear search"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
 
-      {/* Status filter pills */}
-      <div className="flex items-center gap-1.5">
+        {/* Status filter pills */}
         {filterOptions.map((option) => (
           <button
             key={option.value}
-            className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
               statusFilter === option.value
                 ? "bg-blue-600 text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -81,10 +81,10 @@ export function BotListHeader({
 
         {/* Filtered count */}
         {totalCount > 0 && (
-          <span className="ml-auto text-xs text-gray-400">
+          <span className="shrink-0 text-[11px] text-gray-400">
             {isFiltered
-              ? `${filteredCount} of ${totalCount} bot${totalCount !== 1 ? "s" : ""}`
-              : `${totalCount} bot${totalCount !== 1 ? "s" : ""}`}
+              ? `${filteredCount}/${totalCount}`
+              : `${totalCount}`}
           </span>
         )}
       </div>

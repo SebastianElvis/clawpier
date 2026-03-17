@@ -71,22 +71,22 @@ describe("BotListHeader", () => {
 
   it("shows total count when not filtered", () => {
     renderHeader({ filteredCount: 5, totalCount: 5 });
-    expect(screen.getByText("5 bots")).toBeDefined();
+    expect(screen.getByText("5")).toBeDefined();
   });
 
   it("shows filtered count when search is active", () => {
     renderHeader({ searchQuery: "test", filteredCount: 2, totalCount: 5 });
-    expect(screen.getByText("2 of 5 bots")).toBeDefined();
+    expect(screen.getByText("2/5")).toBeDefined();
   });
 
   it("shows filtered count when status filter is active", () => {
     renderHeader({ statusFilter: "running", filteredCount: 3, totalCount: 10 });
-    expect(screen.getByText("3 of 10 bots")).toBeDefined();
+    expect(screen.getByText("3/10")).toBeDefined();
   });
 
-  it("shows singular 'bot' for count of 1", () => {
+  it("shows singular count for 1", () => {
     renderHeader({ filteredCount: 1, totalCount: 1 });
-    expect(screen.getByText("1 bot")).toBeDefined();
+    expect(screen.getByText("1")).toBeDefined();
   });
 });
 
