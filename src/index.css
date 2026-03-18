@@ -36,46 +36,47 @@
   background-color: var(--bg-primary);
 }
 
+/* macOS-native neutral dark palette */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-primary: #1a1a2e;
-    --bg-surface: #242438;
-    --bg-elevated: #2d2d44;
-    --bg-hover: #333350;
-    --bg-active: #3d3d5c;
-    --bg-input: #2d2d44;
+    --bg-primary: #1c1c1e;
+    --bg-surface: #2c2c2e;
+    --bg-elevated: #3a3a3c;
+    --bg-hover: #3a3a3c;
+    --bg-active: #48484a;
+    --bg-input: #2c2c2e;
 
-    --text-primary: #f0f0f5;
-    --text-secondary: #a0a0b8;
-    --text-tertiary: #6b6b85;
-    --text-inverse: #1a1a2e;
+    --text-primary: #f5f5f7;
+    --text-secondary: #98989d;
+    --text-tertiary: #636366;
+    --text-inverse: #1c1c1e;
 
-    --border-primary: #3d3d5c;
-    --border-secondary: #333350;
+    --border-primary: #38383a;
+    --border-secondary: #2c2c2e;
 
-    --scrollbar-thumb: #4a4a66;
-    --scrollbar-hover: #5c5c7a;
+    --scrollbar-thumb: #48484a;
+    --scrollbar-hover: #636366;
   }
 }
 
 [data-theme="dark"] {
-  --bg-primary: #1a1a2e;
-  --bg-surface: #242438;
-  --bg-elevated: #2d2d44;
-  --bg-hover: #333350;
-  --bg-active: #3d3d5c;
-  --bg-input: #2d2d44;
+  --bg-primary: #1c1c1e;
+  --bg-surface: #2c2c2e;
+  --bg-elevated: #3a3a3c;
+  --bg-hover: #3a3a3c;
+  --bg-active: #48484a;
+  --bg-input: #2c2c2e;
 
-  --text-primary: #f0f0f5;
-  --text-secondary: #a0a0b8;
-  --text-tertiary: #6b6b85;
-  --text-inverse: #1a1a2e;
+  --text-primary: #f5f5f7;
+  --text-secondary: #98989d;
+  --text-tertiary: #636366;
+  --text-inverse: #1c1c1e;
 
-  --border-primary: #3d3d5c;
-  --border-secondary: #333350;
+  --border-primary: #38383a;
+  --border-secondary: #2c2c2e;
 
-  --scrollbar-thumb: #4a4a66;
-  --scrollbar-hover: #5c5c7a;
+  --scrollbar-thumb: #48484a;
+  --scrollbar-hover: #636366;
 }
 
 [data-theme="light"] {
