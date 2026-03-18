@@ -23,25 +23,49 @@ ClawPier gives you a visual, approachable way to run OpenClaw AI agents — no t
 
 ### From release (recommended)
 
-Download the latest `.dmg` from [Releases](https://github.com/SebastianElvis/clawpier/releases), open it, and drag ClawPier to Applications.
+Download the latest build for your platform from [Releases](https://github.com/SebastianElvis/clawpier/releases):
+
+| Platform | Format | Notes |
+|----------|--------|-------|
+| macOS (Apple Silicon) | `.dmg` | Open, drag to Applications |
+| macOS (Intel) | `.dmg` | Open, drag to Applications |
+| Linux (x86_64) | `.AppImage` | `chmod +x` then run, or install the `.deb` |
+| Windows (x86_64) | `.exe` installer | Run the NSIS installer, or use the `.msi` |
+
+**Linux AppImage:**
+
+```bash
+chmod +x ClawPier_*.AppImage
+./ClawPier_*.AppImage
+```
+
+**Linux .deb (Debian/Ubuntu):**
+
+```bash
+sudo dpkg -i ClawPier_*.deb
+```
 
 ### Prerequisites
 
-- **macOS** (primary target)
-- **Docker Desktop** — must be installed and running
+- **macOS / Linux / Windows**
+- **Docker** — must be installed and running (Docker Desktop on macOS/Windows, or Docker Engine on Linux)
 - OpenClaw Docker image (ClawPier will prompt you to pull it on first launch)
 
 ## Build from source
 
 Requires Rust toolchain (`rustup`), Node.js >= 18, and pnpm.
 
+On Linux, install system dependencies first:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+```
+
 ```bash
 pnpm install          # Install frontend dependencies
 pnpm tauri dev        # Run in development mode (hot-reload)
-pnpm tauri build      # Build release .app + DMG
+pnpm tauri build      # Build release binary + installers
 ```
-
-The built app is at `src-tauri/target/release/bundle/macos/ClawPier.app`.
 
 ## How it works
 
