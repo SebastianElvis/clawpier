@@ -50,6 +50,16 @@ button,
   background: #9ca3af;
 }
 
+/* Gentle status pulse for running bots */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
 /* Toast slide-in animation */
 @keyframes toast-slide-in {
   from {

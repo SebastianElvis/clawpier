@@ -19,7 +19,7 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header with drag region */}
       <header
-        className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 py-3"
+        className="flex shrink-0 items-center justify-between bg-white px-6 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
         data-tauri-drag-region
       >
         <div className="flex items-center gap-3" data-tauri-drag-region>
@@ -47,6 +47,9 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
           >
             <Plus className="h-3.5 w-3.5" />
             New Bot
+            <kbd className="ml-1 rounded bg-blue-500/30 px-1 py-0.5 text-[10px] font-normal text-blue-100">
+              &#8984;N
+            </kbd>
           </button>
         )}
       </header>

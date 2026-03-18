@@ -73,7 +73,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
   return (
     <>
-      <div className="group relative rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="group relative rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-150 hover:shadow-md">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
