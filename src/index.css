@@ -195,6 +195,21 @@ button,
   background: var(--scrollbar-hover);
 }
 
+/* Status pulse animation */
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
 /* Toast slide-in animation */
 @keyframes toast-slide-in {
   from {
@@ -209,4 +224,12 @@ button,
 
 .toast-enter {
   animation: toast-slide-in 0.2s ease-out;
+}
+
+/* Prose (markdown) table borders for dark mode */
+.prose :where(thead):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
+  border-bottom-color: var(--border-primary);
+}
+.prose :where(tbody tr):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
+  border-bottom-color: var(--border-secondary);
 }

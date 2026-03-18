@@ -14,8 +14,8 @@ export function DockerError() {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center px-6">
-      <div className="rounded-2xl bg-red-50 p-5">
-        <Container className="h-12 w-12 text-red-400" />
+      <div className="rounded-2xl bg-[var(--badge-red-bg)] p-5">
+        <Container className="h-12 w-12 text-[var(--badge-red-text)]" />
       </div>
       <h1 className="mt-5 text-xl font-bold text-[var(--text-primary)]">
         Docker Not Detected

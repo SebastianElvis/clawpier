@@ -118,7 +118,7 @@ export function PortMappingEditor({
                 <option value="udp">UDP</option>
               </select>
               <button
-                className="rounded p-1 text-[var(--text-tertiary)] hover:bg-red-50 hover:text-red-600"
+                className="rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--badge-red-bg)] hover:text-[var(--badge-red-text)]"
                 onClick={() => removeMapping(i)}
               >
                 <Trash2 className="h-3 w-3" />

@@ -75,7 +75,7 @@ export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
               onChange={(e) => handleChange(i, "value", e.target.value)}
             />
             <button
-              className="rounded p-1 text-[var(--text-tertiary)] hover:bg-red-50 hover:text-red-500"
+              className="rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--badge-red-bg)] hover:text-[var(--badge-red-text)]"
               onClick={() => handleRemove(i)}
             >
               <Trash2 className="h-3.5 w-3.5" />

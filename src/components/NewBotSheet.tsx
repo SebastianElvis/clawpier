@@ -376,7 +376,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
           {/* Error */}
           {error && (
-            <p className="mt-3 text-xs text-red-600 bg-red-50 rounded px-2 py-1">
+            <p className="mt-3 text-xs text-[var(--badge-red-text)] bg-[var(--badge-red-bg)] rounded px-2 py-1">
               {error}
             </p>
           )}

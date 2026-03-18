@@ -44,7 +44,7 @@ export function ImageMissing() {
       </p>
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mt-4 flex items-start gap-2 rounded-lg bg-[var(--badge-red-bg)] px-4 py-3 text-sm text-[var(--badge-red-text)]">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -52,7 +52,7 @@ export function ImageMissing() {
 
       <div className="mt-6">
         {done ? (
-          <div className="inline-flex items-center gap-2 text-sm font-medium text-green-600">
+          <div className="inline-flex items-center gap-2 text-sm font-medium text-[var(--badge-green-text)]">
             <CheckCircle2 className="h-5 w-5" />
             Image pulled successfully!
           </div>

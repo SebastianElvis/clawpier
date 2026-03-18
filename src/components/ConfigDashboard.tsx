@@ -69,7 +69,7 @@ export function ConfigDashboard({
 
   if (error) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-red-500">
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-[var(--badge-red-text)]">
         <p>Failed to load config: {error}</p>
         <button
           className="rounded-md bg-[var(--bg-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
@@ -179,13 +179,13 @@ export function ConfigDashboard({
         </div>
         <div className="flex items-center gap-2">
           <button
-            className="text-[11px] text-amber-700 hover:text-amber-900"
+            className="text-[11px] text-[var(--badge-amber-text)] hover:opacity-80"
             onClick={() => setShowRaw(true)}
           >
             Raw
           </button>
           <button
-            className="inline-flex items-center rounded-md bg-amber-100 p-1 text-amber-700 hover:bg-amber-200"
+            className="inline-flex items-center rounded-md bg-[var(--badge-amber-bg)] p-1 text-[var(--badge-amber-text)] hover:opacity-80"
             onClick={fetchConfig}
             title="Refresh"
           >
@@ -406,11 +406,11 @@ function ChannelsCard({
                 Telegram
               </span>
               {tgEnabled ? (
-                <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-medium text-green-700">
+                <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-[var(--badge-green-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-green-text)]">
                   <Check className="h-2 w-2" /> on
                 </span>
               ) : (
-                <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-600">
+                <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-[var(--badge-red-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-red-text)]">
                   <X className="h-2 w-2" /> off
                 </span>
               )}
@@ -476,11 +476,11 @@ function ChannelsCard({
                   {name}
                 </span>
                 {enabled ? (
-                  <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-medium text-green-700">
+                  <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-[var(--badge-green-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-green-text)]">
                     <Check className="h-2 w-2" /> on
                   </span>
                 ) : (
-                  <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-600">
+                  <span className="ml-auto inline-flex items-center gap-0.5 rounded-full bg-[var(--badge-red-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-red-text)]">
                     <X className="h-2 w-2" /> off
                   </span>
                 )}

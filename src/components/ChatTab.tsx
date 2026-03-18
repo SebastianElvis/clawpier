@@ -151,7 +151,7 @@ export function ChatTab({ botId }: ChatTabProps) {
                         onClick={(e) => e.stopPropagation()}
                       />
                       <button
-                        className="text-green-600"
+                        className="text-[var(--badge-green-text)]"
                         onClick={(e) => {
                           e.stopPropagation();
                           renameSession(session.id, editName);

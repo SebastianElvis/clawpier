@@ -185,7 +185,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
         {/* Error message */}
         {error && (
-          <p className="mt-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">
+          <p className="mt-2 text-xs text-[var(--badge-red-text)] bg-[var(--badge-red-bg)] rounded px-2 py-1">
             {error}
           </p>
         )}

@@ -294,7 +294,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
 
         {/* Error */}
         {error && (
-          <p className="mt-2 rounded bg-red-50 px-3 py-1.5 text-xs text-red-600">
+          <p className="mt-2 rounded bg-[var(--badge-red-bg)] px-3 py-1.5 text-xs text-[var(--badge-red-text)]">
             {error}
           </p>
         )}
@@ -672,7 +672,7 @@ function DockerTab({
       )}
 
       {saveError && (
-        <p className="rounded bg-red-50 px-3 py-1.5 text-xs text-red-600">
+        <p className="rounded bg-[var(--badge-red-bg)] px-3 py-1.5 text-xs text-[var(--badge-red-text)]">
           {saveError}
         </p>
       )}
@@ -759,7 +759,7 @@ function DockerTab({
                 Change
               </button>
               <button
-                className="inline-flex shrink-0 items-center rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] p-1.5 text-[var(--text-tertiary)] hover:bg-red-50 hover:text-red-600"
+                className="inline-flex shrink-0 items-center rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] p-1.5 text-[var(--text-tertiary)] hover:bg-[var(--badge-red-bg)] hover:text-[var(--badge-red-text)]"
                 onClick={() => setWorkspacePath(bot.id, null)}
                 title="Remove workspace"
               >

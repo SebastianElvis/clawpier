@@ -48,7 +48,7 @@ export function ChatMessageBubble({
           title="Copy message"
         >
           {copied ? (
-            <Check className="h-3 w-3 text-green-600" />
+            <Check className="h-3 w-3 text-[var(--badge-green-text)]" />
           ) : (
             <Copy className="h-3 w-3 text-[var(--text-tertiary)]" />
           )}
@@ -57,7 +57,7 @@ export function ChatMessageBubble({
         {isUser ? (
           <p className="whitespace-pre-wrap text-sm">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none text-sm prose-p:my-1 prose-pre:my-2 prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-code:rounded prose-code:bg-[var(--bg-hover)] prose-code:px-1 prose-code:py-0.5 prose-code:text-[12px] prose-code:text-[var(--text-primary)] prose-code:before:content-none prose-code:after:content-none prose-pre:prose-code:bg-transparent prose-pre:prose-code:text-gray-100 prose-pre:prose-code:p-0">
+          <div className="prose prose-sm max-w-none text-sm text-[var(--text-primary)] prose-headings:text-[var(--text-primary)] prose-strong:text-[var(--text-primary)] prose-a:text-[var(--badge-blue-text)] prose-p:my-1 prose-pre:my-2 prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-code:rounded prose-code:bg-[var(--bg-hover)] prose-code:px-1 prose-code:py-0.5 prose-code:text-[12px] prose-code:text-[var(--text-primary)] prose-code:before:content-none prose-code:after:content-none prose-pre:prose-code:bg-transparent prose-pre:prose-code:text-gray-100 prose-pre:prose-code:p-0 prose-li:text-[var(--text-primary)] prose-th:text-[var(--text-primary)] prose-td:text-[var(--text-secondary)] prose-hr:border-[var(--border-primary)]">
             <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
           </div>
         )}
