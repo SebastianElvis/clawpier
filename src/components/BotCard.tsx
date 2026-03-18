@@ -125,7 +125,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
                 />
                 <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-elevated)] py-1 shadow-lg">
                   <button
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50/50"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-[var(--btn-danger-hover)]"
                     onClick={() => {
                       setShowMenu(false);
                       setShowDelete(true);

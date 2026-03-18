@@ -19,6 +19,9 @@ import {
   Save,
   ChevronUp,
   ChevronDown,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { BotWithStatus, NetworkMode, PortMapping, EnvVar } from "../lib/types";
@@ -42,6 +45,12 @@ import { useAutoRestart } from "../hooks/use-auto-restart";
 import { useRestartProgress } from "../hooks/use-restart-progress";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { loadWindowState, saveWindowState } from "../lib/window-state";
+import {
+  getThemePreference,
+  setThemePreference,
+  applyTheme,
+  type ThemePreference,
+} from "../lib/theme";
 
 type Tab = "dashboard" | "chat" | "terminal" | "files" | "docker";
 
@@ -65,6 +74,19 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
     setActiveTabState(tab);
     saveWindowState({ activeTab: tab });
   }, []);
+
+  // Theme toggle
+  const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
+  const cycleTheme = useCallback(() => {
+    const order: ThemePreference[] = ["system", "light", "dark"];
+    setTheme((prev) => {
+      const next = order[(order.indexOf(prev) + 1) % order.length];
+      setThemePreference(next);
+      applyTheme(next);
+      return next;
+    });
+  }, []);
+  const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   // Register tab change callback for keyboard shortcuts
   useEffect(() => {
@@ -183,11 +205,19 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
             {hasNetwork && <NetworkBadge mode={networkMode} />}
           </div>
 
+          <button
+            className="rounded-lg p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
+            onClick={cycleTheme}
+            title={`Theme: ${theme}`}
+          >
+            <ThemeIcon className="h-3.5 w-3.5" />
+          </button>
+
           {/* Start/Stop/Restart buttons */}
           {isRunning ? (
             <>
               <button
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--btn-warning-bg)] px-3 py-1.5 text-xs font-medium text-[var(--btn-warning-text)] hover:bg-[var(--btn-warning-hover)] disabled:opacity-50"
                 onClick={handleRestart}
                 disabled={isLoading}
                 title="Restart container"

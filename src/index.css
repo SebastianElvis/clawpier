@@ -32,51 +32,67 @@
   --scrollbar-thumb: #d1d5db;
   --scrollbar-hover: #9ca3af;
 
+  /* Semantic button backgrounds */
+  --btn-danger-hover: rgba(239, 68, 68, 0.08);
+  --btn-warning-bg: #fffbeb;
+  --btn-warning-text: #b45309;
+  --btn-warning-hover: #fef3c7;
+
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
 
-/* macOS-native neutral dark palette */
+/* macOS-native dark palette — warm undertone, softer contrast */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg-primary: #1c1c1e;
-    --bg-surface: #2c2c2e;
-    --bg-elevated: #3a3a3c;
-    --bg-hover: #3a3a3c;
-    --bg-active: #48484a;
-    --bg-input: #2c2c2e;
+    --bg-primary: #1e1e20;
+    --bg-surface: #28282a;
+    --bg-elevated: #323234;
+    --bg-hover: #363638;
+    --bg-active: #424244;
+    --bg-input: #303032;
 
-    --text-primary: #f5f5f7;
-    --text-secondary: #98989d;
-    --text-tertiary: #636366;
-    --text-inverse: #1c1c1e;
+    --text-primary: #e8e8ed;
+    --text-secondary: #ababb0;
+    --text-tertiary: #7c7c80;
+    --text-inverse: #1e1e20;
 
-    --border-primary: #38383a;
-    --border-secondary: #2c2c2e;
+    --border-primary: #3a3a3c;
+    --border-secondary: #303032;
+
+    --btn-danger-hover: rgba(239, 68, 68, 0.15);
+    --btn-warning-bg: rgba(245, 158, 11, 0.12);
+    --btn-warning-text: #fbbf24;
+    --btn-warning-hover: rgba(245, 158, 11, 0.2);
 
     --scrollbar-thumb: #48484a;
-    --scrollbar-hover: #636366;
+    --scrollbar-hover: #5a5a5e;
   }
 }
 
 [data-theme="dark"] {
-  --bg-primary: #1c1c1e;
-  --bg-surface: #2c2c2e;
-  --bg-elevated: #3a3a3c;
-  --bg-hover: #3a3a3c;
-  --bg-active: #48484a;
-  --bg-input: #2c2c2e;
+  --bg-primary: #1e1e20;
+  --bg-surface: #28282a;
+  --bg-elevated: #323234;
+  --bg-hover: #363638;
+  --bg-active: #424244;
+  --bg-input: #303032;
 
-  --text-primary: #f5f5f7;
-  --text-secondary: #98989d;
-  --text-tertiary: #636366;
-  --text-inverse: #1c1c1e;
+  --text-primary: #e8e8ed;
+  --text-secondary: #ababb0;
+  --text-tertiary: #7c7c80;
+  --text-inverse: #1e1e20;
 
-  --border-primary: #38383a;
-  --border-secondary: #2c2c2e;
+  --border-primary: #3a3a3c;
+  --border-secondary: #303032;
+
+  --btn-danger-hover: rgba(239, 68, 68, 0.15);
+  --btn-warning-bg: rgba(245, 158, 11, 0.12);
+  --btn-warning-text: #fbbf24;
+  --btn-warning-hover: rgba(245, 158, 11, 0.2);
 
   --scrollbar-thumb: #48484a;
-  --scrollbar-hover: #636366;
+  --scrollbar-hover: #5a5a5e;
 }
 
 [data-theme="light"] {
