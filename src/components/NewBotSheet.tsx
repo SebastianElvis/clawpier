@@ -246,7 +246,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     type="button"
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
                       isActive
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                         : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => applyPreset(preset)}
@@ -333,7 +333,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     type="button"
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
                       isActive
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                        ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                         : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => setNetworkMode(mode.key)}
@@ -349,9 +349,9 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
             {/* Host warning */}
             {networkMode === "host" && (
-              <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
-                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
-                <p className="text-[11px] text-amber-700">
+              <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] px-2.5 py-2">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--badge-amber-text)]" />
+                <p className="text-[11px] text-[var(--badge-amber-text)]">
                   Full access to host network. Only use if you trust this bot.
                 </p>
               </div>

@@ -38,6 +38,21 @@
   --btn-warning-text: #b45309;
   --btn-warning-hover: #fef3c7;
 
+  /* Semantic badge/banner colors */
+  --badge-green-bg: #ecfdf5;
+  --badge-green-text: #047857;
+  --badge-red-bg: #fef2f2;
+  --badge-red-text: #b91c1c;
+  --badge-orange-bg: #fff7ed;
+  --badge-orange-text: #c2410c;
+  --badge-blue-bg: #eff6ff;
+  --badge-blue-text: #1d4ed8;
+  --badge-purple-bg: #faf5ff;
+  --badge-purple-text: #7e22ce;
+  --badge-amber-bg: #fffbeb;
+  --badge-amber-text: #b45309;
+  --badge-amber-border: #fde68a;
+
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
@@ -65,6 +80,20 @@
     --btn-warning-text: #fbbf24;
     --btn-warning-hover: rgba(245, 158, 11, 0.2);
 
+    --badge-green-bg: rgba(16, 185, 129, 0.12);
+    --badge-green-text: #6ee7b7;
+    --badge-red-bg: rgba(239, 68, 68, 0.12);
+    --badge-red-text: #fca5a5;
+    --badge-orange-bg: rgba(249, 115, 22, 0.12);
+    --badge-orange-text: #fdba74;
+    --badge-blue-bg: rgba(59, 130, 246, 0.12);
+    --badge-blue-text: #93c5fd;
+    --badge-purple-bg: rgba(168, 85, 247, 0.12);
+    --badge-purple-text: #d8b4fe;
+    --badge-amber-bg: rgba(245, 158, 11, 0.12);
+    --badge-amber-text: #fcd34d;
+    --badge-amber-border: rgba(245, 158, 11, 0.25);
+
     --scrollbar-thumb: #48484a;
     --scrollbar-hover: #5a5a5e;
   }
@@ -90,6 +119,20 @@
   --btn-warning-bg: rgba(245, 158, 11, 0.12);
   --btn-warning-text: #fbbf24;
   --btn-warning-hover: rgba(245, 158, 11, 0.2);
+
+  --badge-green-bg: rgba(16, 185, 129, 0.12);
+  --badge-green-text: #6ee7b7;
+  --badge-red-bg: rgba(239, 68, 68, 0.12);
+  --badge-red-text: #fca5a5;
+  --badge-orange-bg: rgba(249, 115, 22, 0.12);
+  --badge-orange-text: #fdba74;
+  --badge-blue-bg: rgba(59, 130, 246, 0.12);
+  --badge-blue-text: #93c5fd;
+  --badge-purple-bg: rgba(168, 85, 247, 0.12);
+  --badge-purple-text: #d8b4fe;
+  --badge-amber-bg: rgba(245, 158, 11, 0.12);
+  --badge-amber-text: #fcd34d;
+  --badge-amber-border: rgba(245, 158, 11, 0.25);
 
   --scrollbar-thumb: #48484a;
   --scrollbar-hover: #5a5a5e;

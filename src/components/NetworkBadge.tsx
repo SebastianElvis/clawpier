@@ -25,21 +25,21 @@ function getConfig(mode: NetworkMode) {
     return {
       icon: Wifi,
       label: "Bridge",
-      className: "bg-orange-50 text-orange-700",
+      className: "bg-[var(--badge-orange-bg)] text-[var(--badge-orange-text)]",
     };
   }
   if (mode === "host") {
     return {
       icon: Globe,
       label: "Host",
-      className: "bg-red-50 text-red-700",
+      className: "bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]",
     };
   }
   if (typeof mode === "object" && "custom" in mode) {
     return {
       icon: Network,
       label: mode.custom,
-      className: "bg-purple-50 text-purple-700",
+      className: "bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)]",
     };
   }
   return {

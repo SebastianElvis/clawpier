@@ -126,7 +126,7 @@ export function ChatTab({ botId }: ChatTabProps) {
                   key={session.id}
                   className={`group flex items-center gap-1.5 border-b border-[var(--border-secondary)] px-3 py-2 text-xs cursor-pointer ${
                     currentSessionId === session.id
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                       : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                   }`}
                   onClick={() => {

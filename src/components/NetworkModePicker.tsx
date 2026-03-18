@@ -63,7 +63,7 @@ export function NetworkModePicker({
             key={opt.key}
             className={`rounded-lg border p-2.5 text-left transition-colors ${
               mode === opt.key
-                ? "border-blue-300 bg-blue-50"
+                ? "border-blue-400/50 bg-[var(--badge-blue-bg)]"
                 : "border-[var(--border-primary)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]"
             }`}
             onClick={() => handleModeChange(opt.key)}
@@ -91,9 +91,9 @@ export function NetworkModePicker({
 
       {/* Host mode warning */}
       {mode === "host" && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-          <p className="text-[11px] text-amber-700">
+        <div className="flex items-start gap-2 rounded-lg border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] p-2.5">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--badge-amber-text)]" />
+          <p className="text-[11px] text-[var(--badge-amber-text)]">
             Host mode gives the bot full access to the host network. Only use
             this if you trust the bot completely.
           </p>

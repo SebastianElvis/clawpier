@@ -159,17 +159,17 @@ export function ConfigDashboard({
   return (
     <div className="flex h-full flex-col">
       {/* Pinned header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-primary)] bg-amber-50 px-4 py-1.5">
-        <div className="flex items-center gap-2 text-[11px] text-amber-700">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] px-4 py-1.5">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--badge-amber-text)]">
           <Terminal className="h-3 w-3" />
           <span>
             Run{" "}
-            <code className="rounded bg-amber-100 px-1 py-0.5 font-mono font-medium">
+            <code className="rounded bg-[var(--bg-hover)] px-1 py-0.5 font-mono font-medium">
               openclaw configure
             </code>{" "}
             in{" "}
             <button
-              className="font-medium underline hover:text-amber-900"
+              className="font-medium underline hover:opacity-80"
               onClick={onSwitchToTerminal}
             >
               Terminal
@@ -390,7 +390,7 @@ function ChannelsCard({
         <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
           Channels
         </span>
-        <span className="ml-auto rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium text-blue-600">
+        <span className="ml-auto rounded bg-[var(--badge-blue-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-blue-text)]">
           {channelCount}
         </span>
       </div>

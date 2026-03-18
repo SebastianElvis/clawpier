@@ -80,7 +80,7 @@ export function ResourceLimitsEditor({
               key={preset.label}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
-                  ? "border-blue-300 bg-blue-50 text-blue-700"
+                  ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                   : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
               }`}
               onClick={() => applyPreset(preset)}

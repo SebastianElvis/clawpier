@@ -29,8 +29,8 @@ export function ImageMissing() {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center px-6">
-      <div className="rounded-2xl bg-amber-50 p-5">
-        <Download className="h-12 w-12 text-amber-500" />
+      <div className="rounded-2xl bg-[var(--badge-amber-bg)] p-5">
+        <Download className="h-12 w-12 text-[var(--badge-amber-text)]" />
       </div>
       <h1 className="mt-5 text-xl font-bold text-[var(--text-primary)]">
         OpenClaw Image Not Found

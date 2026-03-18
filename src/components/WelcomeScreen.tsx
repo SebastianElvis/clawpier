@@ -11,7 +11,7 @@ export function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
       <FocusTrap>
       <div className="w-full max-w-lg rounded-xl bg-[var(--bg-elevated)] p-8 shadow-xl">
         <div className="flex justify-center">
-          <div className="rounded-2xl bg-blue-50 p-4">
+          <div className="rounded-2xl bg-[var(--badge-blue-bg)] p-4">
             <Bot className="h-10 w-10 text-blue-600" />
           </div>
         </div>
