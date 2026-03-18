@@ -142,7 +142,7 @@ function App() {
   if (dockerAvailable === null) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-primary)] border-t-blue-600" />
       </div>
     );
   }
@@ -156,7 +156,7 @@ function App() {
   if (imageAvailable === null) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-primary)] border-t-blue-600" />
       </div>
     );
   }
@@ -180,7 +180,7 @@ function App() {
     <>
       <ErrorBoundary fallbackTitle="ClawPier encountered an error">
         {selectedBot ? (
-          <div className="fixed inset-0 flex flex-col overflow-hidden bg-white">
+          <div className="fixed inset-0 flex flex-col overflow-hidden bg-[var(--bg-surface)]">
             <DockerConnectionBanner />
             <ErrorBoundary
               fallbackTitle="Bot detail view error"

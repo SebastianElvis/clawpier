@@ -26,7 +26,7 @@ export function BotList({ onCreateBot, onSelectBot }: BotListProps) {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-40 animate-pulse rounded-xl border border-gray-200 bg-gray-50"
+            className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-primary)]"
           />
         ))}
       </div>
@@ -50,7 +50,7 @@ export function BotList({ onCreateBot, onSelectBot }: BotListProps) {
 
       {filteredBots.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-sm text-gray-500">No bots match your filters.</p>
+          <p className="text-sm text-[var(--text-secondary)]">No bots match your filters.</p>
           <button
             className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
             onClick={() => {
@@ -62,7 +62,7 @@ export function BotList({ onCreateBot, onSelectBot }: BotListProps) {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredBots.map((bot) => (
             <BotCard
               key={bot.id}

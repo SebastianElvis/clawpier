@@ -32,14 +32,14 @@ export function ImageMissing() {
       <div className="rounded-2xl bg-amber-50 p-5">
         <Download className="h-12 w-12 text-amber-500" />
       </div>
-      <h1 className="mt-5 text-xl font-bold text-gray-900">
+      <h1 className="mt-5 text-xl font-bold text-[var(--text-primary)]">
         OpenClaw Image Not Found
       </h1>
-      <p className="mt-2 max-w-md text-center text-sm text-gray-500">
+      <p className="mt-2 max-w-md text-center text-sm text-[var(--text-secondary)]">
         ClawPier needs the OpenClaw Docker image to run bot instances. The image
         will be downloaded from the container registry.
       </p>
-      <p className="mt-1.5 rounded bg-gray-100 px-3 py-1 font-mono text-xs text-gray-600">
+      <p className="mt-1.5 rounded bg-[var(--bg-hover)] px-3 py-1 font-mono text-xs text-[var(--text-secondary)]">
         {DEFAULT_IMAGE}
       </p>
 
@@ -65,7 +65,7 @@ export function ImageMissing() {
             {pulling ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Pulling image…
+                Pulling image...
               </>
             ) : (
               <>
@@ -78,7 +78,7 @@ export function ImageMissing() {
       </div>
 
       {pulling && (
-        <p className="mt-3 text-xs text-gray-400">
+        <p className="mt-3 text-xs text-[var(--text-tertiary)]">
           This may take a few minutes depending on your connection.
         </p>
       )}

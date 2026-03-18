@@ -25,16 +25,16 @@ export function DeleteConfirm({ botName, botId, onClose }: DeleteConfirmProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl bg-[var(--bg-elevated)] p-6 shadow-xl">
         <div className="flex items-start gap-3">
           <div className="rounded-full bg-red-100 p-2">
             <AlertTriangle className="h-5 w-5 text-red-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
               Delete "{botName}"?
             </h3>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
               This will stop the bot if running and permanently remove it. This
               action cannot be undone.
             </p>
@@ -42,7 +42,7 @@ export function DeleteConfirm({ botName, botId, onClose }: DeleteConfirmProps) {
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button
-            className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
             onClick={onClose}
             disabled={deleting}
           >

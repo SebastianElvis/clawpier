@@ -169,12 +169,12 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <FocusTrap>
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+      <div className="w-full max-w-md rounded-xl bg-[var(--bg-elevated)] shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">New Bot</h2>
+        <div className="flex items-center justify-between border-b border-[var(--border-secondary)] px-6 py-4">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">New Bot</h2>
           <button
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -185,11 +185,11 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
         <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-6">
           {/* Name field */}
           <div>
-            <label className="block text-xs font-medium text-gray-700">
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">
               Bot name <span className="text-red-500">*</span>
             </label>
             <input
-              className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-1.5 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               placeholder="e.g., research-assistant"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -204,33 +204,33 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
           {/* Workspace folder */}
           <div className="mt-4">
-            <label className="block text-xs font-medium text-gray-700">
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">
               Workspace folder{" "}
-              <span className="text-gray-400">(optional)</span>
+              <span className="text-[var(--text-tertiary)]">(optional)</span>
             </label>
             <div className="mt-1.5 flex items-center gap-2">
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-700 transition-colors hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-primary)] px-3 py-2 text-xs text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)]"
                 onClick={handlePickFolder}
               >
                 <FolderOpen className="h-3.5 w-3.5" />
                 {workspacePath ? "Change folder" : "Choose folder"}
               </button>
               {workspacePath && (
-                <span className="min-w-0 flex-1 truncate text-xs text-gray-500">
+                <span className="min-w-0 flex-1 truncate text-xs text-[var(--text-secondary)]">
                   {workspacePath}
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
               Mounted read-write at /workspace. Can be changed later in Settings.
             </p>
           </div>
 
           {/* Resource Limits */}
           <div className="mt-5">
-            <label className="block text-xs font-medium text-gray-700">
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">
               Resource limits
             </label>
 
@@ -247,7 +247,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
                       isActive
                         ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => applyPreset(preset)}
                   >
@@ -263,11 +263,11 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
             {/* CPU slider */}
             <div className="mt-3 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                   <Cpu className="h-3 w-3" />
                   CPU
                 </span>
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-xs font-medium text-[var(--text-secondary)]">
                   {`${cpuLimit} core${cpuLimit !== 1 ? "s" : ""}`}
                 </span>
               </div>
@@ -280,7 +280,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                 onChange={(e) => handleCpuSlider(parseFloat(e.target.value))}
                 className="w-full accent-blue-600"
               />
-              <div className="flex justify-between text-[10px] text-gray-400">
+              <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
                 <span>{MIN_CPU} cores</span>
                 <span>{maxCpu} cores</span>
               </div>
@@ -289,11 +289,11 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
             {/* Memory slider */}
             <div className="mt-2 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-gray-600">
+                <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                   <HardDrive className="h-3 w-3" />
                   Memory
                 </span>
-                <span className="text-xs font-medium text-gray-700">
+                <span className="text-xs font-medium text-[var(--text-secondary)]">
                   {formatMemory(memoryLimit)}
                 </span>
               </div>
@@ -308,20 +308,20 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                 }
                 className="w-full accent-emerald-600"
               />
-              <div className="flex justify-between text-[10px] text-gray-400">
+              <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
                 <span>{formatMemory(MIN_MEM)}</span>
                 <span>{formatMemory(maxMem)}</span>
               </div>
             </div>
 
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
               Can be changed later in Settings.
             </p>
           </div>
 
           {/* Network Mode */}
           <div className="mt-5">
-            <label className="block text-xs font-medium text-gray-700">
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">
               Network mode
             </label>
             <div className="mt-1.5 grid grid-cols-4 gap-1.5">
@@ -334,7 +334,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
                       isActive
                         ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => setNetworkMode(mode.key)}
                   >
@@ -360,14 +360,14 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
             {/* Custom network name */}
             {networkMode === "custom" && (
               <input
-                className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs outline-none focus:border-blue-300"
+                className="mt-1.5 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
                 placeholder="Docker network name"
                 value={customNetworkName}
                 onChange={(e) => setCustomNetworkName(e.target.value)}
               />
             )}
 
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
               {networkMode === "none" && "No network access (most secure). "}
               {networkMode === "bridge" && "Default Docker bridge networking. "}
               Can be changed later in Settings.
@@ -385,7 +385,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
           <div className="mt-6 flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
               onClick={onClose}
               disabled={creating}
             >

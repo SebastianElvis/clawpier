@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="text-red-400 text-lg font-medium mb-2">
             {this.props.fallbackTitle ?? 'Something went wrong'}
           </div>
-          <p className="text-gray-400 text-sm mb-4 max-w-md">
+          <p className="text-[var(--text-tertiary)] text-sm mb-4 max-w-md">
             An unexpected error occurred. You can try again or restart the app if the problem persists.
           </p>
           <button
@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Try again
           </button>
           <details className="mt-4 text-left w-full max-w-lg">
-            <summary className="text-gray-500 text-xs cursor-pointer hover:text-gray-400">
+            <summary className="text-[var(--text-secondary)] text-xs cursor-pointer hover:text-[var(--text-tertiary)]">
               Error details
             </summary>
             <pre className="mt-2 p-3 bg-gray-900 rounded text-xs text-red-300 overflow-auto max-h-48">

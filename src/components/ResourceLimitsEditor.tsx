@@ -63,8 +63,8 @@ export function ResourceLimitsEditor({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-700">Resource Limits</h3>
-      <p className="text-xs text-gray-400">
+      <h3 className="text-sm font-medium text-[var(--text-secondary)]">Resource Limits</h3>
+      <p className="text-xs text-[var(--text-tertiary)]">
         Constrain CPU and memory usage for this bot.
       </p>
 
@@ -81,7 +81,7 @@ export function ResourceLimitsEditor({
               className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
                   ? "border-blue-300 bg-blue-50 text-blue-700"
-                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                  : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
               }`}
               onClick={() => applyPreset(preset)}
             >
@@ -95,11 +95,11 @@ export function ResourceLimitsEditor({
       {/* CPU slider */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-1.5 text-xs text-gray-600">
+          <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
             <Cpu className="h-3 w-3" />
             CPU Cores
           </label>
-          <span className="text-xs font-medium text-gray-700">
+          <span className="text-xs font-medium text-[var(--text-secondary)]">
             {`${cpu} core${cpu !== 1 ? "s" : ""}`}
           </span>
         </div>
@@ -112,7 +112,7 @@ export function ResourceLimitsEditor({
           onChange={(e) => handleCpuChange(parseFloat(e.target.value))}
           className="w-full accent-blue-600"
         />
-        <div className="flex justify-between text-[10px] text-gray-400">
+        <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
           <span>{MIN_CPU} cores</span>
           <span>{maxCpu} cores</span>
         </div>
@@ -121,11 +121,11 @@ export function ResourceLimitsEditor({
       {/* Memory slider */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-1.5 text-xs text-gray-600">
+          <label className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
             <HardDrive className="h-3 w-3" />
             Memory
           </label>
-          <span className="text-xs font-medium text-gray-700">
+          <span className="text-xs font-medium text-[var(--text-secondary)]">
             {formatMemory(mem)}
           </span>
         </div>
@@ -138,7 +138,7 @@ export function ResourceLimitsEditor({
           onChange={(e) => handleMemChange(parseInt(e.target.value) * MB)}
           className="w-full accent-emerald-600"
         />
-        <div className="flex justify-between text-[10px] text-gray-400">
+        <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
           <span>{formatMemory(MIN_MEM)}</span>
           <span>{formatMemory(maxMem)}</span>
         </div>

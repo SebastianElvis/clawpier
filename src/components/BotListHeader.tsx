@@ -31,11 +31,11 @@ export function BotListHeader({
   const isFiltered = searchQuery !== "" || statusFilter !== "all";
 
   return (
-    <div className="sticky top-0 z-10 -mx-6 mb-3 space-y-2 bg-white px-6 pb-2 pt-1">
+    <div className="sticky top-0 z-10 -mx-6 mb-3 space-y-2 bg-[var(--bg-primary)] px-6 pb-2 pt-1">
       {/* Search + filters row */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--text-tertiary)]" />
           <input
             ref={inputRef}
             type="text"
@@ -48,11 +48,11 @@ export function BotListHeader({
                 inputRef.current?.blur();
               }
             }}
-            className="w-full rounded-md border border-gray-200 bg-white py-1 pl-7 pr-7 text-xs text-gray-900 placeholder-gray-400 outline-none transition-colors focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] py-1 pl-7 pr-7 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-colors focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
           />
           {searchQuery && (
             <button
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
               onClick={() => {
                 onSearchChange("");
                 inputRef.current?.focus();
@@ -71,7 +71,7 @@ export function BotListHeader({
             className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
               statusFilter === option.value
                 ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
             }`}
             onClick={() => onStatusFilterChange(option.value)}
           >
@@ -81,7 +81,7 @@ export function BotListHeader({
 
         {/* Filtered count */}
         {totalCount > 0 && (
-          <span className="shrink-0 text-[11px] text-gray-400">
+          <span className="shrink-0 text-[11px] text-[var(--text-tertiary)]">
             {isFiltered
               ? `${filteredCount}/${totalCount}`
               : `${totalCount}`}

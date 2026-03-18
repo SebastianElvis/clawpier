@@ -73,13 +73,13 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
   return (
     <>
-      <div className="group relative rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-150 hover:shadow-md">
+      <div className="group relative rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)] p-4 shadow-sm transition-shadow hover:shadow-md">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {isEditing ? (
               <input
-                className="w-full rounded border border-blue-300 px-2 py-0.5 text-sm font-semibold outline-none ring-2 ring-blue-100"
+                className="w-full rounded border border-blue-300 bg-[var(--bg-input)] px-2 py-0.5 text-sm font-semibold text-[var(--text-primary)] outline-none ring-2 ring-blue-100"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onBlur={handleRename}
@@ -94,7 +94,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
               />
             ) : (
               <h3
-                className="truncate text-sm font-semibold text-gray-900 cursor-pointer"
+                className="truncate text-sm font-semibold text-[var(--text-primary)] cursor-pointer"
                 onDoubleClick={() => {
                   setEditName(bot.name);
                   setIsEditing(true);
@@ -104,7 +104,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
                 {bot.name}
               </h3>
             )}
-            <p className="mt-0.5 truncate text-xs text-gray-400">
+            <p className="mt-0.5 truncate text-xs text-[var(--text-tertiary)]">
               {bot.image.split("/").pop()}
             </p>
           </div>
@@ -112,7 +112,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
           {/* Menu button */}
           <div className="relative">
             <button
-              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
               onClick={() => setShowMenu(!showMenu)}
             >
               <MoreVertical className="h-4 w-4" />
@@ -123,9 +123,9 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
                   className="fixed inset-0 z-10"
                   onClick={() => setShowMenu(false)}
                 />
-                <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-elevated)] py-1 shadow-lg">
                   <button
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50/50"
                     onClick={() => {
                       setShowMenu(false);
                       setShowDelete(true);
@@ -146,7 +146,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
           {hasNetwork && <NetworkBadge mode={bot.network_mode} />}
           {bot.workspace_path && (
             <span
-              className="inline-flex items-center gap-1 text-xs text-gray-400"
+              className="inline-flex items-center gap-1 text-xs text-[var(--text-tertiary)]"
               title={bot.workspace_path}
             >
               <FolderOpen className="h-3 w-3" />
@@ -157,7 +157,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
         {/* Mini stats with sparklines (when running) */}
         {isRunning && stats && (
-          <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-500">
+          <div className="mt-2 flex items-center gap-3 text-[10px] text-[var(--text-secondary)]">
             <div className="flex items-center gap-1">
               <Cpu className="h-3 w-3" />
               <span>{stats.cpu_percent.toFixed(1)}%</span>
@@ -194,7 +194,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
         <div className="mt-3 flex items-center gap-2">
           {isRunning ? (
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-active)] disabled:opacity-50"
               onClick={handleStop}
               disabled={isLoading}
             >
@@ -222,7 +222,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
           {/* Open detail view */}
           <button
-            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
             onClick={onSelect}
           >
             Open

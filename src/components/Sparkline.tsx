@@ -16,7 +16,7 @@ export function Sparkline({
   if (data.length < 2) {
     return (
       <svg width={width} height={height} className="inline-block align-middle">
-        <rect width={width} height={height} rx={2} fill="currentColor" className="text-gray-200" />
+        <rect width={width} height={height} rx={2} fill="currentColor" className="text-[var(--bg-active)]" />
       </svg>
     );
   }
@@ -41,7 +41,7 @@ export function Sparkline({
 
   return (
     <svg width={width} height={height} className="inline-block align-middle">
-      <rect width={width} height={height} rx={2} fill="currentColor" className="text-gray-100" />
+      <rect width={width} height={height} rx={2} fill="currentColor" className="text-[var(--bg-hover)]" />
       <path d={areaPath} fill={color} opacity={0.15} />
       <polyline
         points={points.join(" ")}

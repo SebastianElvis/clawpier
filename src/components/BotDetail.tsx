@@ -151,23 +151,23 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 border-b border-gray-200 px-4 py-3">
+      <div className="shrink-0 border-b border-[var(--border-primary)] px-4 py-3">
         <div className="flex items-center gap-3">
           <button
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
             onClick={onBack}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
 
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold text-gray-900">
+            <h1 className="truncate text-lg font-semibold text-[var(--text-primary)]">
               {bot.name}
             </h1>
-            <div className="flex items-center gap-3 text-xs text-gray-400">
+            <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
               <span className="truncate">{bot.image}</span>
               <button
-                className={`shrink-0 cursor-pointer font-mono transition-colors ${idCopied ? "text-emerald-500" : "text-gray-300 hover:text-gray-500"}`}
+                className={`shrink-0 cursor-pointer font-mono transition-colors ${idCopied ? "text-emerald-500" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"}`}
                 title="Click to copy full ID"
                 onClick={() => {
                   navigator.clipboard.writeText(bot.id);
@@ -200,7 +200,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
                 Restart
               </button>
               <button
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-active)] disabled:opacity-50"
                 onClick={handleStop}
                 disabled={isLoading}
               >
@@ -230,13 +230,13 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
 
         {/* Stats bar with sparklines (when running) */}
         {isRunning && stats && (
-          <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+          <div className="mt-2 flex items-center gap-4 text-xs text-[var(--text-secondary)]">
             <div className="flex items-center gap-1.5">
               <Cpu className="h-3.5 w-3.5" />
               <span>
                 CPU {stats.cpu_percent.toFixed(1)}%
                 {bot.cpu_limit != null && (
-                  <span className="ml-1 text-gray-400">
+                  <span className="ml-1 text-[var(--text-tertiary)]">
                     · {bot.cpu_limit} {bot.cpu_limit === 1 ? "core" : "cores"}
                   </span>
                 )}
@@ -271,7 +271,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex shrink-0 border-b border-gray-200">
+      <div className="flex shrink-0 border-b border-[var(--border-primary)]">
         {tabs.map(({ key, label, icon: Icon, runningOnly }) => {
           if (runningOnly && !isRunning) return null;
           return (
@@ -280,7 +280,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
               className={`inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
                 activeTab === key
                   ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-primary)] hover:text-[var(--text-primary)]"
               }`}
               onClick={() => setActiveTab(key)}
             >
@@ -338,8 +338,8 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
                   workspacePath={bot.workspace_path}
                 />
               ) : (
-                <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-gray-400">
-                  <FolderOpen className="h-8 w-8 text-gray-300" />
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-[var(--text-tertiary)]">
+                  <FolderOpen className="h-8 w-8 text-[var(--text-tertiary)]" />
                   <p>No workspace path configured.</p>
                   <button
                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
@@ -440,7 +440,7 @@ function LogPanel({
       {/* Resize handle (only when open) */}
       {isOpen && (
         <div
-          className="flex items-center justify-center cursor-row-resize hover:bg-gray-100 transition-colors"
+          className="flex items-center justify-center cursor-row-resize hover:bg-[var(--bg-hover)] transition-colors"
           style={{ height: 4 }}
           onMouseDown={(e) => {
             e.preventDefault();
@@ -454,14 +454,14 @@ function LogPanel({
         className={`inline-flex w-full cursor-pointer items-center gap-1.5 border-t-2 px-4 py-2.5 text-xs font-medium transition-colors ${
           isOpen
             ? "border-blue-600 text-blue-600"
-            : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
+            : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--border-primary)] hover:text-[var(--text-primary)]"
         }`}
         onClick={() => setIsOpen(!isOpen)}
       >
         <ScrollText className="h-3.5 w-3.5" />
         Logs
         {logs.length > 0 && (
-          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 leading-none">
+          <span className="rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-secondary)] leading-none">
             {logs.length}
           </span>
         )}
@@ -649,15 +649,15 @@ function DockerTab({
 
       {/* Auto-start on launch */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-700">
+        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
           Start on Launch
         </h3>
-        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+        <div className="flex items-center justify-between rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] px-3 py-2.5">
           <div>
-            <p className="text-xs font-medium text-gray-700">
+            <p className="text-xs font-medium text-[var(--text-secondary)]">
               Auto-start this bot
             </p>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-[var(--text-tertiary)]">
               Automatically start this bot when ClawPier launches
             </p>
           </div>
@@ -665,7 +665,7 @@ function DockerTab({
             role="switch"
             aria-checked={bot.auto_start}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-              bot.auto_start ? "bg-blue-600" : "bg-gray-200"
+              bot.auto_start ? "bg-blue-600" : "bg-[var(--bg-active)]"
             }`}
             onClick={() => setAutoStart(bot.id, !bot.auto_start)}
           >
@@ -702,12 +702,12 @@ function DockerTab({
 
       {/* Workspace Path */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-700">
+        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
           Workspace Path
         </h3>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[var(--text-tertiary)]">
           A local folder mounted into the container at{" "}
-          <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">
+          <code className="rounded bg-[var(--bg-hover)] px-1 py-0.5 font-mono text-[11px]">
             /workspace
           </code>
           . The bot can read and write files here.
@@ -715,11 +715,11 @@ function DockerTab({
         <div className="flex items-center gap-2">
           {bot.workspace_path ? (
             <>
-              <span className="min-w-0 flex-1 truncate rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-600">
+              <span className="min-w-0 flex-1 truncate rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-1.5 font-mono text-xs text-[var(--text-secondary)]">
                 {bot.workspace_path}
               </span>
               <button
-                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                 onClick={async () => {
                   const dir = await open({ directory: true });
                   if (dir) await setWorkspacePath(bot.id, dir);
@@ -729,7 +729,7 @@ function DockerTab({
                 Change
               </button>
               <button
-                className="inline-flex shrink-0 items-center rounded-md border border-gray-200 bg-white p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                className="inline-flex shrink-0 items-center rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] p-1.5 text-[var(--text-tertiary)] hover:bg-red-50 hover:text-red-600"
                 onClick={() => setWorkspacePath(bot.id, null)}
                 title="Remove workspace"
               >
@@ -738,7 +738,7 @@ function DockerTab({
             </>
           ) : (
             <button
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
               onClick={async () => {
                 const dir = await open({ directory: true });
                 if (dir) await setWorkspacePath(bot.id, dir);
@@ -788,8 +788,8 @@ function TerminalTab({
 
   if (!isRunning) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-gray-400">
-        <Terminal className="h-8 w-8 text-gray-300" />
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-[var(--text-tertiary)]">
+        <Terminal className="h-8 w-8 text-[var(--text-tertiary)]" />
         Start the bot to use the terminal
       </div>
     );
@@ -798,14 +798,14 @@ function TerminalTab({
   return (
     <div className="flex h-full flex-col">
       {/* Quick command chips */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-3 py-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
           Quick:
         </span>
         {QUICK_COMMANDS.map((qc) => (
           <button
             key={qc.command}
-            className="rounded-md border border-gray-200 bg-white px-2 py-0.5 font-mono text-[11px] text-gray-600 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40"
+            className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40"
             onClick={() => writeCommand(qc.command)}
             disabled={!isConnected}
           >

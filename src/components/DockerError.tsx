@@ -17,10 +17,10 @@ export function DockerError() {
       <div className="rounded-2xl bg-red-50 p-5">
         <Container className="h-12 w-12 text-red-400" />
       </div>
-      <h1 className="mt-5 text-xl font-bold text-gray-900">
+      <h1 className="mt-5 text-xl font-bold text-[var(--text-primary)]">
         Docker Not Detected
       </h1>
-      <p className="mt-2 max-w-md text-center text-sm text-gray-500">
+      <p className="mt-2 max-w-md text-center text-sm text-[var(--text-secondary)]">
         ClawPier requires Docker Desktop to run sandboxed bot instances. Please
         make sure Docker Desktop is installed and running.
       </p>
@@ -37,7 +37,7 @@ export function DockerError() {
           href="https://www.docker.com/products/docker-desktop/"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-primary)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-hover)]"
         >
           <ExternalLink className="h-4 w-4" />
           Download Docker Desktop

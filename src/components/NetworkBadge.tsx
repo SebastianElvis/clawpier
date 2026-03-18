@@ -45,6 +45,6 @@ function getConfig(mode: NetworkMode) {
   return {
     icon: Shield,
     label: "Sandboxed",
-    className: "bg-gray-50 text-gray-600",
+    className: "bg-[var(--bg-hover)] text-[var(--text-secondary)]",
   };
 }

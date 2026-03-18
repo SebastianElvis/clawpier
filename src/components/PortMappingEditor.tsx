@@ -57,8 +57,8 @@ export function PortMappingEditor({
   if (disabled) {
     return (
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-700">Port Mappings</h3>
-        <p className="text-xs text-gray-400 italic">
+        <h3 className="text-sm font-medium text-[var(--text-secondary)]">Port Mappings</h3>
+        <p className="text-xs text-[var(--text-tertiary)] italic">
           Port mappings are not available in sandboxed (no network) mode.
         </p>
       </div>
@@ -67,15 +67,15 @@ export function PortMappingEditor({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-700">Port Mappings</h3>
-      <p className="text-xs text-gray-400">
+      <h3 className="text-sm font-medium text-[var(--text-secondary)]">Port Mappings</h3>
+      <p className="text-xs text-[var(--text-tertiary)]">
         Expose container ports to the host for webhooks and API access.
       </p>
 
       {mappings.length > 0 && (
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-[1fr_1fr_80px_32px] gap-2 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+          <div className="grid grid-cols-[1fr_1fr_80px_32px] gap-2 text-[10px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
             <span>Container</span>
             <span>Host</span>
             <span>Protocol</span>
@@ -95,7 +95,7 @@ export function PortMappingEditor({
                 onChange={(e) =>
                   updateMapping(i, "container_port", e.target.value)
                 }
-                className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs outline-none focus:border-blue-300"
+                className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
               />
               <input
                 type="number"
@@ -105,20 +105,20 @@ export function PortMappingEditor({
                 onChange={(e) =>
                   updateMapping(i, "host_port", e.target.value)
                 }
-                className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs outline-none focus:border-blue-300"
+                className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
               />
               <select
                 value={m.protocol}
                 onChange={(e) =>
                   updateMapping(i, "protocol", e.target.value)
                 }
-                className="rounded-md border border-gray-200 px-1.5 py-1 text-xs outline-none focus:border-blue-300"
+                className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-1.5 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
               >
                 <option value="tcp">TCP</option>
                 <option value="udp">UDP</option>
               </select>
               <button
-                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                className="rounded p-1 text-[var(--text-tertiary)] hover:bg-red-50 hover:text-red-600"
                 onClick={() => removeMapping(i)}
               >
                 <Trash2 className="h-3 w-3" />
@@ -129,7 +129,7 @@ export function PortMappingEditor({
       )}
 
       <button
-        className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-2.5 py-1.5 text-xs text-gray-500 hover:border-blue-300 hover:text-blue-600"
+        className="inline-flex items-center gap-1 rounded-md border border-dashed border-[var(--border-primary)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-blue-300 hover:text-blue-600"
         onClick={addMapping}
       >
         <Plus className="h-3 w-3" />

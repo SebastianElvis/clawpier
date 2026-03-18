@@ -52,8 +52,8 @@ export function NetworkModePicker({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-gray-700">Network Mode</h3>
-      <p className="text-xs text-gray-400">
+      <h3 className="text-sm font-medium text-[var(--text-secondary)]">Network Mode</h3>
+      <p className="text-xs text-[var(--text-tertiary)]">
         Control how this bot connects to the network.
       </p>
 
@@ -64,25 +64,25 @@ export function NetworkModePicker({
             className={`rounded-lg border p-2.5 text-left transition-colors ${
               mode === opt.key
                 ? "border-blue-300 bg-blue-50"
-                : "border-gray-200 bg-white hover:bg-gray-50"
+                : "border-[var(--border-primary)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]"
             }`}
             onClick={() => handleModeChange(opt.key)}
           >
             <div className="flex items-center gap-1.5">
               <Shield
                 className={`h-3 w-3 ${
-                  mode === opt.key ? "text-blue-600" : "text-gray-400"
+                  mode === opt.key ? "text-blue-600" : "text-[var(--text-tertiary)]"
                 }`}
               />
               <span
                 className={`text-xs font-medium ${
-                  mode === opt.key ? "text-blue-700" : "text-gray-700"
+                  mode === opt.key ? "text-blue-700" : "text-[var(--text-secondary)]"
                 }`}
               >
                 {opt.label}
               </span>
             </div>
-            <p className="mt-0.5 text-[10px] text-gray-400">
+            <p className="mt-0.5 text-[10px] text-[var(--text-tertiary)]">
               {opt.description}
             </p>
           </button>
@@ -103,9 +103,9 @@ export function NetworkModePicker({
       {/* Custom network name input */}
       {mode === "custom" && (
         <div className="space-y-1">
-          <label className="text-xs text-gray-600">Docker Network Name</label>
+          <label className="text-xs text-[var(--text-secondary)]">Docker Network Name</label>
           <input
-            className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-xs outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200"
+            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200"
             value={customName}
             onChange={(e) => handleCustomNameChange(e.target.value)}
             placeholder="my-docker-network"

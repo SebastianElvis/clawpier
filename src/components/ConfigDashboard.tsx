@@ -62,7 +62,7 @@ export function ConfigDashboard({
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--text-tertiary)]" />
       </div>
     );
   }
@@ -72,7 +72,7 @@ export function ConfigDashboard({
       <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-red-500">
         <p>Failed to load config: {error}</p>
         <button
-          className="rounded-md bg-gray-100 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-200"
+          className="rounded-md bg-[var(--bg-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
           onClick={fetchConfig}
         >
           Retry
@@ -87,14 +87,14 @@ export function ConfigDashboard({
   if (!hasAnyConfig) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
-        <FileText className="h-10 w-10 text-gray-300" />
+        <FileText className="h-10 w-10 text-[var(--text-tertiary)]" />
         <div>
-          <p className="text-sm font-medium text-gray-600">
+          <p className="text-sm font-medium text-[var(--text-secondary)]">
             No configuration found
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
             {isRunning ? "Run " : "Start the bot and run "}
-            <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px]">
+            <code className="rounded bg-[var(--bg-hover)] px-1.5 py-0.5 font-mono text-[11px]">
               openclaw configure
             </code>
             {" in the Terminal tab to set up this agent."}
@@ -124,21 +124,21 @@ export function ConfigDashboard({
       .join("\n\n");
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+        <div className="flex items-center justify-between border-b border-[var(--border-primary)] px-4 py-2">
           <div className="flex items-center gap-2">
-            <Code className="h-3.5 w-3.5 text-gray-400" />
-            <span className="text-xs font-medium text-gray-600">
+            <Code className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+            <span className="text-xs font-medium text-[var(--text-secondary)]">
               Raw Configuration
             </span>
           </div>
           <button
-            className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200"
+            className="rounded-md bg-[var(--bg-hover)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
             onClick={() => setShowRaw(false)}
           >
             Back
           </button>
         </div>
-        <pre className="flex-1 overflow-auto bg-gray-50 p-4 font-mono text-xs text-gray-700 whitespace-pre-wrap">
+        <pre className="flex-1 overflow-auto bg-[var(--bg-primary)] p-4 font-mono text-xs text-[var(--text-secondary)] whitespace-pre-wrap">
           {rawContent}
         </pre>
       </div>
@@ -159,7 +159,7 @@ export function ConfigDashboard({
   return (
     <div className="flex h-full flex-col">
       {/* Pinned header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-amber-50 px-4 py-1.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-primary)] bg-amber-50 px-4 py-1.5">
         <div className="flex items-center gap-2 text-[11px] text-amber-700">
           <Terminal className="h-3 w-3" />
           <span>
@@ -208,7 +208,7 @@ export function ConfigDashboard({
         </div>
 
         {/* ── Secondary: inline rows ── */}
-        <div className="mt-3 rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+        <div className="mt-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] divide-y divide-[var(--border-secondary)]">
           <InfoRow
             icon={Radio}
             label="Gateway"
@@ -258,7 +258,7 @@ export function ConfigDashboard({
         </div>
 
         <button
-          className="mt-1 flex w-full items-center justify-center gap-1 py-1 text-[11px] text-gray-400 hover:text-gray-600"
+          className="mt-1 flex w-full items-center justify-center gap-1 py-1 text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
           onClick={() => setShowMore(!showMore)}
         >
           {showMore ? "Show less" : "Show more"}
@@ -285,14 +285,14 @@ function HeroCard({
   summary: string[];
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] p-3">
       <div className="flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-gray-400" />
-        <span className="text-[11px] font-semibold text-gray-700">
+        <Icon className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+        <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
           {label}
         </span>
         {!configured && (
-          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[9px] text-gray-400">
+          <span className="ml-auto rounded bg-[var(--bg-hover)] px-1.5 py-0.5 text-[9px] text-[var(--text-tertiary)]">
             not set
           </span>
         )}
@@ -300,13 +300,13 @@ function HeroCard({
       {configured && summary.length > 0 ? (
         <div className="mt-1.5 space-y-0.5">
           {summary.map((line, i) => (
-            <p key={i} className="truncate font-mono text-[11px] text-gray-600">
+            <p key={i} className="truncate font-mono text-[11px] text-[var(--text-secondary)]">
               {line}
             </p>
           ))}
         </div>
       ) : !configured ? (
-        <p className="mt-1.5 text-[11px] text-gray-400 italic">
+        <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)] italic">
           Not configured
         </p>
       ) : null}
@@ -366,17 +366,17 @@ function ChannelsCard({
 
   if (!channels || channelCount === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <div className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] p-3">
         <div className="flex items-center gap-1.5">
-          <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
-          <span className="text-[11px] font-semibold text-gray-700">
+          <MessageSquare className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+          <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
             Channels
           </span>
-          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 text-[9px] text-gray-400">
+          <span className="ml-auto rounded bg-[var(--bg-hover)] px-1.5 py-0.5 text-[9px] text-[var(--text-tertiary)]">
             not set
           </span>
         </div>
-        <p className="mt-1.5 text-[11px] text-gray-400 italic">
+        <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)] italic">
           Not configured
         </p>
       </div>
@@ -384,10 +384,10 @@ function ChannelsCard({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] p-3">
       <div className="flex items-center gap-1.5">
-        <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
-        <span className="text-[11px] font-semibold text-gray-700">
+        <MessageSquare className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+        <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
           Channels
         </span>
         <span className="ml-auto rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium text-blue-600">
@@ -398,11 +398,11 @@ function ChannelsCard({
       <div className="mt-2 space-y-1.5">
         {/* ── Telegram channel ── */}
         {tgConfig && (
-          <div className="rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5">
+          <div className="rounded-md border border-[var(--border-secondary)] bg-[var(--bg-primary)] px-2 py-1.5">
             {/* Header row: icon + name + enabled badge */}
             <div className="flex items-center gap-1.5">
               <Send className="h-3 w-3 text-blue-500" />
-              <span className="text-[11px] font-medium text-gray-700">
+              <span className="text-[11px] font-medium text-[var(--text-secondary)]">
                 Telegram
               </span>
               {tgEnabled ? (
@@ -418,17 +418,17 @@ function ChannelsCard({
 
             {/* Bot identity */}
             {tgLoading ? (
-              <div className="mt-1 flex items-center gap-1 text-[10px] text-gray-400">
+              <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--text-tertiary)]">
                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
                 Resolving bot...
               </div>
             ) : tgInfo ? (
               <div className="mt-1 flex items-center gap-1.5">
-                <AtSign className="h-2.5 w-2.5 text-gray-400" />
+                <AtSign className="h-2.5 w-2.5 text-[var(--text-tertiary)]" />
                 <span className="font-mono text-[11px] text-blue-600">
                   @{tgInfo.username ?? "unknown"}
                 </span>
-                <span className="text-[10px] text-gray-400">
+                <span className="text-[10px] text-[var(--text-tertiary)]">
                   ({tgInfo.first_name})
                 </span>
               </div>
@@ -469,10 +469,10 @@ function ChannelsCard({
             return (
               <div
                 key={name}
-                className="flex items-center gap-1.5 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
+                className="flex items-center gap-1.5 rounded-md border border-[var(--border-secondary)] bg-[var(--bg-primary)] px-2 py-1.5"
               >
-                <MessageSquare className="h-3 w-3 text-gray-400" />
-                <span className="text-[11px] font-medium text-gray-700">
+                <MessageSquare className="h-3 w-3 text-[var(--text-tertiary)]" />
+                <span className="text-[11px] font-medium text-[var(--text-secondary)]">
                   {name}
                 </span>
                 {enabled ? (
@@ -500,7 +500,7 @@ function PolicyChip({
   label: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-0.5 rounded bg-white px-1.5 py-0.5 text-[9px] text-gray-500 ring-1 ring-gray-200">
+    <span className="inline-flex items-center gap-0.5 rounded bg-[var(--bg-surface)] px-1.5 py-0.5 text-[9px] text-[var(--text-secondary)] ring-1 ring-[var(--border-primary)]">
       <Icon className="h-2 w-2" />
       {label}
     </span>
@@ -520,11 +520,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5">
-      <Icon className="h-3 w-3 shrink-0 text-gray-400" />
-      <span className="w-20 shrink-0 text-[11px] text-gray-500">{label}</span>
-      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-gray-700">
+      <Icon className="h-3 w-3 shrink-0 text-[var(--text-tertiary)]" />
+      <span className="w-20 shrink-0 text-[11px] text-[var(--text-secondary)]">{label}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
         {value ?? (
-          <span className="font-sans text-gray-400 italic">not configured</span>
+          <span className="font-sans text-[var(--text-tertiary)] italic">not configured</span>
         )}
       </span>
     </div>

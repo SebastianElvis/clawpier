@@ -41,11 +41,11 @@ export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">
+        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
           Environment Variables
         </h3>
         <button
-          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
           onClick={() => setShowValues(!showValues)}
           title={showValues ? "Hide values" : "Show values"}
         >
@@ -61,21 +61,21 @@ export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
         {vars.map((v, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
-              className="w-1/3 rounded border border-gray-200 px-2 py-1.5 font-mono text-xs outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+              className="w-1/3 rounded border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
               placeholder="KEY"
               value={v.key}
               onChange={(e) => handleChange(i, "key", e.target.value)}
             />
-            <span className="text-gray-300">=</span>
+            <span className="text-[var(--text-tertiary)]">=</span>
             <input
-              className="flex-1 rounded border border-gray-200 px-2 py-1.5 font-mono text-xs outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+              className="flex-1 rounded border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
               placeholder="value"
               type={showValues ? "text" : "password"}
               value={v.value}
               onChange={(e) => handleChange(i, "value", e.target.value)}
             />
             <button
-              className="rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500"
+              className="rounded p-1 text-[var(--text-tertiary)] hover:bg-red-50 hover:text-red-500"
               onClick={() => handleRemove(i)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -85,7 +85,7 @@ export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
       </div>
 
       <button
-        className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-3 py-1.5 text-xs text-gray-500 hover:border-gray-400 hover:text-gray-600"
+        className="inline-flex items-center gap-1 rounded-md border border-dashed border-[var(--border-primary)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
         onClick={handleAdd}
       >
         <Plus className="h-3.5 w-3.5" />

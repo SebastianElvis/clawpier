@@ -38,42 +38,42 @@ export function ChatMessageBubble({
         className={`relative max-w-[85%] rounded-xl px-3 py-2 ${
           isUser
             ? "bg-blue-600 text-white"
-            : "border border-gray-200 bg-white text-gray-800"
+            : "border border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
         }`}
       >
         {/* Copy button */}
         <button
-          className={`absolute -top-2 ${isUser ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"} hidden rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:block`}
+          className={`absolute -top-2 ${isUser ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2"} hidden rounded-md border border-[var(--border-primary)] bg-[var(--bg-elevated)] p-1 shadow-sm group-hover:block`}
           onClick={handleCopy}
           title="Copy message"
         >
           {copied ? (
             <Check className="h-3 w-3 text-green-600" />
           ) : (
-            <Copy className="h-3 w-3 text-gray-400" />
+            <Copy className="h-3 w-3 text-[var(--text-tertiary)]" />
           )}
         </button>
 
         {isUser ? (
           <p className="whitespace-pre-wrap text-sm">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none text-sm prose-p:my-1 prose-pre:my-2 prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-code:rounded prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:text-[12px] prose-code:text-gray-800 prose-code:before:content-none prose-code:after:content-none prose-pre:prose-code:bg-transparent prose-pre:prose-code:text-gray-100 prose-pre:prose-code:p-0">
+          <div className="prose prose-sm max-w-none text-sm prose-p:my-1 prose-pre:my-2 prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-code:rounded prose-code:bg-[var(--bg-hover)] prose-code:px-1 prose-code:py-0.5 prose-code:text-[12px] prose-code:text-[var(--text-primary)] prose-code:before:content-none prose-code:after:content-none prose-pre:prose-code:bg-transparent prose-pre:prose-code:text-gray-100 prose-pre:prose-code:p-0">
             <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
           </div>
         )}
 
         {isStreaming && (
           <span className="mt-1 inline-flex gap-1">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--text-tertiary)] [animation-delay:-0.3s]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--text-tertiary)] [animation-delay:-0.15s]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--text-tertiary)]" />
           </span>
         )}
 
         {/* Timestamp */}
         <p
           className={`mt-1 text-[10px] ${
-            isUser ? "text-blue-200" : "text-gray-400"
+            isUser ? "text-blue-200" : "text-[var(--text-tertiary)]"
           }`}
         >
           {new Date(message.timestamp).toLocaleTimeString()}
