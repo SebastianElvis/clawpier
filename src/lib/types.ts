@@ -122,6 +122,15 @@ export interface SkillSearchResult {
   total: number;
 }
 
+export interface SkillRequirements {
+  bins?: string[];
+  env?: string[];
+  config?: string[];
+  os?: string[];
+  all_met?: boolean;
+  error?: string;
+}
+
 export interface SystemResources {
   cpu_cores: number;
   memory_bytes: number;

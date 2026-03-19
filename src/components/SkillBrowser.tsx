@@ -17,6 +17,7 @@ import {
   DownloadCloud,
   User,
   Tag,
+  Info,
 } from "lucide-react";
 import { useSkillBrowser } from "../hooks/use-skill-browser";
 import { open } from "@tauri-apps/plugin-shell";
@@ -438,6 +439,7 @@ function SkillDetailModal({
   const [inspectData, setInspectData] = useState<InspectData | null>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectError, setInspectError] = useState<string | null>(null);
+  const [requirements, setRequirements] = useState<import("../lib/types").SkillRequirements | null>(null);
 
   const fetchInspect = useCallback(async () => {
     setInspectLoading(true);
@@ -453,9 +455,21 @@ function SkillDetailModal({
     }
   }, [botId, skill.name]);
 
+  // Fetch missing deps for bundled skills that aren't ready
+  const fetchRequirements = useCallback(async () => {
+    if (skill.source !== "bundled" || skill.installed) return;
+    try {
+      const reqs = await api.getSkillRequirements(botId, skill.name);
+      setRequirements(reqs);
+    } catch {
+      // Silently fail — deps info is supplementary
+    }
+  }, [botId, skill.name, skill.source, skill.installed]);
+
   useEffect(() => {
     fetchInspect();
-  }, [fetchInspect]);
+    fetchRequirements();
+  }, [fetchInspect, fetchRequirements]);
 
   const stats = inspectData?.skill?.stats;
   const owner = inspectData?.owner;
@@ -496,6 +510,11 @@ function SkillDetailModal({
               {inspectData?.skill?.summary || skill.description || "No description available."}
             </p>
           </div>
+
+          {/* Missing dependencies (bundled skills only) */}
+          {requirements && !requirements.all_met && !requirements.error && (
+            <MissingDepsPanel requirements={requirements} />
+          )}
 
           {/* ClawHub stats */}
           {inspectLoading && (
@@ -557,6 +576,71 @@ function SkillDetailModal({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function MissingDepsPanel({ requirements }: { requirements: import("../lib/types").SkillRequirements }) {
+  const hasBins = requirements.bins && requirements.bins.length > 0;
+  const hasEnv = requirements.env && requirements.env.length > 0;
+  const hasConfig = requirements.config && requirements.config.length > 0;
+  const hasOs = requirements.os && requirements.os.length > 0;
+
+  if (!hasBins && !hasEnv && !hasConfig && !hasOs) return null;
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/40 dark:bg-amber-900/20">
+      <div className="flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+        <Info className="h-3.5 w-3.5" />
+        Missing requirements
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {hasBins && (
+          <DepRow
+            label="CLI tools"
+            items={requirements.bins!}
+            hint="Install these binaries in the container"
+          />
+        )}
+        {hasEnv && (
+          <DepRow
+            label="Environment variables"
+            items={requirements.env!}
+            hint="Set via bot settings → Environment Variables"
+          />
+        )}
+        {hasConfig && (
+          <DepRow
+            label="Config keys"
+            items={requirements.config!}
+            hint="Set via openclaw configure in Terminal"
+          />
+        )}
+        {hasOs && (
+          <DepRow
+            label="Required OS"
+            items={requirements.os!}
+            hint="This skill only works on this platform"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DepRow({ label, items, hint }: { label: string; items: string[]; hint: string }) {
+  return (
+    <div className="text-xs">
+      <span className="font-medium text-amber-800 dark:text-amber-300">{label}: </span>
+      {items.map((item, i) => (
+        <span key={item}>
+          <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+            {item}
+          </code>
+          {i < items.length - 1 && <span className="text-amber-600 dark:text-amber-500">, </span>}
+        </span>
+      ))}
+      <p className="mt-0.5 text-[10px] text-amber-600/80 dark:text-amber-400/60">{hint}</p>
     </div>
   );
 }

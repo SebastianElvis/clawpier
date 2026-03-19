@@ -10,6 +10,7 @@ import type {
   HealthCheckConfig,
   NetworkMode,
   PortMapping,
+  SkillRequirements,
   SystemResources,
 } from "./types";
 
@@ -313,6 +314,13 @@ export async function clawHubInspectSkill(
   skillName: string
 ): Promise<string> {
   return invoke<string>("clawhub_inspect_skill", { id, skillName });
+}
+
+export async function getSkillRequirements(
+  id: string,
+  skillName: string
+): Promise<SkillRequirements> {
+  return invoke<SkillRequirements>("get_skill_requirements", { id, skillName });
 }
 
 // ── Log export ────────────────────────────────────────────────────

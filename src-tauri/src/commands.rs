@@ -836,6 +836,112 @@ pub async fn clawhub_inspect_skill(
     }
 }
 
+/// Get missing dependencies for a skill by reading its SKILL.md frontmatter
+/// and checking which required binaries/env vars/config are available.
+/// Returns JSON: `{ "bins": ["gh"], "env": ["API_KEY"], "config": ["channels.slack"], "os": ["darwin"] }`
+#[tauri::command]
+pub async fn get_skill_requirements(
+    state: State<'_, AppState>,
+    id: String,
+    skill_name: String,
+) -> Result<serde_json::Value, AppError> {
+    validate_skill_name(&skill_name)?;
+
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    // Shell script that:
+    // 1. Reads the requires field from SKILL.md frontmatter
+    // 2. Checks which bins are missing via `command -v`
+    // 3. Checks which env vars are unset
+    // 4. Outputs JSON
+    let script = format!(
+        r#"
+f="/app/skills/{skill}/SKILL.md"
+if [ ! -f "$f" ]; then echo '{{"error":"not found"}}'; exit 0; fi
+
+# Extract requires block
+req=$(grep -oP '"requires":\s*\{{[^{{}}]*\}}' "$f" 2>/dev/null | head -1)
+if [ -z "$req" ]; then echo '{{"all_met":true}}'; exit 0; fi
+
+missing_bins=""
+missing_env=""
+missing_config=""
+required_os=""
+
+# Check bins
+bins=$(echo "$req" | grep -oP '"bins":\s*\[[^\]]*\]' | grep -oP '"[^"]*"' | tr -d '"')
+for b in $bins; do
+  command -v "$b" >/dev/null 2>&1 || missing_bins="$missing_bins\"$b\","
+done
+
+# Check anyBins (need at least one)
+any_bins=$(echo "$req" | grep -oP '"anyBins":\s*\[[^\]]*\]' | grep -oP '"[^"]*"' | tr -d '"')
+if [ -n "$any_bins" ]; then
+  found=0
+  for b in $any_bins; do
+    command -v "$b" >/dev/null 2>&1 && found=1 && break
+  done
+  if [ $found -eq 0 ]; then
+    all_str=""
+    for b in $any_bins; do all_str="$all_str\"$b\","; done
+    missing_bins="$missing_bins$all_str"
+  fi
+fi
+
+# Check env
+envs=$(echo "$req" | grep -oP '"env":\s*\[[^\]]*\]' | grep -oP '"[^"]*"' | tr -d '"')
+for e in $envs; do
+  eval "val=\$$e"
+  [ -z "$val" ] && missing_env="$missing_env\"$e\","
+done
+
+# Check config
+configs=$(echo "$req" | grep -oP '"config":\s*\[[^\]]*\]' | grep -oP '"[^"]*"' | tr -d '"')
+for c in $configs; do
+  missing_config="$missing_config\"$c\","
+done
+
+# Check OS
+os=$(echo "$req" | grep -oP '"os":\s*"[^"]*"' | grep -oP '"[^"]*"$' | tr -d '"')
+[ -n "$os" ] && required_os="\"$os\""
+
+# Remove trailing commas and build JSON
+missing_bins=$(echo "$missing_bins" | sed 's/,$//')
+missing_env=$(echo "$missing_env" | sed 's/,$//')
+missing_config=$(echo "$missing_config" | sed 's/,$//')
+
+echo "{{\"bins\":[$missing_bins],\"env\":[$missing_env],\"config\":[$missing_config],\"os\":[$required_os]}}"
+"#,
+        skill = skill_name
+    );
+
+    let args = vec!["sh", "-c", &script];
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        DockerManager::exec_in_container(&docker, &container_name, &args),
+    )
+    .await
+    .map_err(|_| AppError::Validation("Requirements check timed out".into()))?;
+
+    match result {
+        Ok(exec_result) => {
+            let output = exec_result.output.trim();
+            match serde_json::from_str::<serde_json::Value>(output) {
+                Ok(val) => Ok(val),
+                Err(_) => Ok(serde_json::json!({ "error": "Could not parse requirements" })),
+            }
+        }
+        Err(_) => Ok(serde_json::json!({ "error": "Could not check requirements" })),
+    }
+}
+
 #[tauri::command]
 pub async fn clawhub_install_skill(
     state: State<'_, AppState>,

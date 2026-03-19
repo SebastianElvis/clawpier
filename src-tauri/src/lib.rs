@@ -120,6 +120,7 @@ pub fn run() {
             commands::check_clawhub_available,
             commands::install_clawhub,
             commands::clawhub_inspect_skill,
+            commands::get_skill_requirements,
         ])
         .setup(|app| {
             // Spawn background status polling task
