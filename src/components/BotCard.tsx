@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Play,
   Square,
@@ -9,7 +9,10 @@ import {
   ChevronRight,
   Cpu,
   HardDrive,
+  HeartPulse,
 } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import type { HealthUpdate } from "../lib/types";
 import type { BotWithStatus } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
@@ -35,6 +38,34 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
   const isLoading = actionInProgress.has(bot.id);
   const isRunning = bot.status.type === "Running";
   const { stats, statsHistory } = useContainerStats(bot.id, isRunning);
+  const hasHealthCheck = !!bot.health_check;
+
+  // Track health state from backend events
+  const [rawHealthState, setRawHealthState] = useState<{
+    healthy: boolean;
+    failures: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isRunning || !hasHealthCheck) return;
+    const unlisten = listen<HealthUpdate>("bot-health-update", (event) => {
+      if (event.payload.bot_id === bot.id) {
+        setRawHealthState({
+          healthy: event.payload.healthy,
+          failures: event.payload.consecutive_failures,
+        });
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [bot.id, isRunning, hasHealthCheck]);
+
+  // Clear health state when not running or no health check configured
+  const healthState = useMemo(
+    () => (isRunning && hasHealthCheck ? rawHealthState : null),
+    [isRunning, hasHealthCheck, rawHealthState]
+  );
 
   const hasNetwork = bot.network_mode !== "none";
 
@@ -143,6 +174,23 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
         {/* Badges */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <StatusBadge status={bot.status} />
+          {isRunning && hasHealthCheck && healthState && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                healthState.healthy
+                  ? "bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]"
+                  : "bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]"
+              }`}
+              title={
+                healthState.healthy
+                  ? "Health check passing"
+                  : `Health check failing (${healthState.failures} consecutive)`
+              }
+            >
+              <HeartPulse className="h-3 w-3" />
+              {healthState.healthy ? "Healthy" : "Unhealthy"}
+            </span>
+          )}
           {hasNetwork && <NetworkBadge mode={bot.network_mode} />}
           {bot.workspace_path && (
             <span

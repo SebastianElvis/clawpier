@@ -31,6 +31,49 @@ pub struct PortMapping {
     pub protocol: String, // "tcp" or "udp"
 }
 
+// ── Health check config ──────────────────────────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HealthCheckConfig {
+    /// Command to execute inside the container (e.g. ["cat", "/tmp/healthy"]).
+    pub command: Vec<String>,
+    /// Seconds between health check executions.
+    #[serde(default = "default_interval")]
+    pub interval_secs: u64,
+    /// Number of consecutive failures before marking unhealthy.
+    #[serde(default = "default_retries")]
+    pub retries: u32,
+    /// Whether to auto-restart the bot on health check failure.
+    #[serde(default)]
+    pub auto_restart: bool,
+}
+
+fn default_interval() -> u64 {
+    30
+}
+fn default_retries() -> u32 {
+    3
+}
+
+impl Default for HealthCheckConfig {
+    fn default() -> Self {
+        Self {
+            command: vec!["echo".into(), "ok".into()],
+            interval_secs: 30,
+            retries: 3,
+            auto_restart: false,
+        }
+    }
+}
+
+/// Event payload emitted on each health check result.
+#[derive(Debug, Serialize, Clone)]
+pub struct HealthUpdate {
+    pub bot_id: String,
+    pub healthy: bool,
+    pub consecutive_failures: u32,
+    pub last_output: Option<String>,
+}
+
 // ── Bot profile (persisted to bots.json) ─────────────────────────────
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BotProfile {
@@ -65,6 +108,9 @@ pub struct BotProfile {
     /// Whether to auto-start this bot when the app launches.
     #[serde(default)]
     pub auto_start: bool,
+    /// Optional health check configuration.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub health_check: Option<HealthCheckConfig>,
 }
 
 impl BotProfile {
@@ -82,6 +128,7 @@ impl BotProfile {
             network_mode: NetworkMode::Bridge,
             port_mappings: Vec::new(),
             auto_start: false,
+            health_check: None,
         }
     }
 

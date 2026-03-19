@@ -1,14 +1,14 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { useBotStore } from "./stores/bot-store";
 import { useToastStore } from "./stores/toast-store";
 import { autoStartBots } from "./lib/tauri";
 import { useBotEvents } from "./hooks/use-bot-events";
 import { useStatusNotifications } from "./hooks/use-status-notifications";
+import { useHealthEvents } from "./hooks/use-health-events";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useZoom } from "./hooks/use-zoom";
 import { Layout } from "./components/Layout";
 import { BotList } from "./components/BotList";
-import { BotDetail } from "./components/BotDetail";
 import { NewBotSheet } from "./components/NewBotSheet";
 import { DockerError } from "./components/DockerError";
 import { ImageMissing } from "./components/ImageMissing";
@@ -17,6 +17,12 @@ import { ToastContainer } from "./components/Toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DockerConnectionBanner } from "./components/DockerConnectionBanner";
 import { loadWindowState, saveWindowState } from "./lib/window-state";
+import { Loader2 } from "lucide-react";
+
+// Lazy-load heavy detail view — reduces initial bundle by ~40KB
+const BotDetail = lazy(() =>
+  import("./components/BotDetail").then((m) => ({ default: m.BotDetail }))
+);
 
 const WELCOME_KEY = "clawpier-welcome-dismissed";
 
@@ -47,6 +53,9 @@ function App() {
 
   // Subscribe to status transition notifications (crash/stop alerts)
   useStatusNotifications();
+
+  // Subscribe to health check events
+  useHealthEvents();
 
   // Zoom in/out with Cmd+=/Cmd+-/Cmd+0
   useZoom();
@@ -83,14 +92,17 @@ function App() {
     }, [selectedBotId, restartBot]),
   });
 
-  // Initial check on mount: Docker → Image → fetch bots → auto-start
+  // Initial check on mount: Docker + fetch bots in parallel, then image check
   useEffect(() => {
     const toast = useToastStore.getState().addToast;
     const init = async () => {
-      const dockerOk = await checkDocker();
+      // Run Docker check and bot list fetch in parallel for faster startup.
+      // fetchBots can load profiles even before Docker status is confirmed.
+      const [dockerOk] = await Promise.all([checkDocker(), fetchBots()]);
       if (dockerOk) {
         const imageOk = await checkImage();
         if (imageOk) {
+          // Refresh bots now that Docker is confirmed available (live statuses)
           await fetchBots();
           // Auto-start bots configured with auto_start: true
           autoStartBots().then((errors) => {
@@ -138,12 +150,19 @@ function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [dockerAvailable, imageAvailable]);
 
-  // Loading initial state
+  // Loading initial state — show skeleton layout instead of blank spinner
   if (dockerAvailable === null) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-primary)] border-t-blue-600" />
-      </div>
+      <Layout onCreateBot={() => {}} botCount={0}>
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)]"
+            />
+          ))}
+        </div>
+      </Layout>
     );
   }
 
@@ -155,9 +174,23 @@ function App() {
   // Docker is available but image check still in progress
   if (imageAvailable === null) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-primary)] border-t-blue-600" />
-      </div>
+      <Layout onCreateBot={() => {}} botCount={bots.length}>
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {bots.length > 0
+            ? bots.map((b) => (
+                <div
+                  key={b.id}
+                  className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)]"
+                />
+              ))
+            : [1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)]"
+                />
+              ))}
+        </div>
+      </Layout>
     );
   }
 
@@ -186,11 +219,19 @@ function App() {
               fallbackTitle="Bot detail view error"
               onReset={() => selectBot(null)}
             >
-              <BotDetail
-                bot={selectedBot}
-                onBack={() => selectBot(null)}
-                tabChangeRef={tabChangeRef}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  </div>
+                }
+              >
+                <BotDetail
+                  bot={selectedBot}
+                  onBack={() => selectBot(null)}
+                  tabChangeRef={tabChangeRef}
+                />
+              </Suspense>
             </ErrorBoundary>
           </div>
         ) : (

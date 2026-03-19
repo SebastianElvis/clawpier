@@ -113,6 +113,7 @@ pub fn run() {
             commands::resize_terminal,
             commands::log_crash,
             commands::export_logs,
+            commands::update_health_check,
         ])
         .setup(|app| {
             // Spawn background status polling task
@@ -123,8 +124,6 @@ pub fn run() {
                 let mut previous_statuses: HashMap<String, String> = HashMap::new();
 
                 loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
                     let state: tauri::State<'_, AppState> = handle.state::<AppState>();
 
                     // First, ping Docker to check connectivity
@@ -224,6 +223,8 @@ pub fn run() {
                             let _ = handle.emit("bot-status-update", &bots_with_status);
                         }
                     }
+
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                 }
             });
 

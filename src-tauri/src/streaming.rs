@@ -12,6 +12,7 @@ pub enum StreamKind {
     Stats,
     Logs,
     Chat,
+    Health,
 }
 
 /// An active interactive shell session inside a container.

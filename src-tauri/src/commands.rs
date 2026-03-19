@@ -12,7 +12,7 @@ use crate::docker_manager::{self, DockerManager};
 use crate::error::AppError;
 use crate::models::{
     BotProfile, BotStatus, BotWithStatus, ChatMessage, ChatResponseChunk, ChatSessionSummary,
-    EnvVar, ExecResult, FileEntry, NetworkMode, PortMapping,
+    EnvVar, ExecResult, FileEntry, HealthCheckConfig, HealthUpdate, NetworkMode, PortMapping,
 };
 use crate::state::AppState;
 use crate::streaming::{InteractiveSession, StreamKind};
@@ -265,7 +265,11 @@ pub async fn create_bot(
 }
 
 #[tauri::command]
-pub async fn start_bot(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
+pub async fn start_bot(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), AppError> {
     let store = state.store.lock().await;
     let bot = store
         .get_by_id(&id)
@@ -274,7 +278,22 @@ pub async fn start_bot(state: State<'_, AppState>, id: String) -> Result<(), App
     drop(store);
 
     let docker = state.docker.lock().await;
-    docker.start_bot(&bot).await
+    docker.start_bot(&bot).await?;
+    drop(docker);
+
+    // Spawn health check task if configured
+    if let Some(ref hc_config) = bot.health_check {
+        let handle = spawn_health_check(
+            app.clone(),
+            bot.id.clone(),
+            bot.container_name(),
+            hc_config.clone(),
+        );
+        let mut streams = state.streams.lock().await;
+        streams.start(&bot.id, StreamKind::Health, handle);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -414,6 +433,126 @@ pub async fn auto_start_bots(state: State<'_, AppState>) -> Result<Vec<String>, 
     }
 
     Ok(errors)
+}
+
+// ── Health check commands ─────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn update_health_check(
+    state: State<'_, AppState>,
+    id: String,
+    health_check: Option<HealthCheckConfig>,
+) -> Result<(), AppError> {
+    // Validate if present
+    if let Some(ref hc) = health_check {
+        if hc.command.is_empty() || hc.command.iter().all(|s| s.trim().is_empty()) {
+            return Err(AppError::Validation(
+                "Health check command must not be empty".into(),
+            ));
+        }
+        if hc.interval_secs < 5 {
+            return Err(AppError::Validation(
+                "Health check interval must be at least 5 seconds".into(),
+            ));
+        }
+        if hc.retries < 1 {
+            return Err(AppError::Validation(
+                "Health check retries must be at least 1".into(),
+            ));
+        }
+    }
+
+    let mut store = state.store.lock().await;
+    store.update_health_check(&id, health_check)
+}
+
+/// Spawn a background health check task for a running bot.
+/// The task periodically execs the health check command in the container,
+/// tracks consecutive failures, emits events, and optionally auto-restarts.
+pub(crate) fn spawn_health_check(
+    app: AppHandle,
+    bot_id: String,
+    container_name: String,
+    config: HealthCheckConfig,
+) -> tauri::async_runtime::JoinHandle<()> {
+    tauri::async_runtime::spawn(async move {
+        let mut consecutive_failures: u32 = 0;
+
+        // Wait one interval before the first check (let the bot settle)
+        tokio::time::sleep(std::time::Duration::from_secs(config.interval_secs)).await;
+
+        loop {
+            let state: tauri::State<'_, AppState> = app.state::<AppState>();
+            let docker = state.docker.lock().await;
+            let docker_client = docker.client();
+
+            let args: Vec<&str> = config.command.iter().map(|s| s.as_str()).collect();
+            let result =
+                DockerManager::exec_in_container(&docker_client, &container_name, &args).await;
+            drop(docker);
+
+            let (healthy, output) = match result {
+                Ok(exec_result) => {
+                    let ok = exec_result.exit_code == Some(0);
+                    (ok, Some(exec_result.output))
+                }
+                Err(_) => (false, None),
+            };
+
+            if healthy {
+                consecutive_failures = 0;
+            } else {
+                consecutive_failures += 1;
+            }
+
+            let update = HealthUpdate {
+                bot_id: bot_id.clone(),
+                healthy: consecutive_failures == 0,
+                consecutive_failures,
+                last_output: output,
+            };
+            let _ = app.emit("bot-health-update", &update);
+
+            // Auto-restart on threshold
+            if consecutive_failures >= config.retries && config.auto_restart {
+                eprintln!(
+                    "Health check: {} failed {} times, auto-restarting",
+                    bot_id, consecutive_failures
+                );
+
+                // Stop streams (health check will be re-spawned after restart)
+                {
+                    let mut streams = state.streams.lock().await;
+                    streams.stop_all(&bot_id);
+                    streams.stop_session(&bot_id);
+                }
+
+                // Restart the container
+                let restart_result = {
+                    let docker = state.docker.lock().await;
+                    docker.stop_bot(&bot_id).await.ok();
+                    let store = state.store.lock().await;
+                    if let Some(bot) = store.get_by_id(&bot_id) {
+                        let bot = bot.clone();
+                        drop(store);
+                        docker.start_bot(&bot).await
+                    } else {
+                        break; // Bot was deleted
+                    }
+                };
+
+                if let Err(e) = restart_result {
+                    eprintln!("Health check auto-restart failed for {}: {}", bot_id, e);
+                }
+
+                // Exit this task — a new health check will be spawned by the
+                // next status poll or manual start
+                break;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_secs(config.interval_secs)).await;
+        }
+    })
 }
 
 #[tauri::command]
@@ -1367,6 +1506,36 @@ pub async fn resize_terminal(
 
 #[tauri::command]
 pub async fn export_logs(path: String, content: String) -> Result<(), AppError> {
+    let path = std::path::PathBuf::from(&path);
+
+    // Validate: parent directory must exist and be canonical
+    let parent = path
+        .parent()
+        .ok_or_else(|| AppError::Validation("Invalid export path".into()))?;
+    let canonical_parent = std::fs::canonicalize(parent)
+        .map_err(|_| AppError::Validation("Export directory does not exist".into()))?;
+
+    // Must be within user's home directory
+    let home = dirs::home_dir()
+        .ok_or_else(|| AppError::Other("Cannot determine home directory".into()))?;
+    if !canonical_parent.starts_with(&home) {
+        return Err(AppError::Validation(
+            "Export path must be within your home directory".into(),
+        ));
+    }
+
+    // Block sensitive subdirectories within home
+    let relative = canonical_parent
+        .strip_prefix(&home)
+        .unwrap_or(&canonical_parent);
+    for sensitive in &[".ssh", ".gnupg"] {
+        if relative.starts_with(sensitive) {
+            return Err(AppError::Validation(
+                "Cannot export to sensitive directory".into(),
+            ));
+        }
+    }
+
     tokio::fs::write(&path, content)
         .await
         .map_err(AppError::Io)?;

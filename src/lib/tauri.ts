@@ -7,6 +7,7 @@ import type {
   EnvVar,
   ExecResult,
   FileEntry,
+  HealthCheckConfig,
   NetworkMode,
   PortMapping,
   SystemResources,
@@ -106,6 +107,15 @@ export async function setAutoStart(
 
 export async function autoStartBots(): Promise<string[]> {
   return invoke<string[]>("auto_start_bots");
+}
+
+// ── Health check commands ─────────────────────────────────────────────
+
+export async function updateHealthCheck(
+  id: string,
+  healthCheck: HealthCheckConfig | null
+): Promise<void> {
+  return invoke("update_health_check", { id, healthCheck });
 }
 
 // ── Resource & config commands ──────────────────────────────────────

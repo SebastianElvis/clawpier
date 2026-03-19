@@ -11,6 +11,20 @@ export interface PortMapping {
   protocol: "tcp" | "udp";
 }
 
+export interface HealthCheckConfig {
+  command: string[];
+  interval_secs: number;
+  retries: number;
+  auto_restart: boolean;
+}
+
+export interface HealthUpdate {
+  bot_id: string;
+  healthy: boolean;
+  consecutive_failures: number;
+  last_output: string | null;
+}
+
 export interface BotProfile {
   id: string;
   name: string;
@@ -23,6 +37,7 @@ export interface BotProfile {
   memory_limit?: number | null;
   port_mappings: PortMapping[];
   auto_start: boolean;
+  health_check?: HealthCheckConfig | null;
 }
 
 export type BotStatus =

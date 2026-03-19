@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::{BotProfile, EnvVar, NetworkMode, PortMapping};
+use crate::models::{BotProfile, EnvVar, HealthCheckConfig, NetworkMode, PortMapping};
 
 pub struct BotStore {
     bots: Vec<BotProfile>,
@@ -261,6 +261,21 @@ impl BotStore {
             .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
 
         bot.auto_start = auto_start;
+        self.save()
+    }
+
+    pub fn update_health_check(
+        &mut self,
+        id: &str,
+        health_check: Option<HealthCheckConfig>,
+    ) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.health_check = health_check;
         self.save()
     }
 
@@ -711,6 +726,7 @@ mod tests {
             network_mode: NetworkMode::Bridge,
             port_mappings: Vec::new(),
             auto_start: false,
+            health_check: None,
         };
         let new_bot = BotProfile::new("NewBot".into(), None);
         let new_id = new_bot.id.clone();

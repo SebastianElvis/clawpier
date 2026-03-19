@@ -124,10 +124,8 @@ impl DockerManager {
             env.push(format!("{}={}", ev.key, ev.value));
         }
 
-        // Legacy fallback
-        if let Some(ref api_key_env) = profile.api_key_env {
-            env.push(api_key_env.clone());
-        }
+        // Legacy api_key_env is migrated to env_vars by BotStore::new(),
+        // so no fallback is needed here. Skipping prevents blocked-key bypass.
 
         // Create a host directory for persisting OpenClaw config across restarts.
         // Using a host bind mount (not a named volume) so it inherits the correct

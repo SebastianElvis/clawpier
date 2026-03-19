@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Box,
   Save,
+  HeartPulse,
   ChevronUp,
   ChevronDown,
   Sun,
@@ -24,7 +25,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { BotWithStatus, NetworkMode, PortMapping, EnvVar } from "../lib/types";
+import type { BotWithStatus, NetworkMode, PortMapping, EnvVar, HealthCheckConfig } from "../lib/types";
 import * as api from "../lib/tauri";
 import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
@@ -539,6 +540,7 @@ function DockerTab({
     setWorkspacePath,
     restartBot,
     setAutoStart,
+    updateHealthCheck,
   } = useBotStore();
 
   const [saving, setSaving] = useState(false);
@@ -708,6 +710,13 @@ function DockerTab({
         </div>
       </div>
 
+      {/* Health Check */}
+      <HealthCheckSection
+        botId={bot.id}
+        healthCheck={bot.health_check ?? null}
+        onUpdate={updateHealthCheck}
+      />
+
       {/* Resource Limits */}
       <ResourceLimitsEditor
         cpuLimit={bot.cpu_limit ?? null}
@@ -786,6 +795,199 @@ function DockerTab({
         envVars={bot.env_vars ?? EMPTY_ENV_VARS}
         onChange={setPendingEnvVars}
       />
+    </div>
+  );
+}
+
+// ── Health Check Section ──────────────────────────────────────────────
+
+function HealthCheckSection({
+  botId,
+  healthCheck,
+  onUpdate,
+}: {
+  botId: string;
+  healthCheck: HealthCheckConfig | null;
+  onUpdate: (id: string, hc: HealthCheckConfig | null) => Promise<void>;
+}) {
+  const enabled = !!healthCheck;
+  const [command, setCommand] = useState(
+    healthCheck?.command.join(" ") ?? "echo ok"
+  );
+  const [interval, setInterval_] = useState(healthCheck?.interval_secs ?? 30);
+  const [retries, setRetries] = useState(healthCheck?.retries ?? 3);
+  const [autoRestart, setAutoRestart] = useState(
+    healthCheck?.auto_restart ?? false
+  );
+  const [savingHc, setSavingHc] = useState(false);
+
+  const handleToggle = async () => {
+    setSavingHc(true);
+    try {
+      if (enabled) {
+        await onUpdate(botId, null);
+      } else {
+        await onUpdate(botId, {
+          command: command.split(/\s+/).filter(Boolean),
+          interval_secs: interval,
+          retries,
+          auto_restart: autoRestart,
+        });
+      }
+    } finally {
+      setSavingHc(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSavingHc(true);
+    try {
+      await onUpdate(botId, {
+        command: command.split(/\s+/).filter(Boolean),
+        interval_secs: interval,
+        retries,
+        auto_restart: autoRestart,
+      });
+    } finally {
+      setSavingHc(false);
+    }
+  };
+
+  // Track if values differ from saved
+  const hasChanges =
+    enabled &&
+    (command !== (healthCheck?.command.join(" ") ?? "echo ok") ||
+      interval !== (healthCheck?.interval_secs ?? 30) ||
+      retries !== (healthCheck?.retries ?? 3) ||
+      autoRestart !== (healthCheck?.auto_restart ?? false));
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+        <HeartPulse className="mr-1 inline h-4 w-4" />
+        Health Check
+      </h3>
+      <div className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] p-3 space-y-3">
+        {/* Enable toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-[var(--text-secondary)]">
+              Enable health checks
+            </p>
+            <p className="text-[11px] text-[var(--text-tertiary)]">
+              Periodically exec a command to verify the bot is healthy
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={enabled}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+              enabled ? "bg-blue-600" : "bg-[var(--bg-active)]"
+            }`}
+            onClick={handleToggle}
+            disabled={savingHc}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+                enabled ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+
+        {enabled && (
+          <>
+            {/* Command */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-[var(--text-tertiary)]">
+                Command
+              </label>
+              <input
+                className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-blue-500"
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder="echo ok"
+              />
+            </div>
+
+            {/* Interval + Retries */}
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-[11px] font-medium text-[var(--text-tertiary)]">
+                  Interval (seconds)
+                </label>
+                <input
+                  type="number"
+                  min={5}
+                  max={300}
+                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-blue-500"
+                  value={interval}
+                  onChange={(e) =>
+                    setInterval_(Math.max(5, parseInt(e.target.value) || 5))
+                  }
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-[11px] font-medium text-[var(--text-tertiary)]">
+                  Failure threshold
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-blue-500"
+                  value={retries}
+                  onChange={(e) =>
+                    setRetries(Math.max(1, parseInt(e.target.value) || 1))
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Auto-restart toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-[var(--text-secondary)]">
+                  Auto-restart on failure
+                </p>
+                <p className="text-[11px] text-[var(--text-tertiary)]">
+                  Automatically restart the bot when health checks fail
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={autoRestart}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                  autoRestart ? "bg-blue-600" : "bg-[var(--bg-active)]"
+                }`}
+                onClick={() => setAutoRestart(!autoRestart)}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${
+                    autoRestart ? "translate-x-4" : "translate-x-0.5"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Save button for changes */}
+            {hasChanges && (
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                onClick={handleSave}
+                disabled={savingHc}
+              >
+                {savingHc ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                Save Health Check
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
