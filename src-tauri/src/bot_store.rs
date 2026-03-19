@@ -736,4 +736,85 @@ mod tests {
         assert_eq!(store.get_by_id(&id).unwrap().name, "Existing");
         assert!(store.get_by_id(&new_id).is_some());
     }
+
+    // ── Health check persistence ────────────────────────────────────
+
+    #[test]
+    fn update_health_check_set() {
+        let (mut store, _dir) = temp_store();
+        let bot = BotProfile::new("HealthBot".into(), None);
+        let id = bot.id.clone();
+        store.add(bot).unwrap();
+
+        let hc = HealthCheckConfig {
+            command: vec!["echo".into(), "ok".into()],
+            interval_secs: 15,
+            retries: 2,
+            auto_restart: true,
+        };
+        store.update_health_check(&id, Some(hc)).unwrap();
+
+        let bot = store.get_by_id(&id).unwrap();
+        let hc = bot.health_check.as_ref().unwrap();
+        assert_eq!(hc.command, vec!["echo", "ok"]);
+        assert_eq!(hc.interval_secs, 15);
+        assert_eq!(hc.retries, 2);
+        assert!(hc.auto_restart);
+    }
+
+    #[test]
+    fn update_health_check_clear() {
+        let (mut store, _dir) = temp_store();
+        let bot = BotProfile::new("ClearHC".into(), None);
+        let id = bot.id.clone();
+        store.add(bot).unwrap();
+
+        // Set then clear
+        store
+            .update_health_check(
+                &id,
+                Some(HealthCheckConfig::default()),
+            )
+            .unwrap();
+        assert!(store.get_by_id(&id).unwrap().health_check.is_some());
+
+        store.update_health_check(&id, None).unwrap();
+        assert!(store.get_by_id(&id).unwrap().health_check.is_none());
+    }
+
+    #[test]
+    fn update_health_check_persists_to_disk() {
+        let (mut store, dir) = temp_store();
+        let bot = BotProfile::new("PersistHC".into(), None);
+        let id = bot.id.clone();
+        store.add(bot).unwrap();
+
+        store
+            .update_health_check(
+                &id,
+                Some(HealthCheckConfig {
+                    command: vec!["cat".into(), "/health".into()],
+                    interval_secs: 60,
+                    retries: 5,
+                    auto_restart: false,
+                }),
+            )
+            .unwrap();
+
+        // Reload from disk
+        let path = dir.path().join("bots.json");
+        let data = std::fs::read_to_string(&path).unwrap();
+        let bots: Vec<BotProfile> = serde_json::from_str(&data).unwrap();
+        let hc = bots[0].health_check.as_ref().unwrap();
+        assert_eq!(hc.command, vec!["cat", "/health"]);
+        assert_eq!(hc.interval_secs, 60);
+    }
+
+    #[test]
+    fn update_health_check_nonexistent_bot() {
+        let (mut store, _dir) = temp_store();
+        assert!(store
+            .update_health_check("ghost", Some(HealthCheckConfig::default()))
+            .is_err());
+    }
 }

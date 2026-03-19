@@ -372,4 +372,53 @@ describe("bot-store", () => {
       });
     });
   });
+
+  // ── Health check tests ────────────────────────────────────────────
+
+  describe("updateHealthCheck", () => {
+    it("invokes update_health_check with config and refreshes", async () => {
+      mockedInvoke.mockResolvedValueOnce(undefined); // update_health_check
+      mockedInvoke.mockResolvedValueOnce([]); // list_bots
+
+      const hc = {
+        command: ["echo", "ok"],
+        interval_secs: 30,
+        retries: 3,
+        auto_restart: false,
+      };
+      await useBotStore.getState().updateHealthCheck("bot-1", hc);
+
+      expect(mockedInvoke).toHaveBeenCalledWith("update_health_check", {
+        id: "bot-1",
+        healthCheck: hc,
+      });
+    });
+
+    it("invokes update_health_check with null to disable", async () => {
+      mockedInvoke.mockResolvedValueOnce(undefined); // update_health_check
+      mockedInvoke.mockResolvedValueOnce([]); // list_bots
+
+      await useBotStore.getState().updateHealthCheck("bot-1", null);
+
+      expect(mockedInvoke).toHaveBeenCalledWith("update_health_check", {
+        id: "bot-1",
+        healthCheck: null,
+      });
+    });
+
+    it("refreshes bot list after update", async () => {
+      const updatedBots = [makeBotWithStatus("bot-1", "Bot1")];
+      mockedInvoke.mockResolvedValueOnce(undefined); // update_health_check
+      mockedInvoke.mockResolvedValueOnce(updatedBots); // list_bots
+
+      await useBotStore.getState().updateHealthCheck("bot-1", {
+        command: ["cat", "/tmp/healthy"],
+        interval_secs: 10,
+        retries: 5,
+        auto_restart: true,
+      });
+
+      expect(useBotStore.getState().bots).toEqual(updatedBots);
+    });
+  });
 });

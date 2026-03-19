@@ -631,4 +631,108 @@ mod tests {
         let json = serde_json::to_value(&done_chunk).unwrap();
         assert_eq!(json["done"], true);
     }
+
+    // ── Health check config ─────────────────────────────────────────
+
+    #[test]
+    fn health_check_default() {
+        let hc = HealthCheckConfig::default();
+        assert_eq!(hc.command, vec!["echo", "ok"]);
+        assert_eq!(hc.interval_secs, 30);
+        assert_eq!(hc.retries, 3);
+        assert!(!hc.auto_restart);
+    }
+
+    #[test]
+    fn health_check_roundtrip() {
+        let hc = HealthCheckConfig {
+            command: vec!["cat".into(), "/tmp/healthy".into()],
+            interval_secs: 10,
+            retries: 5,
+            auto_restart: true,
+        };
+        let json = serde_json::to_string(&hc).unwrap();
+        let restored: HealthCheckConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.command, vec!["cat", "/tmp/healthy"]);
+        assert_eq!(restored.interval_secs, 10);
+        assert_eq!(restored.retries, 5);
+        assert!(restored.auto_restart);
+    }
+
+    #[test]
+    fn health_check_serde_defaults() {
+        // Only command provided — interval, retries, auto_restart should default
+        let json = r#"{"command": ["echo", "ok"]}"#;
+        let hc: HealthCheckConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(hc.interval_secs, 30);
+        assert_eq!(hc.retries, 3);
+        assert!(!hc.auto_restart);
+    }
+
+    #[test]
+    fn bot_profile_with_health_check() {
+        let mut bot = BotProfile::new("HealthBot".into(), None);
+        bot.health_check = Some(HealthCheckConfig {
+            command: vec!["test".into(), "-f".into(), "/tmp/ok".into()],
+            interval_secs: 15,
+            retries: 2,
+            auto_restart: true,
+        });
+
+        let json = serde_json::to_string(&bot).unwrap();
+        assert!(json.contains("health_check"));
+
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+        let hc = restored.health_check.unwrap();
+        assert_eq!(hc.command, vec!["test", "-f", "/tmp/ok"]);
+        assert_eq!(hc.interval_secs, 15);
+        assert!(hc.auto_restart);
+    }
+
+    #[test]
+    fn bot_profile_without_health_check_omits_field() {
+        let bot = BotProfile::new("NoHC".into(), None);
+        let json = serde_json::to_string(&bot).unwrap();
+        assert!(!json.contains("health_check"));
+    }
+
+    #[test]
+    fn backward_compat_missing_health_check() {
+        let json = r#"{
+            "id": "old",
+            "name": "OldBot",
+            "image": "ghcr.io/openclaw/openclaw:latest",
+            "env_vars": []
+        }"#;
+        let bot: BotProfile = serde_json::from_str(json).unwrap();
+        assert!(bot.health_check.is_none());
+    }
+
+    #[test]
+    fn health_update_serialization() {
+        let update = HealthUpdate {
+            bot_id: "bot-1".into(),
+            healthy: false,
+            consecutive_failures: 3,
+            last_output: Some("error: not found".into()),
+        };
+        let json = serde_json::to_value(&update).unwrap();
+        assert_eq!(json["bot_id"], "bot-1");
+        assert_eq!(json["healthy"], false);
+        assert_eq!(json["consecutive_failures"], 3);
+        assert_eq!(json["last_output"], "error: not found");
+    }
+
+    #[test]
+    fn health_update_null_output() {
+        let update = HealthUpdate {
+            bot_id: "bot-2".into(),
+            healthy: true,
+            consecutive_failures: 0,
+            last_output: None,
+        };
+        let json = serde_json::to_value(&update).unwrap();
+        assert_eq!(json["healthy"], true);
+        assert!(json["last_output"].is_null());
+    }
 }
