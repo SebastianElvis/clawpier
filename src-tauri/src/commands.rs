@@ -562,6 +562,13 @@ fn validate_skill_name(name: &str) -> Result<(), AppError> {
     if name.is_empty() {
         return Err(AppError::Validation("Skill name must not be empty".into()));
     }
+    // Reject path traversal
+    if name.contains("..") {
+        return Err(AppError::Validation(format!(
+            "Invalid skill name: '{}'",
+            name
+        )));
+    }
     // Allow @scope/name patterns plus alphanumeric, hyphens, underscores, dots
     if !name
         .chars()
@@ -2143,5 +2150,149 @@ mod tests {
     #[test]
     fn parse_openclaw_skills_output_empty() {
         assert!(parse_openclaw_skills_output("Skills (0/0 ready)\n").is_empty());
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_sets_source_bundled() {
+        let output = "│ ✓ ready   │ ☔ weather │ Get weather  │ openclaw-bundled │\n";
+        let skills = parse_openclaw_skills_output(output);
+        assert_eq!(skills[0].source, "bundled");
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_installed_status() {
+        let output = concat!(
+            "│ ✓ ready   │ ☔ weather │ forecast  │ bundled │\n",
+            "│ ✗ missing │ 📦 slack   │ messaging │ bundled │\n",
+        );
+        let skills = parse_openclaw_skills_output(output);
+        assert!(skills[0].installed, "✓ should be installed");
+        assert!(!skills[1].installed, "✗ should not be installed");
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_strips_emoji_from_name() {
+        let output = "│ ✓ ready │ 🔐 1password │ 1Pass │ bundled │\n";
+        let skills = parse_openclaw_skills_output(output);
+        assert_eq!(skills[0].name, "1password");
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_skips_separator_rows() {
+        let output = concat!(
+            "┌───────────┬───────────┬──────────────┬──────────────────┐\n",
+            "│ Status    │ Skill     │ Description  │ Source           │\n",
+            "├───────────┼───────────┼──────────────┼──────────────────┤\n",
+            "│ ✓ ready   │ ☔ weather │ Get weather  │ openclaw-bundled │\n",
+            "└───────────┴───────────┴──────────────┴──────────────────┘\n",
+        );
+        let skills = parse_openclaw_skills_output(output);
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].name, "weather");
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_preserves_description() {
+        let output = "│ ✗ missing │ 📦 notion │ Notion API integration for notes │ bundled │\n";
+        let skills = parse_openclaw_skills_output(output);
+        assert_eq!(skills[0].description, "Notion API integration for notes");
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_author_from_source_column() {
+        let output = "│ ✓ ready │ 📦 test │ Desc │ custom-source │\n";
+        let skills = parse_openclaw_skills_output(output);
+        assert_eq!(skills[0].author, "custom-source");
+    }
+
+    // ── ClawHub search output parser tests ─────────────────────────
+
+    #[test]
+    fn parse_clawhub_search_basic() {
+        let output = "- Searching\nweather  Weather  (3.872)\nweather-pollen  Weather Pollen  (3.536)\n";
+        let skills = parse_clawhub_search_output(output);
+        assert_eq!(skills.len(), 2);
+        assert_eq!(skills[0].name, "weather");
+        assert_eq!(skills[0].description, "Weather");
+        assert_eq!(skills[1].name, "weather-pollen");
+        assert_eq!(skills[1].description, "Weather Pollen");
+    }
+
+    #[test]
+    fn parse_clawhub_search_sets_source_clawhub() {
+        let output = "my-skill  My Skill  (2.5)\n";
+        let skills = parse_clawhub_search_output(output);
+        assert_eq!(skills[0].source, "clawhub");
+    }
+
+    #[test]
+    fn parse_clawhub_search_not_installed() {
+        let output = "my-skill  My Skill  (2.5)\n";
+        let skills = parse_clawhub_search_output(output);
+        assert!(!skills[0].installed, "clawhub results should not be marked installed");
+    }
+
+    #[test]
+    fn parse_clawhub_search_skips_noise() {
+        let output = "npm warn something\n- Searching\nmy-skill  My Skill  (2.5)\n";
+        let skills = parse_clawhub_search_output(output);
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].name, "my-skill");
+    }
+
+    #[test]
+    fn parse_clawhub_search_empty() {
+        assert!(parse_clawhub_search_output("").is_empty());
+    }
+
+    #[test]
+    fn parse_clawhub_search_only_noise() {
+        let output = "npm warn\n- Searching\nerror: no results\n";
+        assert!(parse_clawhub_search_output(output).is_empty());
+    }
+
+    #[test]
+    fn parse_clawhub_search_strips_score() {
+        let output = "openmeteo-sh-weather-advanced  Weather via OpenMeteo (via openmeteo-sh cli; advanced ver)  (3.431)\n";
+        let skills = parse_clawhub_search_output(output);
+        assert_eq!(skills[0].name, "openmeteo-sh-weather-advanced");
+        // Description should not include the trailing score
+        assert!(!skills[0].description.contains("3.431"));
+        assert!(skills[0].description.contains("Weather via OpenMeteo"));
+    }
+
+    #[test]
+    fn parse_clawhub_search_no_score() {
+        let output = "my-skill  A description without a score\n";
+        let skills = parse_clawhub_search_output(output);
+        assert_eq!(skills[0].description, "A description without a score");
+    }
+
+    // ── Skill name validation edge cases ────────────────────────────
+
+    #[test]
+    fn validate_skill_name_allows_dots() {
+        assert!(validate_skill_name("weather-1.0.0").is_ok());
+    }
+
+    #[test]
+    fn validate_skill_name_allows_at_scope() {
+        assert!(validate_skill_name("@openclaw/weather").is_ok());
+    }
+
+    #[test]
+    fn validate_skill_name_rejects_path_traversal() {
+        assert!(validate_skill_name("../etc/passwd").is_err());
+        assert!(validate_skill_name("skill/../../../root").is_err());
+    }
+
+    #[test]
+    fn validate_skill_name_rejects_newlines() {
+        assert!(validate_skill_name("skill\nrm -rf /").is_err());
+    }
+
+    #[test]
+    fn validate_skill_name_rejects_ampersand() {
+        assert!(validate_skill_name("skill&whoami").is_err());
     }
 }

@@ -171,4 +171,166 @@ describe("useSkillBrowser", () => {
     // No query = not registry search
     expect(result.current.isRegistrySearch).toBe(false);
   });
+
+  it("resets state when botId changes", async () => {
+    mockedInvoke.mockResolvedValue(
+      makeSearchResult([{ name: "skill-a", installed: true }])
+    );
+
+    const { result, rerender } = renderHook(
+      ({ botId }) => useSkillBrowser(botId),
+      { initialProps: { botId: "bot-1" } }
+    );
+
+    await waitFor(() => expect(result.current.skills).toHaveLength(1));
+
+    mockedInvoke.mockResolvedValue(makeSearchResult([]));
+    rerender({ botId: "bot-2" });
+
+    // After bot change, skills should be cleared before refetch
+    await waitFor(() => {
+      expect(result.current.query).toBe("");
+      expect(result.current.filter).toBe("all");
+    });
+  });
+
+  it("handles uninstall with non-zero exit code", async () => {
+    mockedInvoke.mockResolvedValueOnce(
+      makeSearchResult([{ name: "fail-uninstall", installed: true }])
+    );
+
+    const { result } = renderHook(() => useSkillBrowser("bot-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockedInvoke.mockResolvedValueOnce({
+      output: "npm warn\nError: permission denied",
+      exit_code: 1,
+    });
+
+    await act(async () => {
+      await result.current.uninstallSkill("fail-uninstall");
+    });
+
+    expect(result.current.error).toContain("Uninstall failed for fail-uninstall");
+    expect(result.current.error).toContain("permission denied");
+    // Should remain installed
+    expect(result.current.skills[0].installed).toBe(true);
+  });
+
+  it("tracks installing state during install/uninstall", async () => {
+    mockedInvoke.mockResolvedValueOnce(
+      makeSearchResult([{ name: "track-skill" }])
+    );
+
+    const { result } = renderHook(() => useSkillBrowser("bot-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // Start install but don't resolve yet
+    let resolveInstall: (v: unknown) => void;
+    mockedInvoke.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveInstall = resolve;
+      })
+    );
+
+    let installPromise: Promise<void>;
+    act(() => {
+      installPromise = result.current.installSkill("track-skill");
+    });
+
+    // Should be in installing set
+    expect(result.current.installing.has("track-skill")).toBe(true);
+
+    // Resolve and wait
+    await act(async () => {
+      resolveInstall!({ output: "done", exit_code: 0 });
+      await installPromise!;
+    });
+
+    expect(result.current.installing.has("track-skill")).toBe(false);
+  });
+
+  it("clears error on new install attempt", async () => {
+    mockedInvoke.mockResolvedValueOnce(
+      makeSearchResult([{ name: "retry-skill" }])
+    );
+
+    const { result } = renderHook(() => useSkillBrowser("bot-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // First install fails
+    mockedInvoke.mockRejectedValueOnce("network error");
+    await act(async () => {
+      await result.current.installSkill("retry-skill");
+    });
+    expect(result.current.error).toContain("Install failed");
+
+    // Second install attempt should clear error
+    mockedInvoke.mockResolvedValueOnce({ output: "done", exit_code: 0 });
+    await act(async () => {
+      await result.current.installSkill("retry-skill");
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it("falls back to bundled skills when clawhub unavailable during search", async () => {
+    // First call (mount, empty query) succeeds
+    mockedInvoke.mockResolvedValueOnce(
+      makeSearchResult([
+        { name: "weather", source: "bundled" },
+        { name: "slack", source: "bundled" },
+      ])
+    );
+
+    const { result } = renderHook(() => useSkillBrowser("bot-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // Simulate typing a search query
+    act(() => result.current.setQuery("weather"));
+
+    // The search with query will fail (clawhub unavailable)
+    mockedInvoke.mockRejectedValueOnce(
+      "ClawHub CLI is not available in this container"
+    );
+    // Fallback empty-query call succeeds
+    mockedInvoke.mockResolvedValueOnce(
+      makeSearchResult([
+        { name: "weather", source: "bundled" },
+        { name: "slack", source: "bundled" },
+      ])
+    );
+
+    await waitFor(() => {
+      expect(result.current.clawhubAvailable).toBe(false);
+      // Should filter bundled results by "weather"
+      expect(result.current.skills.length).toBeGreaterThanOrEqual(1);
+      expect(result.current.skills.every((s) => s.name.includes("weather"))).toBe(true);
+    });
+  });
+
+  it("preserves source field from search results", async () => {
+    mockedInvoke.mockResolvedValueOnce(
+      makeSearchResult([
+        { name: "bundled-skill", source: "bundled" },
+        { name: "remote-skill", source: "clawhub" },
+      ])
+    );
+
+    const { result } = renderHook(() => useSkillBrowser("bot-1"));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.skills[0].source).toBe("bundled");
+    expect(result.current.skills[1].source).toBe("clawhub");
+  });
+
+  it("search error sets error state", async () => {
+    mockedInvoke.mockRejectedValueOnce("Docker timeout");
+
+    const { result } = renderHook(() => useSkillBrowser("bot-1"));
+
+    await waitFor(() => {
+      expect(result.current.error).toBe("Docker timeout");
+      expect(result.current.loading).toBe(false);
+    });
+  });
 });
