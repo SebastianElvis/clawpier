@@ -114,6 +114,12 @@ pub fn run() {
             commands::log_crash,
             commands::export_logs,
             commands::update_health_check,
+            commands::clawhub_search_skills,
+            commands::clawhub_install_skill,
+            commands::clawhub_uninstall_skill,
+            commands::check_clawhub_available,
+            commands::install_clawhub,
+            commands::clawhub_inspect_skill,
         ])
         .setup(|app| {
             // Spawn background status polling task

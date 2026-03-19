@@ -274,6 +274,47 @@ export async function stopChatResponse(id: string): Promise<void> {
   return invoke("stop_chat_response", { id });
 }
 
+// ── ClawHub skill commands ──────────────────────────────────────────
+
+export async function clawHubSearchSkills(
+  id: string,
+  query: string
+): Promise<import("./types").SkillSearchResult> {
+  return invoke<import("./types").SkillSearchResult>("clawhub_search_skills", {
+    id,
+    query,
+  });
+}
+
+export async function clawHubInstallSkill(
+  id: string,
+  skillName: string
+): Promise<ExecResult> {
+  return invoke<ExecResult>("clawhub_install_skill", { id, skillName });
+}
+
+export async function clawHubUninstallSkill(
+  id: string,
+  skillName: string
+): Promise<ExecResult> {
+  return invoke<ExecResult>("clawhub_uninstall_skill", { id, skillName });
+}
+
+export async function checkClawHubAvailable(id: string): Promise<string> {
+  return invoke<string>("check_clawhub_available", { id });
+}
+
+export async function installClawHub(id: string): Promise<ExecResult> {
+  return invoke<ExecResult>("install_clawhub", { id });
+}
+
+export async function clawHubInspectSkill(
+  id: string,
+  skillName: string
+): Promise<string> {
+  return invoke<string>("clawhub_inspect_skill", { id, skillName });
+}
+
 // ── Log export ────────────────────────────────────────────────────
 
 export async function exportLogs(

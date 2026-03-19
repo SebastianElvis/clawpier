@@ -18,6 +18,7 @@ import {
   Box,
   Save,
   HeartPulse,
+  Package,
   ChevronUp,
   ChevronDown,
   Sun,
@@ -42,6 +43,7 @@ import { ResourceLimitsEditor } from "./ResourceLimitsEditor";
 import { NetworkModePicker } from "./NetworkModePicker";
 import { PortMappingEditor } from "./PortMappingEditor";
 import { ChatTab } from "./ChatTab";
+import { SkillBrowser } from "./SkillBrowser";
 import { useAutoRestart } from "../hooks/use-auto-restart";
 import { useRestartProgress } from "../hooks/use-restart-progress";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -53,7 +55,7 @@ import {
   type ThemePreference,
 } from "../lib/theme";
 
-type Tab = "dashboard" | "chat" | "terminal" | "files" | "docker";
+type Tab = "dashboard" | "chat" | "skills" | "terminal" | "files" | "docker";
 
 interface BotDetailProps {
   bot: BotWithStatus;
@@ -66,7 +68,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
     useBotStore();
   const [activeTab, setActiveTabState] = useState<Tab>(() => {
     const saved = loadWindowState().activeTab;
-    const validTabs: Tab[] = ["dashboard", "chat", "terminal", "files", "docker"];
+    const validTabs: Tab[] = ["dashboard", "chat", "skills", "terminal", "files", "docker"];
     if (saved && validTabs.includes(saved as Tab)) return saved as Tab;
     return "dashboard";
   });
@@ -93,7 +95,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
   useEffect(() => {
     if (tabChangeRef) {
       tabChangeRef.current = (tab: string) => {
-        const validTabs: Tab[] = ["dashboard", "chat", "terminal", "files", "docker"];
+        const validTabs: Tab[] = ["dashboard", "chat", "skills", "terminal", "files", "docker"];
         if (validTabs.includes(tab as Tab)) {
           setActiveTab(tab as Tab);
         }
@@ -166,6 +168,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
   const tabs: { key: Tab; label: string; icon: typeof LayoutDashboard; runningOnly?: boolean }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { key: "chat", label: "Chat", icon: MessageSquare, runningOnly: true },
+    { key: "skills", label: "Skills", icon: Package, runningOnly: true },
     { key: "terminal", label: "Terminal", icon: Terminal },
     { key: "files", label: "Files", icon: FolderOpen },
     { key: "docker", label: "Docker", icon: Box },
@@ -354,6 +357,11 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
           {activeTab === "chat" && isRunning && (
             <ErrorBoundary fallbackTitle="Chat error">
               <ChatTab botId={bot.id} />
+            </ErrorBoundary>
+          )}
+          {activeTab === "skills" && isRunning && (
+            <ErrorBoundary fallbackTitle="Skills error">
+              <SkillBrowser botId={bot.id} />
             </ErrorBoundary>
           )}
           {activeTab === "terminal" && (
@@ -997,6 +1005,7 @@ function HealthCheckSection({
 const QUICK_COMMANDS = [
   { label: "openclaw configure", command: "openclaw configure" },
   { label: "openclaw status", command: "openclaw status" },
+  { label: "openclaw skills list", command: "openclaw skills list" },
   { label: "openclaw --help", command: "openclaw --help" },
   { label: "ls /workspace", command: "ls /workspace" },
   { label: "env", command: "env" },

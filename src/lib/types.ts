@@ -105,6 +105,23 @@ export interface ChatResponseChunk {
   done: boolean;
 }
 
+// ── ClawHub skill types ──────────────────────────────────────────────
+
+export interface Skill {
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  installed: boolean;
+  /** "bundled" for local skills, "clawhub" for registry results */
+  source: string;
+}
+
+export interface SkillSearchResult {
+  skills: Skill[];
+  total: number;
+}
+
 export interface SystemResources {
   cpu_cores: number;
   memory_bytes: number;

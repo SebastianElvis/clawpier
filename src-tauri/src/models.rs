@@ -208,6 +208,29 @@ pub struct ExecResult {
     pub exit_code: Option<i64>,
 }
 
+// ── ClawHub skill types ──────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Skill {
+    pub name: String,
+    pub description: String,
+    #[serde(default)]
+    pub author: String,
+    #[serde(default)]
+    pub version: String,
+    #[serde(default)]
+    pub installed: bool,
+    /// "bundled" for `openclaw skills list`, "clawhub" for registry results
+    #[serde(default)]
+    pub source: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct SkillSearchResult {
+    pub skills: Vec<Skill>,
+    pub total: u32,
+}
+
 // ── File entry (returned from list_workspace_files) ──────────────────
 #[derive(Debug, Serialize, Clone)]
 pub struct FileEntry {
@@ -734,5 +757,52 @@ mod tests {
         let json = serde_json::to_value(&update).unwrap();
         assert_eq!(json["healthy"], true);
         assert!(json["last_output"].is_null());
+    }
+
+    // ── Skill types ─────────────────────────────────────────────────
+
+    #[test]
+    fn skill_roundtrip() {
+        let skill = Skill {
+            name: "crypto-price".into(),
+            description: "Get crypto prices".into(),
+            author: "openclaw".into(),
+            version: "1.2.0".into(),
+            installed: true,
+            source: "bundled".into(),
+        };
+        let json = serde_json::to_string(&skill).unwrap();
+        let restored: Skill = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.name, "crypto-price");
+        assert!(restored.installed);
+    }
+
+    #[test]
+    fn skill_defaults_for_missing_fields() {
+        let json = r#"{"name": "basic", "description": "A basic skill"}"#;
+        let skill: Skill = serde_json::from_str(json).unwrap();
+        assert_eq!(skill.author, "");
+        assert_eq!(skill.version, "");
+        assert!(!skill.installed);
+    }
+
+    #[test]
+    fn skill_search_result_serialization() {
+        let result = SkillSearchResult {
+            skills: vec![
+                Skill {
+                    name: "a".into(),
+                    description: "desc a".into(),
+                    author: "auth".into(),
+                    version: "0.1".into(),
+                    installed: false,
+                    source: "clawhub".into(),
+                },
+            ],
+            total: 1,
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["total"], 1);
+        assert_eq!(json["skills"][0]["name"], "a");
     }
 }

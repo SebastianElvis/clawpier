@@ -555,6 +555,337 @@ pub(crate) fn spawn_health_check(
     })
 }
 
+// ── ClawHub skill commands ─────────────────────────────────────────────
+
+/// Validate a skill name — alphanumeric, hyphens, underscores, slashes (scoped packages).
+fn validate_skill_name(name: &str) -> Result<(), AppError> {
+    if name.is_empty() {
+        return Err(AppError::Validation("Skill name must not be empty".into()));
+    }
+    // Allow @scope/name patterns plus alphanumeric, hyphens, underscores, dots
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || "-_./@ ".contains(c))
+    {
+        return Err(AppError::Validation(format!(
+            "Invalid skill name: '{}'",
+            name
+        )));
+    }
+    Ok(())
+}
+
+/// Helper: resolve container name for a bot.
+fn resolve_container(store: &crate::bot_store::BotStore, id: &str) -> Result<String, AppError> {
+    let bot = store
+        .get_by_id(id)
+        .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+    Ok(bot.container_name())
+}
+
+/// Parse `openclaw skills list` table output into Skill structs.
+/// Rows: `│ ✓ ready │ 📦 name │ description │ source │`
+fn parse_openclaw_skills_output(output: &str) -> Vec<crate::models::Skill> {
+    output
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if !line.starts_with('│') || line.starts_with("│ Status") {
+                return None;
+            }
+            let cells: Vec<&str> = line.split('│').map(|s| s.trim()).collect();
+            if cells.len() < 5 {
+                return None;
+            }
+            let status = cells[1].trim();
+            let raw_name = cells[2].trim();
+            let description = cells[3].trim().to_string();
+            let source = cells[4].trim().to_string();
+
+            if status.contains("Status") || status.contains("───") {
+                return None;
+            }
+
+            let installed = status.contains('✓');
+            let name = raw_name
+                .chars()
+                .skip_while(|c| !c.is_ascii_alphanumeric())
+                .collect::<String>()
+                .trim()
+                .to_string();
+
+            if name.is_empty() {
+                return None;
+            }
+
+            Some(crate::models::Skill {
+                name,
+                description,
+                author: source,
+                version: String::new(),
+                installed,
+                source: "bundled".to_string(),
+            })
+        })
+        .collect()
+}
+
+/// Parse `npx clawhub search` text output into Skill structs.
+/// Each line: `slug  Title  (score)`
+fn parse_clawhub_search_output(output: &str) -> Vec<crate::models::Skill> {
+    output
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty()
+                || line.starts_with('-')
+                || line.starts_with("npm ")
+                || line.starts_with("error")
+            {
+                return None;
+            }
+            let parts: Vec<&str> = line.splitn(2, "  ").collect();
+            if parts.len() < 2 {
+                return None;
+            }
+            let slug = parts[0].trim().to_string();
+            let rest = parts[1].trim();
+            let description = if let Some(paren_pos) = rest.rfind('(') {
+                rest[..paren_pos].trim().to_string()
+            } else {
+                rest.to_string()
+            };
+
+            Some(crate::models::Skill {
+                name: slug,
+                description,
+                author: String::new(),
+                version: String::new(),
+                installed: false,
+                source: "clawhub".to_string(),
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub async fn clawhub_search_skills(
+    state: State<'_, AppState>,
+    id: String,
+    query: String,
+) -> Result<crate::models::SkillSearchResult, AppError> {
+    use crate::models::SkillSearchResult;
+
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    let timeout_dur = std::time::Duration::from_secs(30);
+
+    if query.trim().is_empty() {
+        // No query: list all bundled skills via `openclaw skills list`
+        let args = vec!["openclaw", "skills", "list"];
+        let result = tokio::time::timeout(
+            timeout_dur,
+            DockerManager::exec_in_container(&docker, &container_name, &args),
+        )
+        .await
+        .map_err(|_| AppError::Validation("Skill listing timed out. Try again later.".into()))?;
+
+        match result {
+            Ok(exec_result) => {
+                let skills = parse_openclaw_skills_output(&exec_result.output);
+                let total = skills.len() as u32;
+                Ok(SkillSearchResult { skills, total })
+            }
+            Err(_) => Err(AppError::Validation(
+                "Could not list skills. Is the bot running?".into(),
+            )),
+        }
+    } else {
+        // Search ClawHub registry via `npx clawhub search <query>`
+        let args = vec!["npx", "--yes", "clawhub", "search", &query, "--limit", "20"];
+        let result = tokio::time::timeout(
+            timeout_dur,
+            DockerManager::exec_in_container(&docker, &container_name, &args),
+        )
+        .await
+        .map_err(|_| AppError::Validation("ClawHub search timed out.".into()))?;
+
+        match result {
+            Ok(exec_result) => {
+                if exec_result.exit_code == Some(127) {
+                    return Err(AppError::Validation(
+                        "ClawHub CLI is not available in this container.".into(),
+                    ));
+                }
+                let skills = parse_clawhub_search_output(&exec_result.output);
+                let total = skills.len() as u32;
+                Ok(SkillSearchResult { skills, total })
+            }
+            Err(_) => Err(AppError::Validation(
+                "ClawHub search failed. The container may not have network access.".into(),
+            )),
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn check_clawhub_available(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<String, AppError> {
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    let args = vec!["npx", "--yes", "clawhub", "--cli-version"];
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        DockerManager::exec_in_container(&docker, &container_name, &args),
+    )
+    .await
+    .map_err(|_| AppError::Validation("Check timed out".into()))?;
+
+    match result {
+        Ok(exec_result) => {
+            let version = exec_result.output.trim().to_string();
+            if version.is_empty() || exec_result.exit_code == Some(127) {
+                Err(AppError::Validation("ClawHub CLI is not installed".into()))
+            } else {
+                Ok(version)
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
+#[tauri::command]
+pub async fn install_clawhub(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<ExecResult, AppError> {
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    let args = vec!["npm", "install", "-g", "clawhub"];
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(60),
+        DockerManager::exec_in_container(&docker, &container_name, &args),
+    )
+    .await
+    .map_err(|_| AppError::Validation("Install timed out".into()))?;
+
+    result
+}
+
+#[tauri::command]
+pub async fn clawhub_inspect_skill(
+    state: State<'_, AppState>,
+    id: String,
+    skill_name: String,
+) -> Result<String, AppError> {
+    validate_skill_name(&skill_name)?;
+
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    // `npx clawhub inspect <slug> --json` returns full metadata
+    let args = vec!["npx", "--yes", "clawhub", "inspect", &skill_name, "--json"];
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        DockerManager::exec_in_container(&docker, &container_name, &args),
+    )
+    .await
+    .map_err(|_| AppError::Validation("Inspect timed out".into()))?;
+
+    match result {
+        Ok(exec_result) => {
+            // Extract JSON from output (skip npm warnings)
+            let output = exec_result.output.trim();
+            if let Some(json_start) = output.find('{') {
+                Ok(output[json_start..].to_string())
+            } else {
+                Ok(output.to_string())
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
+#[tauri::command]
+pub async fn clawhub_install_skill(
+    state: State<'_, AppState>,
+    id: String,
+    skill_name: String,
+) -> Result<ExecResult, AppError> {
+    validate_skill_name(&skill_name)?;
+
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    // Install via `npx clawhub install <slug> --no-input`
+    let args = vec![
+        "npx", "--yes", "clawhub", "install", &skill_name, "--no-input",
+    ];
+    DockerManager::exec_in_container(&docker, &container_name, &args).await
+}
+
+#[tauri::command]
+pub async fn clawhub_uninstall_skill(
+    state: State<'_, AppState>,
+    id: String,
+    skill_name: String,
+) -> Result<ExecResult, AppError> {
+    validate_skill_name(&skill_name)?;
+
+    let container_name = {
+        let store = state.store.lock().await;
+        resolve_container(&store, &id)?
+    };
+
+    let docker = {
+        let dm = state.docker.lock().await;
+        dm.client()
+    };
+
+    // Uninstall via `npx clawhub uninstall <slug> --no-input`
+    let args = vec![
+        "npx", "--yes", "clawhub", "uninstall", &skill_name, "--no-input",
+    ];
+    DockerManager::exec_in_container(&docker, &container_name, &args).await
+}
+
 #[tauri::command]
 pub async fn set_workspace_path(
     state: State<'_, AppState>,
@@ -1657,5 +1988,54 @@ mod tests {
         let sid1 = cmd1.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
         let sid2 = cmd2.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
         assert_ne!(sid1, sid2, "different sessions must yield different openclaw session ids");
+    }
+
+    // ── Skill name validation tests ─────────────────────────────────
+
+    #[test]
+    fn validate_skill_name_valid() {
+        assert!(validate_skill_name("my-skill").is_ok());
+        assert!(validate_skill_name("skill_v2").is_ok());
+        assert!(validate_skill_name("@scope/package").is_ok());
+        assert!(validate_skill_name("simple").is_ok());
+    }
+
+    #[test]
+    fn validate_skill_name_empty() {
+        assert!(validate_skill_name("").is_err());
+    }
+
+    #[test]
+    fn validate_skill_name_rejects_special_chars() {
+        assert!(validate_skill_name("skill;rm -rf").is_err());
+        assert!(validate_skill_name("skill$(cmd)").is_err());
+        assert!(validate_skill_name("skill`whoami`").is_err());
+        assert!(validate_skill_name("a|b").is_err());
+    }
+
+    // ── Skill listing parser tests ────────────────────────────────
+
+    #[test]
+    fn parse_openclaw_skills_output_basic() {
+        let output = r#"
+┌───────────┬───────────┬──────────────┬──────────────────┐
+│ Status    │ Skill     │ Description  │ Source           │
+├───────────┼───────────┼──────────────┼──────────────────┤
+│ ✓ ready   │ ☔ weather │ Get weather  │ openclaw-bundled │
+│ ✗ missing │ 📦 slack   │ Slack ops    │ openclaw-bundled │
+└───────────┴───────────┴──────────────┴──────────────────┘
+"#;
+        let skills = parse_openclaw_skills_output(output);
+        assert_eq!(skills.len(), 2);
+        assert_eq!(skills[0].name, "weather");
+        assert!(skills[0].installed);
+        assert_eq!(skills[0].description, "Get weather");
+        assert_eq!(skills[1].name, "slack");
+        assert!(!skills[1].installed);
+    }
+
+    #[test]
+    fn parse_openclaw_skills_output_empty() {
+        assert!(parse_openclaw_skills_output("Skills (0/0 ready)\n").is_empty());
     }
 }
