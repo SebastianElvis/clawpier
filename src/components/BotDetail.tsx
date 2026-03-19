@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type MutableRefObject } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, type MutableRefObject } from "react";
 import {
   ArrowLeft,
   Play,
@@ -1083,11 +1083,60 @@ function TerminalTab({
           </div>
         )}
 
-        <div ref={containerRef} className="h-full w-full" />
+        <TerminalZoomWrapper ref={containerRef} />
       </div>
     </div>
   );
 }
+
+/**
+ * Wrapper that counteracts CSS `zoom` on the terminal container.
+ *
+ * CSS `zoom` (used by the app-wide zoom feature) breaks xterm.js selection
+ * because xterm calculates mouse positions from raw DOM events which don't
+ * account for CSS zoom scaling. We neutralize zoom on the terminal element
+ * and scale the container dimensions inversely to compensate.
+ */
+const TerminalZoomWrapper = forwardRef<HTMLDivElement>(function TerminalZoomWrapper(_props, ref) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const inner = wrapper.firstElementChild as HTMLDivElement | null;
+
+    function syncZoom() {
+      const zoom = parseFloat(document.documentElement.style.zoom || "1") || 1;
+      if (inner) {
+        // Counteract the page zoom so xterm sees 1:1 pixels
+        inner.style.zoom = String(1 / zoom);
+        // Scale dimensions up to fill the wrapper despite counter-zoom
+        inner.style.width = `${zoom * 100}%`;
+        inner.style.height = `${zoom * 100}%`;
+      }
+    }
+
+    // Observe zoom changes on <html> element
+    const observer = new MutationObserver(syncZoom);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["style"],
+    });
+    syncZoom();
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="h-full w-full overflow-hidden">
+      <div
+        ref={ref}
+        className="origin-top-left"
+      />
+    </div>
+  );
+});
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
