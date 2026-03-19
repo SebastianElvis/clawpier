@@ -332,6 +332,21 @@ export async function exportLogs(
   return invoke("export_logs", { path, content });
 }
 
+// ── Port availability ─────────────────────────────────────────────
+
+export interface PortCheckResult {
+  port: number;
+  available: boolean;
+}
+
+export async function checkPortAvailable(port: number): Promise<PortCheckResult> {
+  return invoke("check_port_available", { port });
+}
+
+export async function suggestPort(start: number): Promise<number> {
+  return invoke("suggest_port", { start });
+}
+
 // ── Interactive terminal commands ──────────────────────────────────
 
 export async function startTerminalSession(

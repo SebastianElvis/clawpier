@@ -161,6 +161,32 @@ fn validate_image_name(image: &str) -> Result<(), AppError> {
     )))
 }
 
+// ── Port availability check ──────────────────────────────────────────
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PortCheckResult {
+    pub port: u16,
+    pub available: bool,
+}
+
+/// Check whether a host port is available by attempting to bind to it.
+#[tauri::command]
+pub fn check_port_available(port: u16) -> PortCheckResult {
+    let available = std::net::TcpListener::bind(("127.0.0.1", port)).is_ok();
+    PortCheckResult { port, available }
+}
+
+/// Find the first available port in a range starting from `start`.
+#[tauri::command]
+pub fn suggest_port(start: u16) -> u16 {
+    for p in start..=start.saturating_add(99).min(65535) {
+        if std::net::TcpListener::bind(("127.0.0.1", p)).is_ok() {
+            return p;
+        }
+    }
+    start // fallback
+}
+
 // ── System info ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -2124,6 +2150,32 @@ mod tests {
         assert!(validate_skill_name("skill$(cmd)").is_err());
         assert!(validate_skill_name("skill`whoami`").is_err());
         assert!(validate_skill_name("a|b").is_err());
+    }
+
+    // ── Port availability tests ────────────────────────────────────
+
+    #[test]
+    fn check_port_available_returns_result() {
+        let result = check_port_available(0);
+        assert_eq!(result.port, 0);
+    }
+
+    #[test]
+    fn check_port_available_high_port() {
+        let result = check_port_available(59999);
+        assert_eq!(result.port, 59999);
+    }
+
+    #[test]
+    fn suggest_port_returns_in_range() {
+        let port = suggest_port(50000);
+        assert!(port >= 50000 && port <= 50099);
+    }
+
+    #[test]
+    fn suggest_port_near_max() {
+        let port = suggest_port(65500);
+        assert!(port >= 65500);
     }
 
     // ── Skill listing parser tests ────────────────────────────────

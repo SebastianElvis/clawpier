@@ -120,6 +120,8 @@ pub fn run() {
             commands::check_clawhub_available,
             commands::install_clawhub,
             commands::clawhub_inspect_skill,
+            commands::check_port_available,
+            commands::suggest_port,
             commands::get_skill_requirements,
         ])
         .setup(|app| {
