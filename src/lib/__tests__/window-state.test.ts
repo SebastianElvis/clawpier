@@ -1,8 +1,27 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { loadWindowState, saveWindowState, flushWindowState } from "../window-state";
 
+// jsdom may not fully initialize localStorage in all environments.
+// Always install a reliable in-memory Storage so tests are consistent.
+function installLocalStorage() {
+  const store: Record<string, string> = {};
+  const storage: Storage = {
+    getItem: (key: string) => (key in store ? store[key] : null),
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { for (const k of Object.keys(store)) delete store[k]; },
+    get length() { return Object.keys(store).length; },
+    key: (i: number) => Object.keys(store)[i] ?? null,
+  };
+  Object.defineProperty(globalThis, "localStorage", {
+    value: storage,
+    writable: true,
+    configurable: true,
+  });
+}
+
 beforeEach(() => {
-  localStorage.clear();
+  installLocalStorage();
   flushWindowState();
   vi.useFakeTimers();
 });
