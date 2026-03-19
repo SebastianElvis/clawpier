@@ -1083,7 +1083,7 @@ function TerminalTab({
           </div>
         )}
 
-        <div ref={containerRef} className="h-full w-full p-1" />
+        <div ref={containerRef} className="h-full w-full" />
       </div>
     </div>
   );
