@@ -651,7 +651,7 @@ function DockerTab({
   const effectiveNetworkMode = pendingNetworkMode ?? bot.network_mode;
 
   return (
-    <div className="overflow-y-auto p-4 space-y-6">
+    <div className="h-full overflow-y-auto p-4 space-y-6">
       {/* Top bar: restart warning + unified save button */}
       {(isRunning || hasChanges) && (
         <div className="flex items-center gap-3">
