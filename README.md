@@ -1,14 +1,32 @@
 # ClawPier
 
-A native desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw) bot instances via Docker. Available on macOS, Linux, and Windows.
+**OpenClaw has OS-level access to your machine. ClawPier runs it in a sandbox.**
 
-Built with **Tauri v2** (Rust backend + React frontend). macOS builds are code-signed and notarized.
+[![Release](https://img.shields.io/github/v/release/SebastianElvis/clawpier?label=release)](https://github.com/SebastianElvis/clawpier/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/SebastianElvis/clawpier)](https://github.com/SebastianElvis/clawpier/stargazers)
+[![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange)](https://v2.tauri.app)
+
+A native desktop app for managing [OpenClaw](https://github.com/openclaw) bot instances inside Docker containers — sandboxed from your host by default. Available on macOS, Linux, and Windows.
 
 <p align="center">
   <img src="docs/demo.gif" alt="ClawPier demo" width="800" />
   <br />
-  <sub><a href="https://github.com/SebastianElvis/clawpier/releases/download/v0.3.0/clawpier-demo.mov">▶ Watch full demo (60s)</a></sub>
+  <sub><a href="https://github.com/SebastianElvis/clawpier/releases/download/v0.3.0/clawpier-demo.mov">&#9654; Watch full demo (60s)</a></sub>
 </p>
+
+## Why ClawPier?
+
+OpenClaw is an incredible AI agent runtime — but it has OS-level access to your email, calendars, files, and messaging platforms. Running it directly on your host means a prompt injection gives an attacker your machine ([CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253), CVSS 8.8).
+
+ClawPier fixes this by running every bot inside a Docker container:
+
+- **Sandboxed by default** — containers start with `--network none`; network access is opt-in per bot
+- **Resource limits** — set CPU and memory caps from the GUI, not Docker flags
+- **One-click stop** — kill a misbehaving agent instantly; your host is never at risk
+- **No CLI required** — full GUI for everything: chat, config, terminal, logs, files, monitoring
+
+Built with **Tauri v2** (Rust backend + React frontend) — ~10x smaller than Electron. macOS builds are code-signed and notarized.
 
 ## Install
 
@@ -87,19 +105,19 @@ pnpm tauri build      # Build release binary + installers
 ## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│           React Frontend            │
-│  (Zustand store ← Tauri events)     │
-├─────────────────────────────────────┤
-│          Tauri IPC Bridge           │
-│    invoke() ↔ #[tauri::command]     │
-├─────────────────────────────────────┤
-│           Rust Backend              │
-│  DockerManager · BotStore · State   │
-├─────────────────────────────────────┤
-│      Docker Engine (bollard)        │
-│  /var/run/docker.sock               │
-└─────────────────────────────────────┘
++-------------------------------------+
+|           React Frontend            |
+|  (Zustand store <- Tauri events)    |
++-------------------------------------+
+|          Tauri IPC Bridge           |
+|    invoke() <-> #[tauri::command]   |
++-------------------------------------+
+|           Rust Backend              |
+|  DockerManager . BotStore . State   |
++-------------------------------------+
+|      Docker Engine (bollard)        |
+|  /var/run/docker.sock               |
++-------------------------------------+
 ```
 
 - Each bot gets its own Docker container (`clawpier-{uuid}`)
@@ -119,7 +137,7 @@ pnpm tauri build      # Build release binary + installers
 
 ## Contributing
 
-Contributions are welcome. Please open an issue first to discuss what you'd like to change.
+Contributions are welcome! Please open an issue first to discuss what you'd like to change.
 
 ## License
 
