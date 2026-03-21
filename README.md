@@ -4,7 +4,11 @@ A native desktop app for managing sandboxed [OpenClaw](https://github.com/opencl
 
 Built with **Tauri v2** (Rust backend + React frontend). macOS builds are code-signed and notarized.
 
-![ClawPier screenshot](docs/screenshot.png)
+<p align="center">
+  <img src="docs/demo.gif" alt="ClawPier demo" width="800" />
+  <br />
+  <sub><a href="https://github.com/SebastianElvis/clawpier/releases/download/v0.3.0/clawpier-demo.mov">▶ Watch full demo (60s)</a></sub>
+</p>
 
 ## Install
 
