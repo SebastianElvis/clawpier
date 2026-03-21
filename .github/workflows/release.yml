@@ -86,7 +86,7 @@ jobs:
 
       # Step 2: Notarize the .app bundles separately (with timeout)
       - name: Notarize (aarch64)
-        if: ${{ secrets.APPLE_ID != '' }}
+        continue-on-error: true
         timeout-minutes: 15
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -105,7 +105,7 @@ jobs:
           xcrun stapler staple "$APP_PATH"
 
       - name: Notarize (x86_64)
-        if: ${{ secrets.APPLE_ID != '' }}
+        continue-on-error: true
         timeout-minutes: 15
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
