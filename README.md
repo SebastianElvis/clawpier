@@ -1,55 +1,68 @@
 # ClawPier
 
-A native macOS desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw) bot instances via Docker.
+A native desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw) bot instances via Docker. Available on macOS, Linux, and Windows.
 
-Built with **Tauri v2** (Rust backend + React frontend).
+Built with **Tauri v2** (Rust backend + React frontend). macOS builds are code-signed and notarized.
 
 ![ClawPier screenshot](docs/screenshot.png)
 
-## What it does
-
-ClawPier gives you a visual, approachable way to run OpenClaw AI agents — no terminal required.
-
-- **Create and manage multiple bots** from a clean dashboard
-- **Sandbox by default** — containers run with `--network none`; network access is opt-in per bot
-- **Interactive terminal** — full PTY shell into any running container
-- **Live logs** — real-time streaming with timestamp display
-- **Dashboard** — see your bot's OpenClaw config, model, channels, and Telegram info at a glance
-- **File browser** — browse and preview files in your bot's workspace
-- **Resource monitoring** — live CPU, memory, and network I/O per bot
-- **Environment variables** — configure secrets and settings per bot without touching config files
-
 ## Install
 
-### From release (recommended)
-
-Download the latest build for your platform from [Releases](https://github.com/SebastianElvis/clawpier/releases):
-
-| Platform | Format | Notes |
-|----------|--------|-------|
-| macOS (Apple Silicon) | `.dmg` | Open, drag to Applications |
-| macOS (Intel) | `.dmg` | Open, drag to Applications |
-| Linux (x86_64) | `.AppImage` | `chmod +x` then run, or install the `.deb` |
-| Windows (x86_64) | `.exe` installer | Run the NSIS installer, or use the `.msi` |
-
-**Linux AppImage:**
+### Homebrew (macOS)
 
 ```bash
-chmod +x ClawPier_*.AppImage
-./ClawPier_*.AppImage
+brew tap SebastianElvis/clawpier
+brew install --cask clawpier
 ```
 
-**Linux .deb (Debian/Ubuntu):**
+### Download
 
-```bash
-sudo dpkg -i ClawPier_*.deb
-```
+Grab the latest build for your platform from [Releases](https://github.com/SebastianElvis/clawpier/releases):
+
+| Platform | Format |
+|----------|--------|
+| macOS (Apple Silicon) | `.dmg` (signed & notarized) |
+| macOS (Intel) | `.dmg` (signed & notarized) |
+| Linux (x86_64) | `.AppImage` or `.deb` |
+| Windows (x86_64) | `.exe` installer or `.msi` |
 
 ### Prerequisites
 
-- **macOS / Linux / Windows**
-- **Docker** — must be installed and running (Docker Desktop on macOS/Windows, or Docker Engine on Linux)
-- OpenClaw Docker image (ClawPier will prompt you to pull it on first launch)
+- **Docker** must be installed and running (Docker Desktop on macOS/Windows, or Docker Engine on Linux)
+- OpenClaw Docker image — ClawPier will prompt you to pull it on first launch
+
+## Features
+
+### Bot Management
+- **Create and manage multiple bots** from a clean dashboard
+- **Sandbox by default** — containers run with `--network none`; network access is opt-in per bot
+- **Auto-start** — configure bots to start automatically when ClawPier launches
+- **Health checks** — configurable health checks with automatic restart on failure
+
+### ClawHub Skill Browser
+- **Browse 50+ bundled skills** with readiness status (dependencies met or missing)
+- **Search the ClawHub registry** to discover and install community skills
+- **One-click install/uninstall** directly from the GUI
+- **Skill detail view** with metadata, author, and dependency info
+
+### Development Tools
+- **Interactive terminal** — full PTY shell into any running container
+- **Live logs** — real-time container log streaming with timestamps
+- **File browser** — browse and preview files in your bot's workspace
+- **Resource monitoring** — live CPU, memory, and network I/O per bot
+
+### Configuration
+- **Dashboard** — see your bot's OpenClaw config, model, channels, and Telegram info at a glance
+- **Port mapping presets** — quick setup for webhooks, APIs, and WebSocket with port conflict detection
+- **Environment variables** — configure secrets and settings per bot
+- **Resource limits** — set CPU and memory limits per container
+- **Network mode** — choose between sandbox (none), bridge, host, or custom networks
+
+### Desktop Experience
+- **Dark mode** — system theme detection with manual toggle
+- **Keyboard shortcuts** — quick actions for common operations
+- **Status notifications** — toast alerts for bot crashes and unexpected stops
+- **Window state persistence** — remembers your selected bot, active tab, and panel layout
 
 ## Build from source
 
@@ -67,7 +80,7 @@ pnpm tauri dev        # Run in development mode (hot-reload)
 pnpm tauri build      # Build release binary + installers
 ```
 
-## How it works
+## Architecture
 
 ```
 ┌─────────────────────────────────────┐
@@ -97,7 +110,8 @@ pnpm tauri build      # Build release binary + installers
 | Framework | Tauri v2 |
 | Frontend | React 19, TypeScript, Tailwind CSS v4, Zustand |
 | Backend | Rust, bollard 0.18 (Docker API), tokio |
-| Package manager | pnpm |
+| Build | Vite 6, pnpm |
+| CI/CD | GitHub Actions (cross-platform builds, code signing, Homebrew tap) |
 
 ## Contributing
 
