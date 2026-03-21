@@ -11,6 +11,7 @@ env:
 jobs:
   build-macos:
     runs-on: macos-latest
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
@@ -72,21 +73,54 @@ jobs:
       # ── Build with signing + notarization ───────────────────────────
       # Tauri v2 handles codesign + notarytool automatically when these
       # env vars are set. See: https://v2.tauri.app/distribute/sign/macos/
+      # Step 1: Build + sign only (no notarization — much faster)
       - name: Build (aarch64)
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: pnpm tauri build --target aarch64-apple-darwin
 
       - name: Build (x86_64)
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: pnpm tauri build --target x86_64-apple-darwin
+
+      # Step 2: Notarize the .app bundles separately (with timeout)
+      - name: Notarize (aarch64)
+        if: ${{ secrets.APPLE_ID != '' }}
+        timeout-minutes: 15
+        env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: pnpm tauri build --target x86_64-apple-darwin
+        run: |
+          APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" -maxdepth 1 | head -1)
+          echo "Notarizing $APP_PATH"
+          # Create a zip for notarization
+          ditto -c -k --keepParent "$APP_PATH" /tmp/notarize-arm64.zip
+          xcrun notarytool submit /tmp/notarize-arm64.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 10m
+          xcrun stapler staple "$APP_PATH"
+
+      - name: Notarize (x86_64)
+        if: ${{ secrets.APPLE_ID != '' }}
+        timeout-minutes: 15
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_PATH=$(find src-tauri/target/x86_64-apple-darwin/release/bundle/macos -name "*.app" -maxdepth 1 | head -1)
+          echo "Notarizing $APP_PATH"
+          ditto -c -k --keepParent "$APP_PATH" /tmp/notarize-x64.zip
+          xcrun notarytool submit /tmp/notarize-x64.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 10m
+          xcrun stapler staple "$APP_PATH"
 
       - name: Collect artifacts
         env:
