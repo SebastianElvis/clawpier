@@ -216,3 +216,66 @@ jobs:
           generate_release_notes: false
           body_path: CHANGELOG.md
           files: release-artifacts/*
+
+  update-homebrew:
+    needs: [publish-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew cask
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+
+          # Download DMGs and compute SHA256
+          curl -sL "https://github.com/SebastianElvis/clawpier/releases/download/${TAG}/ClawPier_${TAG}_aarch64.dmg" -o arm64.dmg
+          curl -sL "https://github.com/SebastianElvis/clawpier/releases/download/${TAG}/ClawPier_${TAG}_x64.dmg" -o x64.dmg
+          SHA_ARM=$(shasum -a 256 arm64.dmg | cut -d' ' -f1)
+          SHA_X64=$(shasum -a 256 x64.dmg | cut -d' ' -f1)
+
+          # Clone tap repo
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/SebastianElvis/homebrew-clawpier.git" tap
+          cd tap
+
+          # Update cask formula
+          cat > Casks/clawpier.rb << RUBY
+          cask "clawpier" do
+            version "${VERSION}"
+
+            on_arm do
+              url "https://github.com/SebastianElvis/clawpier/releases/download/v#{version}/ClawPier_v#{version}_aarch64.dmg"
+              sha256 "${SHA_ARM}"
+            end
+
+            on_intel do
+              url "https://github.com/SebastianElvis/clawpier/releases/download/v#{version}/ClawPier_v#{version}_x64.dmg"
+              sha256 "${SHA_X64}"
+            end
+
+            name "ClawPier"
+            desc "GUI for managing Dockerized OpenClaw bot instances"
+            homepage "https://github.com/SebastianElvis/clawpier"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            depends_on formula: "docker"
+
+            app "ClawPier.app"
+
+            zap trash: [
+              "~/.config/clawpier",
+              "~/Library/WebKit/com.clawpier.manager",
+            ]
+          end
+          RUBY
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/clawpier.rb
+          git commit -m "Update ClawPier to ${VERSION}"
+          git push
