@@ -1,6 +1,6 @@
 # ClawPier Product Vision & Roadmap
 
-> Last updated: 2026-03-15
+> Last updated: 2026-03-22
 
 ---
 
@@ -50,12 +50,11 @@ Make ClawPier the definitive tool for running a single OpenClaw bot. Zero-fricti
 - [x] File browser
 - [x] Resource limits (CPU cores, memory)
 - [x] Network isolation toggle
-- [ ] ClawHub skill browser & one-click install
-- [ ] Visual config editor (replace `openclaw configure`)
-- [ ] Log search, filtering, and export
-- [ ] Notifications & alerts (crash, resource, health)
-- [ ] Health checks with auto-restart
-- [ ] Port mapping for webhooks
+- [x] ClawHub skill browser & one-click install
+- [x] Log search, filtering, and export
+- [x] Notifications & alerts (crash, resource, health)
+- [x] Health checks with auto-restart
+- [x] Port mapping for webhooks
 
 ### H2: Multi-Agent Orchestration (next — v0.4–v0.6)
 
@@ -63,6 +62,7 @@ Go from managing one bot to managing a fleet. Agent templates, inter-agent commu
 
 **Target:** Power users building personal AI workflows.
 
+- [ ] Visual config editor (replace `openclaw configure`)
 - [ ] Agent templates/presets (e.g., "Research Assistant", "DevOps Bot", "Customer Support")
 - [ ] Bot groups with bulk actions
 - [ ] Config templates — reusable base configurations
@@ -139,24 +139,23 @@ OpenClaw is a full-featured agent runtime. ClawPier should **not** duplicate cap
 
 ---
 
-## H1 Priority & Sequencing (remaining)
+## H1 Status: Complete ✅
+
+All H1 features have been shipped:
+- Skill browser, log search, notifications, health checks, port mapping — all delivered in v0.3.0.
+- Visual config editor moved to H2 (better fit alongside config templates and multi-agent workflows).
+
+## H2 Priority & Sequencing (next)
 
 ```
-Skill Browser      ██████████  ClawHub skill browser & install   — Ecosystem differentiator
-Log Search         ████████    Search, filter, export             — Quality of life
-Notifications      ██████████  Crash, resource, health alerts     — "Always-on guardian"
 Config Editor      ██████████  Visual openclaw.json editor        — Eliminates terminal need
-Port Mapping       ██████      Expose container ports              — Enables webhooks
-Health Checks      ████████    Auto-restart on failure             — Reliability
+Bot Cloning        ██████      Clone and import/export bots       — Quick setup
+Config Templates   ████████    Reusable base configurations       — Power users
+Agent Templates    ██████████  Preset bot configurations          — Onboarding
+Bot Groups         ██████      Bulk actions on bot sets            — Fleet management
 ```
 
-**Recommended sequence:** Skill browser → Log search → Notifications → Config editor → Port mapping → Health checks
-
-- **Skill browser** is the strongest competitive differentiator — no other tool has a GUI for the 13,000+ ClawHub skills.
-- **Log search** is immediate quality-of-life for daily users.
-- **Notifications** make ClawPier a passive guardian — the "always-on agent" promise.
-- **Config editor** eliminates the last major reason to open a terminal.
-- **Port mapping** and **health checks** complete the container operations story.
+**Recommended sequence:** Config editor → Bot cloning/import-export → Config templates → Agent templates → Bot groups
 
 ---
 
