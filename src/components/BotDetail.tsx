@@ -1057,7 +1057,7 @@ function TerminalTab({
 
       {/* Terminal container — relative wrapper so the absolute inner div
            gives xterm a container with resolved pixel dimensions */}
-      <div className="relative min-h-0 flex-1 bg-[#030712]">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#030712]">
         {/* Connecting/reconnecting overlay */}
         {isConnecting && !connectionError && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-950/80">

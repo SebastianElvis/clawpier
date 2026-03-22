@@ -114,6 +114,7 @@ pub fn run() {
             commands::log_crash,
             commands::export_logs,
             commands::update_health_check,
+            commands::update_notification_prefs,
             commands::clawhub_search_skills,
             commands::clawhub_install_skill,
             commands::clawhub_uninstall_skill,

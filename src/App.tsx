@@ -5,6 +5,7 @@ import { autoStartBots } from "./lib/tauri";
 import { useBotEvents } from "./hooks/use-bot-events";
 import { useStatusNotifications } from "./hooks/use-status-notifications";
 import { useHealthEvents } from "./hooks/use-health-events";
+import { useResourceAlerts } from "./hooks/use-resource-alerts";
 import { useKeyboardShortcuts } from "./hooks/use-keyboard-shortcuts";
 import { useZoom } from "./hooks/use-zoom";
 import { Layout } from "./components/Layout";
@@ -48,6 +49,16 @@ function App() {
     saveWindowState({ selectedBotId: id ?? undefined });
   }, []);
 
+  // Navigate to bot when notification is clicked
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const botId = (e as CustomEvent<{ botId: string }>).detail.botId;
+      selectBot(botId);
+    };
+    window.addEventListener("clawpier:navigate-bot", handler);
+    return () => window.removeEventListener("clawpier:navigate-bot", handler);
+  }, [selectBot]);
+
   // Subscribe to real-time status updates
   useBotEvents();
 
@@ -56,6 +67,9 @@ function App() {
 
   // Subscribe to health check events
   useHealthEvents();
+
+  // Subscribe to resource threshold alerts (CPU/memory)
+  useResourceAlerts();
 
   // Zoom in/out with Cmd+=/Cmd+-/Cmd+0
   useZoom();

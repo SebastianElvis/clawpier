@@ -74,6 +74,21 @@ pub struct HealthUpdate {
     pub last_output: Option<String>,
 }
 
+// ── Per-bot notification preferences ─────────────────────────────────
+/// Per-bot notification preferences (overrides global defaults).
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct BotNotificationPrefs {
+    /// Mute all notifications for this bot.
+    #[serde(default)]
+    pub muted: bool,
+    /// Override CPU threshold (percent). None = use global default.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub cpu_threshold: Option<f64>,
+    /// Override memory threshold (percent). None = use global default.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub memory_threshold: Option<f64>,
+}
+
 // ── Bot profile (persisted to bots.json) ─────────────────────────────
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BotProfile {
@@ -111,6 +126,9 @@ pub struct BotProfile {
     /// Optional health check configuration.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub health_check: Option<HealthCheckConfig>,
+    /// Per-bot notification preferences.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub notification_prefs: Option<BotNotificationPrefs>,
 }
 
 impl BotProfile {
@@ -129,6 +147,7 @@ impl BotProfile {
             port_mappings: Vec::new(),
             auto_start: false,
             health_check: None,
+            notification_prefs: None,
         }
     }
 
@@ -784,6 +803,68 @@ mod tests {
         assert_eq!(skill.author, "");
         assert_eq!(skill.version, "");
         assert!(!skill.installed);
+    }
+
+    // ── Notification prefs ──────────────────────────────────────────
+
+    #[test]
+    fn notification_prefs_default() {
+        let prefs = BotNotificationPrefs::default();
+        assert!(!prefs.muted);
+        assert!(prefs.cpu_threshold.is_none());
+        assert!(prefs.memory_threshold.is_none());
+    }
+
+    #[test]
+    fn notification_prefs_roundtrip() {
+        let prefs = BotNotificationPrefs {
+            muted: true,
+            cpu_threshold: Some(85.0),
+            memory_threshold: Some(90.0),
+        };
+        let json = serde_json::to_string(&prefs).unwrap();
+        let restored: BotNotificationPrefs = serde_json::from_str(&json).unwrap();
+        assert!(restored.muted);
+        assert_eq!(restored.cpu_threshold, Some(85.0));
+        assert_eq!(restored.memory_threshold, Some(90.0));
+    }
+
+    #[test]
+    fn bot_profile_with_notification_prefs() {
+        let mut bot = BotProfile::new("NotifBot".into(), None);
+        bot.notification_prefs = Some(BotNotificationPrefs {
+            muted: true,
+            cpu_threshold: Some(75.0),
+            memory_threshold: None,
+        });
+
+        let json = serde_json::to_string(&bot).unwrap();
+        assert!(json.contains("notification_prefs"));
+
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+        let prefs = restored.notification_prefs.unwrap();
+        assert!(prefs.muted);
+        assert_eq!(prefs.cpu_threshold, Some(75.0));
+        assert!(prefs.memory_threshold.is_none());
+    }
+
+    #[test]
+    fn bot_profile_without_notification_prefs_omits_field() {
+        let bot = BotProfile::new("NoNotif".into(), None);
+        let json = serde_json::to_string(&bot).unwrap();
+        assert!(!json.contains("notification_prefs"));
+    }
+
+    #[test]
+    fn backward_compat_missing_notification_prefs() {
+        let json = r#"{
+            "id": "old-notif",
+            "name": "OldBot",
+            "image": "ghcr.io/openclaw/openclaw:latest",
+            "env_vars": []
+        }"#;
+        let bot: BotProfile = serde_json::from_str(json).unwrap();
+        assert!(bot.notification_prefs.is_none());
     }
 
     #[test]

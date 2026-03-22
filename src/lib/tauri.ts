@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  BotNotificationPrefs,
   BotProfile,
   BotWithStatus,
   ChatMessage,
@@ -117,6 +118,15 @@ export async function updateHealthCheck(
   healthCheck: HealthCheckConfig | null
 ): Promise<void> {
   return invoke("update_health_check", { id, healthCheck });
+}
+
+// ── Notification preferences commands ─────────────────────────────────
+
+export async function updateNotificationPrefs(
+  id: string,
+  prefs: BotNotificationPrefs | null
+): Promise<void> {
+  return invoke("update_notification_prefs", { id, prefs });
 }
 
 // ── Resource & config commands ──────────────────────────────────────

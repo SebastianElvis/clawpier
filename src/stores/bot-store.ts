@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { BotWithStatus, EnvVar, HealthCheckConfig, NetworkMode, PortMapping } from "../lib/types";
+import type { BotNotificationPrefs, BotWithStatus, EnvVar, HealthCheckConfig, NetworkMode, PortMapping } from "../lib/types";
 import * as api from "../lib/tauri";
 import { useToastStore } from "./toast-store";
 
@@ -38,6 +38,7 @@ interface BotStore {
   updatePortMappings: (id: string, portMappings: PortMapping[]) => Promise<void>;
   setAutoStart: (id: string, autoStart: boolean) => Promise<void>;
   updateHealthCheck: (id: string, healthCheck: HealthCheckConfig | null) => Promise<void>;
+  updateNotificationPrefs: (id: string, prefs: BotNotificationPrefs | null) => Promise<void>;
 }
 
 export const useBotStore = create<BotStore>((set, get) => ({
@@ -243,6 +244,11 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   updateHealthCheck: async (id, healthCheck) => {
     await api.updateHealthCheck(id, healthCheck);
+    await get().fetchBots();
+  },
+
+  updateNotificationPrefs: async (id, prefs) => {
+    await api.updateNotificationPrefs(id, prefs);
     await get().fetchBots();
   },
 }));

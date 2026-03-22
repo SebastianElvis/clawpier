@@ -7,6 +7,7 @@ import {
   applyTheme,
   type ThemePreference,
 } from "../lib/theme";
+import { NotificationCenter } from "./NotificationCenter";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -62,6 +63,7 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <NotificationCenter />
           <button
             className="rounded-lg p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
             onClick={cycleTheme}

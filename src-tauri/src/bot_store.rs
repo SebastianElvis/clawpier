@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::{BotProfile, EnvVar, HealthCheckConfig, NetworkMode, PortMapping};
+use crate::models::{BotNotificationPrefs, BotProfile, EnvVar, HealthCheckConfig, NetworkMode, PortMapping};
 
 pub struct BotStore {
     bots: Vec<BotProfile>,
@@ -276,6 +276,21 @@ impl BotStore {
             .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
 
         bot.health_check = health_check;
+        self.save()
+    }
+
+    pub fn update_notification_prefs(
+        &mut self,
+        id: &str,
+        prefs: Option<BotNotificationPrefs>,
+    ) -> Result<(), AppError> {
+        let bot = self
+            .bots
+            .iter_mut()
+            .find(|b| b.id == id)
+            .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
+
+        bot.notification_prefs = prefs;
         self.save()
     }
 
@@ -727,6 +742,7 @@ mod tests {
             port_mappings: Vec::new(),
             auto_start: false,
             health_check: None,
+            notification_prefs: None,
         };
         let new_bot = BotProfile::new("NewBot".into(), None);
         let new_id = new_bot.id.clone();

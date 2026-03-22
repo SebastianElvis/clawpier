@@ -11,8 +11,9 @@ use tokio::sync::Mutex as TokioMutex;
 use crate::docker_manager::{self, DockerManager};
 use crate::error::AppError;
 use crate::models::{
-    BotProfile, BotStatus, BotWithStatus, ChatMessage, ChatResponseChunk, ChatSessionSummary,
-    EnvVar, ExecResult, FileEntry, HealthCheckConfig, HealthUpdate, NetworkMode, PortMapping,
+    BotNotificationPrefs, BotProfile, BotStatus, BotWithStatus, ChatMessage, ChatResponseChunk,
+    ChatSessionSummary, EnvVar, ExecResult, FileEntry, HealthCheckConfig, HealthUpdate,
+    NetworkMode, PortMapping,
 };
 use crate::state::AppState;
 use crate::streaming::{InteractiveSession, StreamKind};
@@ -490,6 +491,18 @@ pub async fn update_health_check(
 
     let mut store = state.store.lock().await;
     store.update_health_check(&id, health_check)
+}
+
+// ── Notification preferences commands ────────────────────────────────
+
+#[tauri::command]
+pub async fn update_notification_prefs(
+    state: State<'_, AppState>,
+    id: String,
+    prefs: Option<BotNotificationPrefs>,
+) -> Result<(), AppError> {
+    let mut store = state.store.lock().await;
+    store.update_notification_prefs(&id, prefs)
 }
 
 /// Spawn a background health check task for a running bot.

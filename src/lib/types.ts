@@ -25,6 +25,12 @@ export interface HealthUpdate {
   last_output: string | null;
 }
 
+export interface BotNotificationPrefs {
+  muted: boolean;
+  cpu_threshold?: number;
+  memory_threshold?: number;
+}
+
 export interface BotProfile {
   id: string;
   name: string;
@@ -38,6 +44,7 @@ export interface BotProfile {
   port_mappings: PortMapping[];
   auto_start: boolean;
   health_check?: HealthCheckConfig | null;
+  notification_prefs?: BotNotificationPrefs | null;
 }
 
 export type BotStatus =
