@@ -136,6 +136,14 @@ export function useInteractiveTerminal({
     // Open terminal in the container div
     term.open(container);
 
+    // Set explicit pixel dimensions from the size-constrained ancestor
+    // so FitAddon reads the available space, not xterm's content size.
+    const initialSizer = container.closest('[data-terminal-sizer]') as HTMLElement | null;
+    if (initialSizer) {
+      container.style.height = `${initialSizer.clientHeight}px`;
+      container.style.width = `${initialSizer.clientWidth}px`;
+    }
+
     // Fit to container size
     try {
       fitAddon.fit();
@@ -213,9 +221,20 @@ export function useInteractiveTerminal({
       writeTerminalInput(botId, data).catch(console.error);
     });
 
-    // Handle resize
+    // Handle resize — observe the size-constrained ancestor (marked with
+    // data-terminal-sizer) and sync its pixel dimensions to the xterm
+    // container before calling fit(). This breaks the circular dependency
+    // where xterm sizes itself based on content, then fit() reads that
+    // content-driven size instead of the available space.
+    const sizer = container.closest('[data-terminal-sizer]') as HTMLElement | null;
     const resizeObserver = new ResizeObserver(() => {
       try {
+        if (sizer) {
+          // Set explicit pixel dimensions so FitAddon reads the constrained
+          // size, not xterm's content-driven size.
+          container.style.height = `${sizer.clientHeight}px`;
+          container.style.width = `${sizer.clientWidth}px`;
+        }
         fitAddon.fit();
         resizeTerminal(botId, term.cols, term.rows).catch(() => {
           // Ignore resize errors (session may not be ready yet)
@@ -224,7 +243,7 @@ export function useInteractiveTerminal({
         // Ignore fit errors
       }
     });
-    resizeObserver.observe(container);
+    resizeObserver.observe(sizer ?? container);
     resizeObserverRef.current = resizeObserver;
 
     // Cleanup

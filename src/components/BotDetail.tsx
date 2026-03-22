@@ -326,7 +326,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
       </div>
 
       {/* Tab content */}
-      <div className="relative min-h-0 flex-1 overflow-hidden flex flex-col">
+      <div className="relative min-h-0 flex-1 flex flex-col overflow-hidden">
         {/* Restart overlay */}
         {isRestarting && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -343,8 +343,8 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
           </div>
         )}
 
-        {/* Active tab content - takes remaining space */}
-        <div className="min-h-0 flex-1 overflow-hidden">
+        {/* Active tab content — grows to fill space above log panel */}
+        <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
           {activeTab === "dashboard" && (
             <ErrorBoundary fallbackTitle="Dashboard error">
               <ConfigDashboard
@@ -475,7 +475,7 @@ function LogPanel({
   }, [panelHeight, setPanelHeight]);
 
   return (
-    <div ref={panelRef} className="shrink-0 flex flex-col" style={isOpen ? { height: panelHeight } : undefined}>
+    <div ref={panelRef} className="shrink-0 flex flex-col bg-[var(--bg-primary)]" style={isOpen ? { height: panelHeight } : undefined}>
       {/* Resize handle (only when open) */}
       {isOpen && (
         <div
@@ -1029,7 +1029,7 @@ function TerminalTab({
 
   if (!isRunning) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-[var(--text-tertiary)]">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-sm text-[var(--text-tertiary)]">
         <Terminal className="h-8 w-8 text-[var(--text-tertiary)]" />
         Start the bot to use the terminal
       </div>
@@ -1037,7 +1037,7 @@ function TerminalTab({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Quick command chips */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2">
         <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
@@ -1055,7 +1055,8 @@ function TerminalTab({
         ))}
       </div>
 
-      {/* Terminal container */}
+      {/* Terminal container — relative wrapper so the absolute inner div
+           gives xterm a container with resolved pixel dimensions */}
       <div className="relative min-h-0 flex-1 bg-[#030712]">
         {/* Connecting/reconnecting overlay */}
         {isConnecting && !connectionError && (
@@ -1083,7 +1084,10 @@ function TerminalTab({
           </div>
         )}
 
-        <TerminalZoomWrapper ref={containerRef} />
+        {/* Absolute positioning gives xterm exact pixel dimensions */}
+        <div className="absolute inset-0" data-terminal-sizer>
+          <TerminalZoomWrapper ref={containerRef} />
+        </div>
       </div>
     </div>
   );
@@ -1096,6 +1100,10 @@ function TerminalTab({
  * because xterm calculates mouse positions from raw DOM events which don't
  * account for CSS zoom scaling. We neutralize zoom on the terminal element
  * and scale the container dimensions inversely to compensate.
+ *
+ * The wrapper div has constrained pixel dimensions (via absolute positioning).
+ * The inner div (where xterm mounts) inherits those dimensions via h-full/w-full
+ * so that FitAddon.fit() can read the correct clientHeight/clientWidth.
  */
 const TerminalZoomWrapper = forwardRef<HTMLDivElement>(function TerminalZoomWrapper(_props, ref) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -1132,7 +1140,7 @@ const TerminalZoomWrapper = forwardRef<HTMLDivElement>(function TerminalZoomWrap
     <div ref={wrapperRef} className="h-full w-full overflow-hidden">
       <div
         ref={ref}
-        className="origin-top-left"
+        className="h-full w-full origin-top-left"
       />
     </div>
   );
