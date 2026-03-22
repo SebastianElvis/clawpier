@@ -140,6 +140,15 @@ All defined in `commands.rs`, invoked from `lib/tauri.ts`:
 ### CI Pipeline (`.github/workflows/ci.yml`)
 Three jobs: **frontend** (lint → type-check → vitest), **rust** (cargo test → cargo check --release), **integration** (pulls `busybox:latest`, runs `-- --ignored` tests)
 
+## Versioning
+
+The app version is defined in **three files** that must be kept in sync:
+1. `package.json` → `"version"` (frontend / pnpm)
+2. `src-tauri/Cargo.toml` → `version` (Rust crate)
+3. `src-tauri/tauri.conf.json` → `"version"` (Tauri app metadata, shown in UI title bar)
+
+**When tagging a release**, always update all three files to match the tag (e.g., `v0.3.1` → `"0.3.1"` in all three). The version in `tauri.conf.json` is what the user sees in the app header.
+
 ## Build Gotchas
 
 - **Vite version**: Must use Vite 6 (not 8) — Vite 8 has esbuild issues with Tauri
