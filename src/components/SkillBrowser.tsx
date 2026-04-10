@@ -75,7 +75,7 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search ClawHub registry..."
-            className="w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+            className="w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
           />
         </div>
         <div className="flex items-center gap-1">
@@ -132,7 +132,7 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
           {isSearching && isRegistrySearch && (
             <button
               onClick={() => open(`https://clawhub.com/search?q=${encodeURIComponent(query)}`)}
-              className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 hover:text-blue-600"
+              className="inline-flex items-center gap-0.5 text-[10px] text-[var(--accent-text)] hover:text-[var(--accent-hover)]"
             >
               View on clawhub.com
               <ExternalLink className="h-2.5 w-2.5" />
@@ -143,20 +143,20 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
 
       {/* ClawHub unavailable banner */}
       {clawhubAvailable === false && isSearching && (
-        <div className="mx-4 mt-2 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800/40 dark:bg-amber-900/20">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+        <div className="mx-4 mt-2 flex items-center gap-3 rounded-lg border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] px-3 py-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--badge-amber-text)]" />
           <div className="flex-1">
-            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+            <p className="text-xs font-medium text-[var(--badge-amber-text)]">
               ClawHub CLI not installed
             </p>
-            <p className="text-[10px] text-amber-700 dark:text-amber-400">
+            <p className="text-[10px] text-[var(--badge-amber-text)]">
               Install it to search and install skills from the ClawHub registry.
             </p>
           </div>
           <button
             onClick={installClawhub}
             disabled={installingClawhub}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--accent)] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
           >
             {installingClawhub ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
             {installingClawhub ? "Installing..." : "Install ClawHub"}
@@ -166,7 +166,7 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
 
       {/* Error banner */}
       {error && (
-        <div className="mx-4 mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-400">
+        <div className="mx-4 mt-2 rounded-lg bg-[var(--badge-red-bg)] px-3 py-2 text-xs text-[var(--badge-red-text)]">
           {error}
         </div>
       )}
@@ -250,14 +250,14 @@ function FilterButton({ active, onClick, label }: { active: boolean; onClick: ()
 function SourceBadge({ source }: { source: string }) {
   if (source === "clawhub") {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--accent-subtle)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--accent-text)]">
         <Globe className="h-2 w-2" />
         ClawHub
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--text-secondary)]">
       <Package className="h-2 w-2" />
       Bundled
     </span>
@@ -281,7 +281,7 @@ function SkillRow({ skill, isInstalling, onInstall, onUninstall, onClick }: Skil
     <div className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--bg-hover)]">
       <div className="shrink-0">
         {skill.installed ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          <CheckCircle2 className="h-4 w-4 text-[var(--badge-green-text)]" />
         ) : (
           <Package className="h-4 w-4 text-[var(--text-tertiary)]" />
         )}
@@ -296,7 +296,7 @@ function SkillRow({ skill, isInstalling, onInstall, onUninstall, onClick }: Skil
           {skill.source === "clawhub" && (
             <button
               onClick={(e) => { e.stopPropagation(); open(`https://clawhub.com/skills/${skill.name}`); }}
-              className="shrink-0 text-[var(--text-tertiary)] hover:text-blue-500"
+              className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent-text)]"
               title="View on clawhub.com"
             >
               <ExternalLink className="h-3 w-3" />
@@ -320,14 +320,14 @@ function SkillCard({ skill, isInstalling, onInstall, onUninstall, onClick }: Ski
     <div
       className={`flex cursor-pointer flex-col gap-1.5 rounded-lg border p-2.5 transition-shadow hover:shadow-md ${
         skill.installed
-          ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+          ? "border-[var(--badge-green-text)]/20 bg-[var(--badge-green-bg)]"
           : "border-[var(--border-primary)] bg-[var(--bg-surface)]"
       }`}
       onClick={onClick}
     >
       <div className="flex items-center gap-1.5">
         {skill.installed ? (
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[var(--badge-green-text)]" />
         ) : (
           <Package className="h-3.5 w-3.5 shrink-0 text-[var(--text-tertiary)]" />
         )}
@@ -340,7 +340,7 @@ function SkillCard({ skill, isInstalling, onInstall, onUninstall, onClick }: Ski
         {skill.source === "clawhub" && (
           <button
             onClick={(e) => { e.stopPropagation(); open(`https://clawhub.com/skills/${skill.name}`); }}
-            className="text-[var(--text-tertiary)] hover:text-blue-500"
+            className="text-[var(--text-tertiary)] hover:text-[var(--accent-text)]"
             title="View on clawhub.com"
           >
             <ExternalLink className="h-2.5 w-2.5" />
@@ -369,7 +369,7 @@ function ActionButton({
   // Bundled + ready → "Ready" label, no action
   if (installed && source === "bundled") {
     return (
-      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 ${width}`}>
+      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-[var(--badge-green-text)] ${width}`}>
         <CheckCircle2 className="h-3 w-3" /> Ready
       </span>
     );
@@ -378,7 +378,7 @@ function ActionButton({
   // Bundled + not ready → "Missing deps" label, no install button
   if (!installed && source === "bundled") {
     return (
-      <span className={`inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-400 ${width}`} title="Required CLI tools are not installed in the container">
+      <span className={`inline-flex items-center gap-1 rounded-md border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] px-2 py-1 text-[11px] font-medium text-[var(--badge-amber-text)] ${width}`} title="Required CLI tools are not installed in the container">
         <AlertTriangle className="h-3 w-3" /> Missing deps
       </span>
     );
@@ -390,7 +390,7 @@ function ActionButton({
       <button
         onClick={onUninstall}
         disabled={isInstalling}
-        className={`inline-flex items-center gap-1 rounded-md border border-[var(--border-primary)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 dark:hover:border-red-800 dark:hover:bg-red-900/20 dark:hover:text-red-400 ${width}`}
+        className={`inline-flex items-center gap-1 rounded-md border border-[var(--border-primary)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--badge-red-text)]/30 hover:bg-[var(--badge-red-bg)] hover:text-[var(--badge-red-text)] disabled:opacity-50 ${width}`}
       >
         {isInstalling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
         {isInstalling ? "Removing" : "Uninstall"}
@@ -403,7 +403,7 @@ function ActionButton({
     <button
       onClick={onInstall}
       disabled={isInstalling}
-      className={`inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 ${width}`}
+      className={`inline-flex items-center gap-1 rounded-md bg-[var(--accent)] px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50 ${width}`}
     >
       {isInstalling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
       {isInstalling ? "Installing" : "Install"}
@@ -490,7 +490,7 @@ function SkillDetailModal({
               </h2>
               <SourceBadge source={skill.source} />
               {skill.installed && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--badge-green-bg)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--badge-green-text)]">
                   <CheckCircle2 className="h-2 w-2" /> Ready
                 </span>
               )}
@@ -555,7 +555,7 @@ function SkillDetailModal({
           {skill.source === "clawhub" && (
             <button
               onClick={() => open(`https://clawhub.com/skills/${skill.name}`)}
-              className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600"
+              className="inline-flex items-center gap-1.5 text-xs text-[var(--accent-text)] hover:text-[var(--accent-hover)]"
             >
               <Globe className="h-3.5 w-3.5" />
               View on clawhub.com
@@ -589,8 +589,8 @@ function MissingDepsPanel({ requirements }: { requirements: import("../lib/types
   if (!hasBins && !hasEnv && !hasConfig && !hasOs) return null;
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/40 dark:bg-amber-900/20">
-      <div className="flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+    <div className="rounded-lg border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] px-4 py-3">
+      <div className="flex items-center gap-2 text-xs font-medium text-[var(--badge-amber-text)]">
         <Info className="h-3.5 w-3.5" />
         Missing requirements
       </div>
@@ -631,16 +631,16 @@ function MissingDepsPanel({ requirements }: { requirements: import("../lib/types
 function DepRow({ label, items, hint }: { label: string; items: string[]; hint: string }) {
   return (
     <div className="text-xs">
-      <span className="font-medium text-amber-800 dark:text-amber-300">{label}: </span>
+      <span className="font-medium text-[var(--badge-amber-text)]">{label}: </span>
       {items.map((item, i) => (
         <span key={item}>
-          <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[10px] text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+          <code className="rounded bg-[var(--badge-amber-bg)] px-1 py-0.5 font-mono text-[10px] text-[var(--badge-amber-text)]">
             {item}
           </code>
-          {i < items.length - 1 && <span className="text-amber-600 dark:text-amber-500">, </span>}
+          {i < items.length - 1 && <span className="text-[var(--badge-amber-text)]">, </span>}
         </span>
       ))}
-      <p className="mt-0.5 text-[10px] text-amber-600/80 dark:text-amber-400/60">{hint}</p>
+      <p className="mt-0.5 text-[10px] text-[var(--badge-amber-text)]">{hint}</p>
     </div>
   );
 }

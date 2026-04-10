@@ -120,14 +120,14 @@ export function PortMappingEditor({
   if (disabled) {
     return (
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
           Port Mappings
         </h3>
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800/50 dark:bg-amber-950/30">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-          <div className="text-xs text-amber-800 dark:text-amber-300">
+        <div className="flex items-start gap-2 rounded-lg border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] p-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--badge-amber-text)]" />
+          <div className="text-xs text-[var(--badge-amber-text)]">
             <p className="font-medium">Network is disabled (sandbox mode)</p>
-            <p className="mt-0.5 text-amber-700 dark:text-amber-400">
+            <p className="mt-0.5 text-[var(--badge-amber-text)]">
               Port mappings require bridge or host networking. Switch the network
               mode above to enable port forwarding.
             </p>
@@ -140,7 +140,7 @@ export function PortMappingEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
           Port Mappings
         </h3>
         <button
@@ -154,11 +154,11 @@ export function PortMappingEditor({
 
       {/* Contextual help */}
       {showHelp && (
-        <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/50 dark:bg-blue-950/30">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-          <div className="space-y-1 text-xs text-blue-800 dark:text-blue-300">
+        <div className="flex items-start gap-2 rounded-lg border border-[var(--focus-border)] bg-[var(--accent-subtle)] p-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-text)]" />
+          <div className="space-y-1 text-xs text-[var(--accent-text)]">
             <p className="font-medium">When do you need port mappings?</p>
-            <ul className="list-inside list-disc space-y-0.5 text-blue-700 dark:text-blue-400">
+            <ul className="list-inside list-disc space-y-0.5 text-[var(--accent-text)]">
               <li>
                 <strong>Webhooks</strong> — Telegram/Discord webhook channels
                 need an HTTP endpoint reachable from the internet
@@ -172,9 +172,9 @@ export function PortMappingEditor({
                 the container
               </li>
             </ul>
-            <p className="text-blue-600 dark:text-blue-500">
+            <p className="text-[var(--accent-text)]">
               All ports are bound to{" "}
-              <code className="rounded bg-blue-100 px-1 dark:bg-blue-900">
+              <code className="rounded bg-[var(--accent-subtle)] px-1">
                 127.0.0.1
               </code>{" "}
               (localhost only).
@@ -199,8 +199,8 @@ export function PortMappingEditor({
               key={preset.label}
               className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] transition-colors ${
                 exists
-                  ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800/50 dark:bg-green-950/30 dark:text-green-400"
-                  : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-blue-300 hover:text-blue-600"
+                  ? "border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]"
+                  : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:border-[var(--focus-border)] hover:text-[var(--accent-text)]"
               }`}
               onClick={() => !exists && addPreset(preset)}
               disabled={exists}
@@ -237,7 +237,7 @@ export function PortMappingEditor({
                   onChange={(e) =>
                     updateMapping(i, "container_port", e.target.value)
                   }
-                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
+                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)]"
                 />
                 <input
                   type="number"
@@ -250,10 +250,10 @@ export function PortMappingEditor({
                   onBlur={() => handleHostPortBlur(m.host_port)}
                   className={`w-full rounded-md border px-2 py-1 text-xs outline-none ${
                     portConflicts[m.host_port]
-                      ? "border-red-400 bg-red-50 text-red-700 dark:border-red-600 dark:bg-red-950/30 dark:text-red-300"
+                      ? "border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]"
                       : m.host_port < 1024 && m.host_port > 0
-                        ? "border-amber-400 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
-                        : "border-[var(--border-primary)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:border-blue-300"
+                        ? "border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]"
+                        : "border-[var(--border-primary)] bg-[var(--bg-input)] text-[var(--text-primary)] focus:border-[var(--focus-border)]"
                   }`}
                 />
                 <select
@@ -261,7 +261,7 @@ export function PortMappingEditor({
                   onChange={(e) =>
                     updateMapping(i, "protocol", e.target.value)
                   }
-                  className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-1.5 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
+                  className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-1.5 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)]"
                 >
                   <option value="tcp">TCP</option>
                   <option value="udp">UDP</option>
@@ -275,14 +275,14 @@ export function PortMappingEditor({
               </div>
               {/* Port conflict warning */}
               {portConflicts[m.host_port] && (
-                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400">
+                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--badge-red-text)]">
                   <AlertTriangle className="h-2.5 w-2.5" />
                   Port {m.host_port} is already in use on your machine
                 </p>
               )}
               {/* Privileged port warning */}
               {m.host_port > 0 && m.host_port < 1024 && (
-                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+                <p className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--badge-amber-text)]">
                   <AlertTriangle className="h-2.5 w-2.5" />
                   Privileged port — must be ≥ 1024
                 </p>
@@ -293,7 +293,7 @@ export function PortMappingEditor({
       )}
 
       <button
-        className="inline-flex items-center gap-1 rounded-md border border-dashed border-[var(--border-primary)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-blue-300 hover:text-blue-600"
+        className="inline-flex items-center gap-1 rounded-md border border-dashed border-[var(--border-primary)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--focus-border)] hover:text-[var(--accent-text)]"
         onClick={addMapping}
       >
         <Plus className="h-3 w-3" />

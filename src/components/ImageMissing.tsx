@@ -32,7 +32,7 @@ export function ImageMissing() {
       <div className="rounded-2xl bg-[var(--badge-amber-bg)] p-5">
         <Download className="h-12 w-12 text-[var(--badge-amber-text)]" />
       </div>
-      <h1 className="mt-5 text-xl font-bold text-[var(--text-primary)]">
+      <h1 className="mt-5 text-xl font-semibold tracking-tight text-[var(--text-primary)]">
         OpenClaw Image Not Found
       </h1>
       <p className="mt-2 max-w-md text-center text-sm text-[var(--text-secondary)]">
@@ -58,7 +58,7 @@ export function ImageMissing() {
           </div>
         ) : (
           <button
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
             onClick={handlePull}
             disabled={pulling}
           >

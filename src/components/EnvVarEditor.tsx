@@ -41,7 +41,7 @@ export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
           Environment Variables
         </h3>
         <button
@@ -61,14 +61,14 @@ export function EnvVarEditor({ envVars, onChange }: EnvVarEditorProps) {
         {vars.map((v, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
-              className="w-1/3 rounded border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+              className="w-1/3 rounded border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
               placeholder="KEY"
               value={v.key}
               onChange={(e) => handleChange(i, "key", e.target.value)}
             />
             <span className="text-[var(--text-tertiary)]">=</span>
             <input
-              className="flex-1 rounded border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+              className="flex-1 rounded border border-[var(--border-primary)] bg-[var(--bg-input)] px-2 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
               placeholder="value"
               type={showValues ? "text" : "password"}
               value={v.value}

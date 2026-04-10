@@ -46,7 +46,7 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
       >
         <div className="flex items-center gap-3" data-tauri-drag-region>
           <h1
-            className="text-sm font-bold tracking-tight text-[var(--text-primary)]"
+            className="text-base font-semibold tracking-tight text-[var(--text-primary)]"
             data-tauri-drag-region
           >
             ClawPier
@@ -73,8 +73,9 @@ export function Layout({ children, onCreateBot, botCount }: LayoutProps) {
           </button>
           {botCount > 0 && (
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--accent-hover)]"
               onClick={onCreateBot}
+              title="New Bot (⌘N)"
             >
               <Plus className="h-3.5 w-3.5" />
               New Bot

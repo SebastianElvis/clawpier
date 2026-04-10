@@ -32,11 +32,30 @@
   --scrollbar-thumb: #d1d5db;
   --scrollbar-hover: #9ca3af;
 
-  /* Semantic button backgrounds */
+  /* Accent */
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-subtle: #eef2ff;
+  --accent-ring: rgba(99, 102, 241, 0.25);
+  --accent-text: #4f46e5;
+
+  /* Focus */
+  --focus-border: #a5b4fc;
+  --focus-ring: rgba(99, 102, 241, 0.15);
+
+  /* Action buttons */
+  --btn-start-bg: #059669;
+  --btn-start-hover: #047857;
+  --btn-danger-bg: #dc2626;
+  --btn-danger-hover-bg: #b91c1c;
   --btn-danger-hover: rgba(239, 68, 68, 0.08);
   --btn-warning-bg: #fffbeb;
   --btn-warning-text: #b45309;
   --btn-warning-hover: #fef3c7;
+
+  /* Surface hover */
+  --border-hover: #d1d5db;
+  --bg-surface-hover: #fafbfd;
 
   /* Semantic badge/banner colors */
   --badge-green-bg: #ecfdf5;
@@ -75,10 +94,26 @@
     --border-primary: #3a3a3c;
     --border-secondary: #303032;
 
+    --accent: #818cf8;
+    --accent-hover: #a5b4fc;
+    --accent-subtle: rgba(99, 102, 241, 0.12);
+    --accent-ring: rgba(129, 140, 248, 0.3);
+    --accent-text: #a5b4fc;
+
+    --focus-border: #6366f1;
+    --focus-ring: rgba(99, 102, 241, 0.25);
+
+    --btn-start-bg: #059669;
+    --btn-start-hover: #047857;
+    --btn-danger-bg: #dc2626;
+    --btn-danger-hover-bg: #b91c1c;
     --btn-danger-hover: rgba(239, 68, 68, 0.15);
     --btn-warning-bg: rgba(245, 158, 11, 0.12);
     --btn-warning-text: #fbbf24;
     --btn-warning-hover: rgba(245, 158, 11, 0.2);
+
+    --border-hover: #48484a;
+    --bg-surface-hover: #2c2c2e;
 
     --badge-green-bg: rgba(16, 185, 129, 0.12);
     --badge-green-text: #6ee7b7;
@@ -115,10 +150,26 @@
   --border-primary: #3a3a3c;
   --border-secondary: #303032;
 
+  --accent: #818cf8;
+  --accent-hover: #a5b4fc;
+  --accent-subtle: rgba(99, 102, 241, 0.12);
+  --accent-ring: rgba(129, 140, 248, 0.3);
+  --accent-text: #a5b4fc;
+
+  --focus-border: #6366f1;
+  --focus-ring: rgba(99, 102, 241, 0.25);
+
+  --btn-start-bg: #059669;
+  --btn-start-hover: #047857;
+  --btn-danger-bg: #dc2626;
+  --btn-danger-hover-bg: #b91c1c;
   --btn-danger-hover: rgba(239, 68, 68, 0.15);
   --btn-warning-bg: rgba(245, 158, 11, 0.12);
   --btn-warning-text: #fbbf24;
   --btn-warning-hover: rgba(245, 158, 11, 0.2);
+
+  --border-hover: #48484a;
+  --bg-surface-hover: #2c2c2e;
 
   --badge-green-bg: rgba(16, 185, 129, 0.12);
   --badge-green-text: #6ee7b7;
@@ -153,6 +204,23 @@
 
   --border-primary: #e5e7eb;
   --border-secondary: #f3f4f6;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-subtle: #eef2ff;
+  --accent-ring: rgba(99, 102, 241, 0.25);
+  --accent-text: #4f46e5;
+
+  --focus-border: #a5b4fc;
+  --focus-ring: rgba(99, 102, 241, 0.15);
+
+  --btn-start-bg: #059669;
+  --btn-start-hover: #047857;
+  --btn-danger-bg: #dc2626;
+  --btn-danger-hover-bg: #b91c1c;
+
+  --border-hover: #d1d5db;
+  --bg-surface-hover: #fafbfd;
 
   --scrollbar-thumb: #d1d5db;
   --scrollbar-hover: #9ca3af;

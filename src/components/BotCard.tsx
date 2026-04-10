@@ -104,13 +104,13 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
 
   return (
     <>
-      <div className="group relative rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)] p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="group relative rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] p-4 transition-colors hover:border-[var(--border-hover)]">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {isEditing ? (
               <input
-                className="w-full rounded border border-blue-300 bg-[var(--bg-input)] px-2 py-0.5 text-sm font-semibold text-[var(--text-primary)] outline-none ring-2 ring-blue-100"
+                className="w-full rounded border border-[var(--focus-border)] bg-[var(--bg-input)] px-2 py-0.5 text-sm font-semibold text-[var(--text-primary)] outline-none ring-2 ring-[var(--focus-ring)]"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onBlur={handleRename}
@@ -212,7 +212,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
               <Sparkline
                 data={statsHistory.map((s) => s.cpu_percent)}
                 max={100}
-                color="#3b82f6"
+                color="#6366f1"
                 width={48}
                 height={12}
               />
@@ -255,7 +255,7 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
             </button>
           ) : (
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--btn-start-bg)] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[var(--btn-start-hover)] disabled:opacity-50"
               onClick={handleStart}
               disabled={isLoading}
             >

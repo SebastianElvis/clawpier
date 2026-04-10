@@ -123,7 +123,7 @@ export function FileBrowser({ botId, workspacePath }: FileBrowserProps) {
             <Loader2 className="h-5 w-5 animate-spin text-[var(--text-tertiary)]" />
           </div>
         ) : error ? (
-          <div className="p-4 text-sm text-red-600">{error}</div>
+          <div className="p-4 text-sm text-[var(--badge-red-text)]">{error}</div>
         ) : fileContent ? (
           <pre className="overflow-auto p-4 font-mono text-xs leading-5 text-[var(--text-secondary)]">
             {fileContent.content}
@@ -141,7 +141,7 @@ export function FileBrowser({ botId, workspacePath }: FileBrowserProps) {
                 onClick={() => handleOpenFile(entry)}
               >
                 {entry.is_dir ? (
-                  <Folder className="h-4 w-4 shrink-0 text-blue-400" />
+                  <Folder className="h-4 w-4 shrink-0 text-[var(--accent-text)]" />
                 ) : (
                   <FileText className="h-4 w-4 shrink-0 text-[var(--text-tertiary)]" />
                 )}
