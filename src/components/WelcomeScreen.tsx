@@ -20,7 +20,7 @@ export function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
           Welcome to ClawPier
         </h1>
         <p className="mt-2 text-center text-sm text-[var(--text-secondary)]">
-          Manage sandboxed OpenClaw bot instances from a single dashboard —
+          Manage sandboxed bot instances from a single dashboard —
           without touching the terminal.
         </p>
 
@@ -33,7 +33,7 @@ export function WelcomeScreen({ onDismiss }: WelcomeScreenProps) {
               </p>
               <p className="text-xs text-[var(--text-secondary)]">
                 Each bot runs in its own Docker container using the official
-                OpenClaw image.
+                agent image.
               </p>
             </div>
           </div>

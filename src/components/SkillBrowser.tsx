@@ -613,7 +613,7 @@ function MissingDepsPanel({ requirements }: { requirements: import("../lib/types
           <DepRow
             label="Config keys"
             items={requirements.config!}
-            hint="Set via openclaw configure in Terminal"
+            hint="Set via configure command in Terminal"
           />
         )}
         {hasOs && (

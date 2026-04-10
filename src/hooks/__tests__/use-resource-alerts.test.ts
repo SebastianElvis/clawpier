@@ -13,6 +13,7 @@ function makeBot(id: string, name: string): BotWithStatus {
     id,
     name,
     image: "test:latest",
+    agent_type: "OpenClaw",
     network_mode: "none",
     env_vars: [],
     port_mappings: [],

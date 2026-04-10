@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::{BotNotificationPrefs, BotProfile, EnvVar, HealthCheckConfig, NetworkMode, PortMapping};
+use crate::models::{AgentType, BotNotificationPrefs, BotProfile, EnvVar, HealthCheckConfig, NetworkMode, PortMapping};
 
 pub struct BotStore {
     bots: Vec<BotProfile>,
@@ -732,6 +732,7 @@ mod tests {
             id: id.clone(),
             name: "Duplicate".into(),
             image: "test".into(),
+            agent_type: AgentType::default(),
             network_enabled: None,
             workspace_path: None,
             api_key_env: None,
