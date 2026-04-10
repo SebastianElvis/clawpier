@@ -73,7 +73,7 @@ export function ChatMessageBubble({
         {/* Timestamp */}
         <p
           className={`mt-1 text-[10px] ${
-            isUser ? "text-blue-200" : "text-[var(--text-tertiary)]"
+            isUser ? "text-white/60" : "text-[var(--text-tertiary)]"
           }`}
         >
           {new Date(message.timestamp).toLocaleTimeString()}
