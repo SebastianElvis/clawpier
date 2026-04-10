@@ -132,7 +132,7 @@ export interface Skill {
   author: string;
   version: string;
   installed: boolean;
-  /** "bundled" for local skills, "clawhub" for registry results */
+  /** "bundled" for local skills, "clawhub" for OpenClaw registry, "hermes-hub" for Hermes registry */
   source: string;
 }
 
