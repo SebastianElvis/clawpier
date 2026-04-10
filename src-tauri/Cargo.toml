@@ -1,6 +1,6 @@
 [package]
 name = "clawpier"
-version = "0.4.0"
+version = "0.4.1"
 description = "OpenClaw Manager - Manage sandboxed OpenClaw bot instances"
 authors = ["Runchao Han"]
 edition = "2021"

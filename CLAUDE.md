@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClawPier is a macOS desktop app for managing sandboxed OpenClaw bot instances via Docker. Built with Tauri v2 (Rust backend + React frontend).
+ClawPier is a macOS desktop app for managing sandboxed [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes](https://github.com/NousResearch/hermes-agent) AI agent instances via Docker. Built with Tauri v2 (Rust backend + React frontend).
 
 ## Tech Stack
 

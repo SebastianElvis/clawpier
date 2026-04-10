@@ -7,17 +7,17 @@
 [![Stars](https://img.shields.io/github/stars/SebastianElvis/clawpier)](https://github.com/SebastianElvis/clawpier/stargazers)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange)](https://v2.tauri.app)
 
-A native desktop app for managing [OpenClaw](https://github.com/openclaw) and [Hermes](https://github.com/nousresearch/hermes-agent) AI agent instances inside Docker containers — sandboxed from your host by default. Available on macOS, Linux, and Windows.
+A native desktop app for managing [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes](https://github.com/NousResearch/hermes-agent) AI agent instances inside Docker containers — sandboxed from your host by default. Available on macOS, Linux, and Windows.
 
 <p align="center">
   <img src="docs/demo.gif" alt="ClawPier demo" width="800" />
   <br />
-  <sub><a href="https://github.com/SebastianElvis/clawpier/releases/download/v0.3.0/clawpier-demo.mov">&#9654; Watch full demo (60s)</a></sub>
+  <sub><a href="https://github.com/SebastianElvis/clawpier/releases/download/v0.4.1/clawpier-demo.mov">&#9654; Watch full demo (60s)</a></sub>
 </p>
 
 ## Why ClawPier?
 
-AI agent runtimes like OpenClaw and Hermes have OS-level access to your email, calendars, files, and messaging platforms. Running them directly on your host means a prompt injection gives an attacker your machine ([CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253), CVSS 8.8).
+AI agent runtimes like [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes](https://github.com/NousResearch/hermes-agent) have OS-level access to your email, calendars, files, and messaging platforms. Running them directly on your host means a prompt injection gives an attacker your machine ([CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253), CVSS 8.8).
 
 ClawPier fixes this by running every agent inside a Docker container:
 
@@ -51,12 +51,12 @@ Grab the latest build for your platform from [Releases](https://github.com/Sebas
 ### Prerequisites
 
 - **Docker** must be installed and running (Docker Desktop on macOS/Windows, or Docker Engine on Linux)
-- Agent Docker image (OpenClaw or Hermes) — ClawPier will prompt you to pull it on first launch
+- Agent Docker image ([OpenClaw](https://github.com/openclaw/openclaw) or [Hermes](https://github.com/NousResearch/hermes-agent)) — ClawPier will prompt you to pull it on first launch
 
 ## Features
 
 ### Multi-Agent Support
-- **OpenClaw and Hermes** — choose your agent runtime when creating a bot
+- **[OpenClaw](https://github.com/openclaw/openclaw) and [Hermes](https://github.com/NousResearch/hermes-agent)** — choose your agent runtime when creating a bot
 - **Agent-specific config dashboards** — view model, provider, platforms, and settings per agent type
 - **Image pull progress** — real-time progress bar with layer and byte tracking
 

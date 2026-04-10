@@ -8,7 +8,7 @@
 
 **The Desktop Control Plane for Local AI Agents.**
 
-ClawPier makes running and managing personal AI agents as easy as managing apps on your phone. It is the GUI layer that makes a powerful-but-complex agent runtime accessible — and the orchestration platform that makes multiple agents work together.
+ClawPier makes running and managing personal AI agents ([OpenClaw](https://github.com/openclaw/openclaw), [Hermes](https://github.com/NousResearch/hermes-agent), and more) as easy as managing apps on your phone. It is the GUI layer that makes a powerful-but-complex agent runtime accessible — and the orchestration platform that makes multiple agents work together.
 
 **ClawPier is to AI agents what Docker Desktop is to Docker.** It already supports OpenClaw and Hermes, with a pluggable architecture ready for more runtimes.
 
@@ -18,7 +18,7 @@ ClawPier makes running and managing personal AI agents as easy as managing apps 
 
 ### The Problem
 
-Running self-hosted AI agents (OpenClaw, Hermes, etc.) today requires: Docker knowledge, CLI fluency, config file editing, manual monitoring, and juggling multiple terminal sessions. This limits adoption to technical users willing to invest setup time.
+Running self-hosted AI agents ([OpenClaw](https://github.com/openclaw/openclaw), [Hermes](https://github.com/NousResearch/hermes-agent), etc.) today requires: Docker knowledge, CLI fluency, config file editing, manual monitoring, and juggling multiple terminal sessions. This limits adoption to technical users willing to invest setup time.
 
 ### The Moat
 
@@ -62,7 +62,7 @@ Go from managing one bot to managing a fleet. Agent templates, inter-agent commu
 
 **Target:** Power users building personal AI workflows.
 
-**Status after v0.4.0:**
+**Status after v0.4.1:**
 - [x] Multi-runtime support — Hermes agent alongside OpenClaw (agent-specific config, images, dashboards)
 - [x] Image pull progress streaming with per-layer tracking
 - [ ] Visual config editor (replace `openclaw configure`)
@@ -82,7 +82,7 @@ Support agent runtimes beyond OpenClaw. Become the "Raycast for AI agents" — a
 
 **Target:** Anyone who wants AI agents working for them.
 
-- [x] First non-OpenClaw runtime: Hermes agent (shipped in v0.4.0)
+- [x] First non-OpenClaw runtime: Hermes agent (shipped in v0.4.1)
 - [ ] Pluggable runtime adapters (AutoGPT, CrewAI, custom containers)
 - [ ] Agent marketplace — install community-built agent configs
 - [ ] Cross-platform (Windows, Linux) — Tauri already supports this
