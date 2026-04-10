@@ -1,6 +1,6 @@
 # ClawPier Product Vision & Roadmap
 
-> Last updated: 2026-03-22
+> Last updated: 2026-04-10
 
 ---
 
@@ -10,7 +10,7 @@
 
 ClawPier makes running and managing personal AI agents as easy as managing apps on your phone. It is the GUI layer that makes a powerful-but-complex agent runtime accessible — and the orchestration platform that makes multiple agents work together.
 
-**ClawPier is to OpenClaw what Docker Desktop is to Docker.** But the opportunity is bigger: it can become the universal desktop agent manager, not just for OpenClaw.
+**ClawPier is to AI agents what Docker Desktop is to Docker.** It already supports OpenClaw and Hermes, with a pluggable architecture ready for more runtimes.
 
 ---
 
@@ -18,7 +18,7 @@ ClawPier makes running and managing personal AI agents as easy as managing apps 
 
 ### The Problem
 
-Running OpenClaw (or any self-hosted AI agent) today requires: Docker knowledge, CLI fluency, config file editing, manual monitoring, and juggling multiple terminal sessions. This limits adoption to technical users willing to invest setup time.
+Running self-hosted AI agents (OpenClaw, Hermes, etc.) today requires: Docker knowledge, CLI fluency, config file editing, manual monitoring, and juggling multiple terminal sessions. This limits adoption to technical users willing to invest setup time.
 
 ### The Moat
 
@@ -62,6 +62,9 @@ Go from managing one bot to managing a fleet. Agent templates, inter-agent commu
 
 **Target:** Power users building personal AI workflows.
 
+**Status after v0.4.0:**
+- [x] Multi-runtime support — Hermes agent alongside OpenClaw (agent-specific config, images, dashboards)
+- [x] Image pull progress streaming with per-layer tracking
 - [ ] Visual config editor (replace `openclaw configure`)
 - [ ] Agent templates/presets (e.g., "Research Assistant", "DevOps Bot", "Customer Support")
 - [ ] Bot groups with bulk actions
@@ -79,6 +82,7 @@ Support agent runtimes beyond OpenClaw. Become the "Raycast for AI agents" — a
 
 **Target:** Anyone who wants AI agents working for them.
 
+- [x] First non-OpenClaw runtime: Hermes agent (shipped in v0.4.0)
 - [ ] Pluggable runtime adapters (AutoGPT, CrewAI, custom containers)
 - [ ] Agent marketplace — install community-built agent configs
 - [ ] Cross-platform (Windows, Linux) — Tauri already supports this
@@ -100,25 +104,25 @@ Manage agents running on remote machines or cloud infrastructure. ClawPier becom
 
 ---
 
-## Scope: What OpenClaw Handles vs. What ClawPier Builds
+## Scope: What Agent Runtimes Handle vs. What ClawPier Builds
 
-OpenClaw is a full-featured agent runtime. ClawPier should **not** duplicate capabilities that OpenClaw already provides natively. Instead, ClawPier focuses on container operations, GUI management, and surfacing OpenClaw's capabilities in an accessible way.
+Agent runtimes (OpenClaw, Hermes, etc.) are full-featured. ClawPier should **not** duplicate capabilities that runtimes already provide natively. Instead, ClawPier focuses on container operations, GUI management, and surfacing each runtime's capabilities in an accessible way.
 
 | Capability | Owner | Notes |
 |------------|-------|-------|
-| Scheduled tasks / cron jobs | **OpenClaw** | Users ask the agent to schedule tasks directly. |
-| Persistent memory / context | **OpenClaw** | Agent memory is managed by the runtime. ClawPier persists the data directory across restarts. |
-| LLM provider selection | **OpenClaw** | Configured via `openclaw.json`. ClawPier surfaces this read-only in the Dashboard. |
-| Channel integrations (Telegram, etc.) | **OpenClaw** | Configured via `openclaw configure`. ClawPier shows status in Dashboard. |
-| Skills & plugins | **OpenClaw** | Installed via `clawhub` CLI. ClawPier provides a visual browser & manager (H1). |
+| Scheduled tasks / cron jobs | **Runtime** | Users ask the agent to schedule tasks directly. |
+| Persistent memory / context | **Runtime** | Agent memory is managed by the runtime. ClawPier persists the data directory across restarts. |
+| LLM provider selection | **Runtime** | Configured via runtime config files. ClawPier surfaces this read-only in the Dashboard. |
+| Channel integrations (Telegram, etc.) | **Runtime** | Configured via runtime setup. ClawPier shows status in Dashboard. |
+| Skills & plugins | **Runtime** | Installed via runtime CLI. ClawPier provides a visual browser & manager. |
 | Container lifecycle | **ClawPier** | Start, stop, restart, delete — Docker operations. |
-| Resource limits (CPU/memory) | **ClawPier** | Docker-level constraints — not an OpenClaw concept. |
+| Resource limits (CPU/memory) | **ClawPier** | Docker-level constraints — not a runtime concept. |
 | Network isolation & security | **ClawPier** | Docker network modes, port mapping, sandboxing. |
 | Chat sessions (GUI) | **ClawPier** | Native chat UI to talk to the agent without external tools. |
 | Log streaming & search | **ClawPier** | Real-time logs with search, filtering, and export. |
 | File browser | **ClawPier** | Browse and manage the workspace bind mount. |
 | Multi-bot management | **ClawPier** | Groups, cloning, templates — container fleet operations (H2). |
-| Runtime adapters | **ClawPier** | Support for non-OpenClaw agent runtimes (H3). |
+| Runtime adapters | **ClawPier** | Support for multiple agent runtimes (OpenClaw, Hermes, more in H3). |
 | Remote/cloud agents | **ClawPier** | Manage agents on remote Docker hosts or cloud VMs (H4). |
 
 ---
@@ -162,7 +166,7 @@ Bot Groups         ██████      Bulk actions on bot sets            �
 ## Principles
 
 1. **Product-first** — Every feature should answer "what can the user do now that they couldn't before?" Implementation details live in task specs, not the roadmap.
-2. **Don't duplicate OpenClaw** — If OpenClaw already does it (memory, scheduling, providers), surface it in the GUI — don't rebuild it.
+2. **Don't duplicate runtimes** — If the agent runtime already does it (memory, scheduling, providers), surface it in the GUI — don't rebuild it.
 3. **Incremental delivery** — Each sub-feature ships independently and is immediately useful.
 4. **Backward compatible** — Existing bot configurations always continue to work after an upgrade.
 5. **Developer experience is a cross-cutting concern** — Not a separate phase. Every feature ships with clear error messages, sensible defaults, and responsive UI.
