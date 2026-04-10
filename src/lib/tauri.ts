@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AgentType,
   BotNotificationPrefs,
   BotProfile,
   BotWithStatus,
@@ -42,6 +43,7 @@ export async function createBot(
     cpuLimit?: number | null;
     memoryLimit?: number | null;
     networkMode?: NetworkMode;
+    agentType?: AgentType;
   }
 ): Promise<BotProfile> {
   return invoke<BotProfile>("create_bot", {
@@ -50,6 +52,7 @@ export async function createBot(
     cpuLimit: opts?.cpuLimit ?? null,
     memoryLimit: opts?.memoryLimit ?? null,
     networkMode: opts?.networkMode ?? null,
+    agentType: opts?.agentType ?? null,
   });
 }
 
@@ -96,6 +99,11 @@ export async function checkImage(image: string): Promise<boolean> {
 
 export async function pullImage(image: string): Promise<void> {
   return invoke("pull_image", { image });
+}
+
+/** Event name used for image pull progress updates. */
+export function imagePullEventName(image: string): string {
+  return `image-pull-progress-${image.replace(/[/:]/g, "-")}`;
 }
 
 // ── Auto-start commands ─────────────────────────────────────────────

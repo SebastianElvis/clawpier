@@ -164,7 +164,7 @@ export function PortMappingEditor({
                 need an HTTP endpoint reachable from the internet
               </li>
               <li>
-                <strong>API access</strong> — To call OpenClaw&apos;s API from
+                <strong>API access</strong> — To call the bot&apos;s API from
                 your host machine
               </li>
               <li>

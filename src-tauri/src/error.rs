@@ -35,11 +35,11 @@ impl Serialize for AppError {
         // Redact potentially sensitive details from errors shown to the frontend.
         // Docker and IO errors may contain file paths, tokens, or internal state.
         let safe_msg = match self {
-            AppError::DockerUnavailable(_) => "Docker is not available".to_string(),
-            AppError::Docker(_) => "A Docker operation failed".to_string(),
+            AppError::DockerUnavailable(msg) => format!("Docker is not available: {}", msg),
+            AppError::Docker(e) => format!("Docker error: {}", e),
             AppError::BotNotFound(id) => format!("Bot not found: {}", id),
             AppError::DuplicateName(name) => format!("Duplicate bot name: {}", name),
-            AppError::Io(_) => "An I/O error occurred".to_string(),
+            AppError::Io(e) => format!("I/O error: {}", e),
             AppError::Json(_) => "A data format error occurred".to_string(),
             AppError::Validation(msg) => format!("Validation error: {}", msg),
             AppError::Other(msg) => msg.clone(),

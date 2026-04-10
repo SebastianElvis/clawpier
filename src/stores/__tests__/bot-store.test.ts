@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { useBotStore } from "../bot-store";
+import { useBotStore, defaultImageForAgent } from "../bot-store";
 import type { BotWithStatus } from "../../lib/types";
 
 const mockedInvoke = vi.mocked(invoke);
@@ -13,6 +13,7 @@ const makeBotWithStatus = (
   id,
   name,
   image: "ghcr.io/openclaw/openclaw:latest",
+  agent_type: "OpenClaw" as const,
   network_mode: "none" as const,
   env_vars: [],
   port_mappings: [],
@@ -160,6 +161,7 @@ describe("bot-store", () => {
         cpuLimit: null,
         memoryLimit: null,
         networkMode: null,
+        agentType: null,
       });
     });
 
@@ -175,6 +177,7 @@ describe("bot-store", () => {
         cpuLimit: null,
         memoryLimit: null,
         networkMode: null,
+        agentType: null,
       });
     });
 
@@ -194,6 +197,25 @@ describe("bot-store", () => {
         cpuLimit: 2,
         memoryLimit: 4_294_967_296,
         networkMode: "bridge",
+        agentType: null,
+      });
+    });
+
+    it("creates bot with Hermes agent type", async () => {
+      mockedInvoke.mockResolvedValueOnce({ id: "new-h", name: "HermesBot" }); // create_bot
+      mockedInvoke.mockResolvedValueOnce([]); // list_bots
+
+      await useBotStore.getState().createBot("HermesBot", undefined, {
+        agentType: "Hermes",
+      });
+
+      expect(mockedInvoke).toHaveBeenCalledWith("create_bot", {
+        name: "HermesBot",
+        workspacePath: null,
+        cpuLimit: null,
+        memoryLimit: null,
+        networkMode: null,
+        agentType: "Hermes",
       });
     });
 
@@ -420,5 +442,15 @@ describe("bot-store", () => {
 
       expect(useBotStore.getState().bots).toEqual(updatedBots);
     });
+  });
+});
+
+describe("defaultImageForAgent", () => {
+  it("returns OpenClaw image for OpenClaw", () => {
+    expect(defaultImageForAgent("OpenClaw")).toBe("ghcr.io/openclaw/openclaw:latest");
+  });
+
+  it("returns Hermes image for Hermes", () => {
+    expect(defaultImageForAgent("Hermes")).toBe("nousresearch/hermes-agent:latest");
   });
 });

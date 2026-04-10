@@ -1,4 +1,55 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+// ── Agent type (which agent runtime to use) ──────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum AgentType {
+    OpenClaw,
+    Hermes,
+}
+
+impl Default for AgentType {
+    fn default() -> Self {
+        AgentType::OpenClaw
+    }
+}
+
+impl AgentType {
+    /// Default Docker image for this agent type.
+    pub fn default_image(&self) -> &'static str {
+        match self {
+            AgentType::OpenClaw => "ghcr.io/openclaw/openclaw:latest",
+            AgentType::Hermes => "nousresearch/hermes-agent:latest",
+        }
+    }
+
+    /// Container mount path for agent config/data.
+    pub fn config_mount_path(&self) -> &'static str {
+        match self {
+            AgentType::OpenClaw => "/home/node/.openclaw",
+            AgentType::Hermes => "/opt/data",
+        }
+    }
+
+    /// Environment variables automatically injected for this agent type.
+    pub fn auto_env_vars(&self) -> Vec<(&'static str, &'static str)> {
+        match self {
+            AgentType::OpenClaw => vec![("OPENCLAW_GATEWAY_HOST", "127.0.0.1")],
+            AgentType::Hermes => vec![("HERMES_HOME", "/opt/data")],
+        }
+    }
+
+    /// Container CMD args passed to the image entrypoint.
+    /// OpenClaw's image has a built-in entrypoint that keeps running.
+    /// Hermes needs `gateway` to start the messaging gateway (Telegram, etc.)
+    /// instead of the interactive TUI which exits immediately in headless mode.
+    pub fn container_cmd(&self) -> Option<Vec<String>> {
+        match self {
+            AgentType::OpenClaw => None,
+            AgentType::Hermes => Some(vec!["gateway".to_string()]),
+        }
+    }
+}
 
 // ── Environment variable key-value pair ──────────────────────────────
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -95,6 +146,9 @@ pub struct BotProfile {
     pub id: String,
     pub name: String,
     pub image: String,
+    /// Which agent runtime this bot uses.
+    #[serde(default)]
+    pub agent_type: AgentType,
     /// Legacy field — kept for backward-compat deserialization only.
     /// Migrated to `network_mode` on load.
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -133,10 +187,16 @@ pub struct BotProfile {
 
 impl BotProfile {
     pub fn new(name: String, workspace_path: Option<String>) -> Self {
+        Self::with_agent_type(name, workspace_path, AgentType::default())
+    }
+
+    pub fn with_agent_type(name: String, workspace_path: Option<String>, agent_type: AgentType) -> Self {
+        let image = agent_type.default_image().to_string();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             name,
-            image: "ghcr.io/openclaw/openclaw:latest".to_string(),
+            image,
+            agent_type,
             network_enabled: None,
             workspace_path,
             api_key_env: None,
@@ -198,6 +258,59 @@ pub struct BotWithStatus {
     #[serde(flatten)]
     pub profile: BotProfile,
     pub status: BotStatus,
+}
+
+// ── Image pull progress (emitted via events) ─────────────────────────
+#[derive(Debug, Serialize, Clone)]
+pub struct ImagePullProgress {
+    /// Total layers being downloaded
+    pub layers_total: usize,
+    /// Layers completed (downloaded + extracted)
+    pub layers_done: usize,
+    /// Bytes downloaded so far (across all layers)
+    pub bytes_downloaded: u64,
+    /// Total bytes to download (0 if unknown)
+    pub bytes_total: u64,
+    /// Current status message (e.g. "Downloading", "Extracting")
+    pub status: String,
+    /// Whether the pull is complete
+    pub done: bool,
+}
+
+impl ImagePullProgress {
+    /// Aggregate progress from per-layer tracking state.
+    pub fn from_layer_state(
+        layers: &HashMap<String, LayerProgress>,
+        status: &str,
+        done: bool,
+    ) -> Self {
+        let mut layers_done = 0usize;
+        let mut bytes_downloaded = 0u64;
+        let mut bytes_total = 0u64;
+        for lp in layers.values() {
+            bytes_downloaded += lp.current;
+            bytes_total += lp.total;
+            if lp.complete {
+                layers_done += 1;
+            }
+        }
+        Self {
+            layers_total: layers.len(),
+            layers_done,
+            bytes_downloaded,
+            bytes_total,
+            status: status.to_string(),
+            done,
+        }
+    }
+}
+
+/// Per-layer download state tracked during image pull.
+#[derive(Debug, Clone, Default)]
+pub struct LayerProgress {
+    pub current: u64,
+    pub total: u64,
+    pub complete: bool,
 }
 
 // ── Container stats (emitted via events) ─────────────────────────────
@@ -885,5 +998,107 @@ mod tests {
         let json = serde_json::to_value(&result).unwrap();
         assert_eq!(json["total"], 1);
         assert_eq!(json["skills"][0]["name"], "a");
+    }
+
+    // ── Agent type ─────────────────────────────────────────────────────
+
+    #[test]
+    fn agent_type_default_is_openclaw() {
+        assert_eq!(AgentType::default(), AgentType::OpenClaw);
+    }
+
+    #[test]
+    fn agent_type_openclaw_default_image() {
+        assert_eq!(AgentType::OpenClaw.default_image(), "ghcr.io/openclaw/openclaw:latest");
+    }
+
+    #[test]
+    fn agent_type_hermes_default_image() {
+        assert_eq!(AgentType::Hermes.default_image(), "nousresearch/hermes-agent:latest");
+    }
+
+    #[test]
+    fn agent_type_openclaw_config_mount() {
+        assert_eq!(AgentType::OpenClaw.config_mount_path(), "/home/node/.openclaw");
+    }
+
+    #[test]
+    fn agent_type_hermes_config_mount() {
+        assert_eq!(AgentType::Hermes.config_mount_path(), "/opt/data");
+    }
+
+    #[test]
+    fn agent_type_openclaw_auto_env() {
+        let vars = AgentType::OpenClaw.auto_env_vars();
+        assert_eq!(vars.len(), 1);
+        assert_eq!(vars[0], ("OPENCLAW_GATEWAY_HOST", "127.0.0.1"));
+    }
+
+    #[test]
+    fn agent_type_hermes_auto_env() {
+        let vars = AgentType::Hermes.auto_env_vars();
+        assert_eq!(vars.len(), 1);
+        assert_eq!(vars[0], ("HERMES_HOME", "/opt/data"));
+    }
+
+    #[test]
+    fn agent_type_serde_openclaw() {
+        let json = serde_json::to_value(&AgentType::OpenClaw).unwrap();
+        assert_eq!(json, "OpenClaw");
+        let restored: AgentType = serde_json::from_value(json).unwrap();
+        assert_eq!(restored, AgentType::OpenClaw);
+    }
+
+    #[test]
+    fn agent_type_serde_hermes() {
+        let json = serde_json::to_value(&AgentType::Hermes).unwrap();
+        assert_eq!(json, "Hermes");
+        let restored: AgentType = serde_json::from_value(json).unwrap();
+        assert_eq!(restored, AgentType::Hermes);
+    }
+
+    #[test]
+    fn bot_profile_with_agent_type_hermes() {
+        let bot = BotProfile::with_agent_type("HermesBot".into(), None, AgentType::Hermes);
+        assert_eq!(bot.agent_type, AgentType::Hermes);
+        assert_eq!(bot.image, "nousresearch/hermes-agent:latest");
+    }
+
+    #[test]
+    fn bot_profile_with_agent_type_openclaw() {
+        let bot = BotProfile::with_agent_type("OcBot".into(), None, AgentType::OpenClaw);
+        assert_eq!(bot.agent_type, AgentType::OpenClaw);
+        assert_eq!(bot.image, "ghcr.io/openclaw/openclaw:latest");
+    }
+
+    #[test]
+    fn bot_profile_new_defaults_to_openclaw() {
+        let bot = BotProfile::new("DefaultBot".into(), None);
+        assert_eq!(bot.agent_type, AgentType::OpenClaw);
+        assert_eq!(bot.image, "ghcr.io/openclaw/openclaw:latest");
+    }
+
+    #[test]
+    fn backward_compat_missing_agent_type() {
+        // Simulate JSON from before agent_type was added
+        let json = r#"{
+            "id": "old-id",
+            "name": "OldBot",
+            "image": "ghcr.io/openclaw/openclaw:latest",
+            "env_vars": []
+        }"#;
+        let bot: BotProfile = serde_json::from_str(json).unwrap();
+        assert_eq!(bot.agent_type, AgentType::OpenClaw);
+    }
+
+    #[test]
+    fn hermes_bot_profile_roundtrip() {
+        let bot = BotProfile::with_agent_type("HermesRoundtrip".into(), Some("/ws".into()), AgentType::Hermes);
+        let json = serde_json::to_string(&bot).unwrap();
+        assert!(json.contains("\"agent_type\":\"Hermes\""));
+        let restored: BotProfile = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.agent_type, AgentType::Hermes);
+        assert_eq!(restored.image, "nousresearch/hermes-agent:latest");
+        assert_eq!(restored.name, "HermesRoundtrip");
     }
 }

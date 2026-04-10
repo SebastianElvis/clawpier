@@ -14,7 +14,7 @@ use futures_util::StreamExt;
 use std::path::PathBuf;
 
 use crate::error::AppError;
-use crate::models::{BotProfile, BotStatus, ContainerStats, ExecResult, LogEntry, NetworkMode};
+use crate::models::{AgentType, BotProfile, BotStatus, ContainerStats, ExecResult, ImagePullProgress, LayerProgress, LogEntry, NetworkMode};
 
 pub struct DockerManager {
     docker: Docker,
@@ -108,8 +108,21 @@ impl DockerManager {
         // Remove existing container if any
         let _ = self.remove_container(&profile.id).await;
 
-        // Build environment variables — always inject gateway host
-        let mut env = vec!["OPENCLAW_GATEWAY_HOST=127.0.0.1".to_string()];
+        // Verify the image exists locally before attempting to create the container
+        if !self.check_image(&profile.image).await? {
+            return Err(AppError::Validation(format!(
+                "Image '{}' not found locally. Pull it first.",
+                profile.image
+            )));
+        }
+
+        // Build environment variables — inject agent-type-specific env vars
+        let mut env: Vec<String> = profile
+            .agent_type
+            .auto_env_vars()
+            .into_iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect();
 
         // Add user-configured env vars (skip blocked keys for safety)
         const BLOCKED_KEYS: &[&str] = &[
@@ -162,6 +175,7 @@ impl DockerManager {
         let config = Config {
             image: Some(profile.image.clone()),
             env: Some(env.clone()),
+            cmd: profile.agent_type.container_cmd(),
             host_config: Some(host_config),
             exposed_ports: if exposed_ports.is_empty() {
                 None
@@ -234,21 +248,60 @@ impl DockerManager {
         }
     }
 
-    pub async fn pull_image(&self, image: &str) -> Result<(), AppError> {
+    /// Pull an image while reporting progress via a callback.
+    /// Takes a `&Docker` directly (not `&self`) so callers can clone the client
+    /// and drop the mutex before starting the long-running pull.
+    pub async fn pull_image_with_progress<F>(
+        docker: &Docker,
+        image: &str,
+        mut on_progress: F,
+    ) -> Result<(), AppError>
+    where
+        F: FnMut(ImagePullProgress),
+    {
         let options = CreateImageOptions {
             from_image: image,
             ..Default::default()
         };
 
-        let mut stream = self.docker.create_image(Some(options), None, None);
+        let mut stream = docker.create_image(Some(options), None, None);
+        let mut layers: std::collections::HashMap<String, LayerProgress> =
+            std::collections::HashMap::new();
+        let mut last_status = String::new();
 
         while let Some(result) = stream.next().await {
             match result {
-                Ok(_info) => {}
+                Ok(info) => {
+                    if let Some(ref status) = info.status {
+                        last_status = status.clone();
+                    }
+                    if let Some(ref id) = info.id {
+                        let entry = layers.entry(id.clone()).or_default();
+                        if let Some(ref detail) = info.progress_detail {
+                            if let Some(current) = detail.current {
+                                entry.current = current.max(0) as u64;
+                            }
+                            if let Some(total) = detail.total {
+                                entry.total = total.max(0) as u64;
+                            }
+                        }
+                        if let Some(ref status) = info.status {
+                            if status == "Pull complete" || status == "Already exists" {
+                                entry.complete = true;
+                            }
+                        }
+                    }
+                    on_progress(ImagePullProgress::from_layer_state(
+                        &layers,
+                        &last_status,
+                        false,
+                    ));
+                }
                 Err(e) => return Err(e.into()),
             }
         }
 
+        on_progress(ImagePullProgress::from_layer_state(&layers, "Complete", true));
         Ok(())
     }
 
@@ -422,10 +475,11 @@ fn build_binds(profile: &BotProfile, bot_config_dir: &std::path::Path) -> Vec<St
     if let Some(ref workspace) = profile.workspace_path {
         binds.push(format!("{}:/workspace:rw", workspace));
     }
-    // Persist OpenClaw config across container restarts using a host bind mount
+    // Persist agent config across container restarts using a host bind mount
     binds.push(format!(
-        "{}:/home/node/.openclaw:rw",
-        bot_config_dir.display()
+        "{}:{}:rw",
+        bot_config_dir.display(),
+        profile.agent_type.config_mount_path()
     ));
     binds
 }
@@ -707,6 +761,38 @@ mod tests {
         assert_eq!(binds.len(), 2);
         assert_eq!(binds[0], "/my/workspace:/workspace:rw");
         assert_eq!(binds[1], "/tmp/clawpier-test:/home/node/.openclaw:rw");
+    }
+
+    // ── Agent-type-aware binds ──────────────────────────────────────
+
+    #[test]
+    fn build_binds_openclaw_mounts_openclaw_path() {
+        let profile = BotProfile::new("test".into(), None);
+        let config_dir = std::path::PathBuf::from("/tmp/config");
+        let binds = build_binds(&profile, &config_dir);
+        // Should mount to OpenClaw's config path
+        assert!(binds.iter().any(|b| b.contains("/home/node/.openclaw:rw")));
+        assert!(!binds.iter().any(|b| b.contains("/opt/data")));
+    }
+
+    #[test]
+    fn build_binds_hermes_mounts_opt_data() {
+        let profile = BotProfile::with_agent_type("test".into(), None, AgentType::Hermes);
+        let config_dir = std::path::PathBuf::from("/tmp/config");
+        let binds = build_binds(&profile, &config_dir);
+        // Should mount to Hermes's data path
+        assert!(binds.iter().any(|b| b.contains("/opt/data:rw")));
+        assert!(!binds.iter().any(|b| b.contains("/home/node/.openclaw")));
+    }
+
+    #[test]
+    fn build_binds_hermes_with_workspace() {
+        let profile = BotProfile::with_agent_type("test".into(), Some("/my/workspace".into()), AgentType::Hermes);
+        let config_dir = std::path::PathBuf::from("/tmp/config");
+        let binds = build_binds(&profile, &config_dir);
+        assert_eq!(binds.len(), 2);
+        assert!(binds.iter().any(|b| b == "/my/workspace:/workspace:rw"));
+        assert!(binds.iter().any(|b| b.contains("/opt/data:rw")));
     }
 
     #[test]
