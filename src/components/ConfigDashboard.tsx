@@ -31,7 +31,6 @@ interface ConfigDashboardProps {
   isRunning: boolean;
   agentType?: AgentType;
   onSwitchToTerminal: () => void;
-  onRestart?: () => void;
 }
 
 export function ConfigDashboard({
@@ -39,7 +38,6 @@ export function ConfigDashboard({
   isRunning,
   agentType,
   onSwitchToTerminal,
-  onRestart,
 }: ConfigDashboardProps) {
   const configureCmd = agentType === "Hermes" ? "hermes setup" : "openclaw configure";
   const [configs, setConfigs] = useState<Record<string, string>>({});
@@ -175,16 +173,6 @@ export function ConfigDashboard({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {isRunning && onRestart && (
-            <button
-              className="inline-flex items-center gap-1 rounded-md bg-amber-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-amber-700"
-              onClick={() => { onRestart(); setTimeout(fetchConfig, 2000); }}
-              title="Restart bot to apply configuration changes"
-            >
-              <RefreshCw className="h-2.5 w-2.5" />
-              Restart to apply
-            </button>
-          )}
           <button
             className="text-[11px] text-[var(--badge-amber-text)] hover:opacity-80"
             onClick={() => setShowRaw(true)}

@@ -322,7 +322,6 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
                 isRunning={isRunning}
                 agentType={bot.agent_type}
                 onSwitchToTerminal={() => setActiveTab("terminal")}
-                onRestart={() => restartBot(bot.id).catch((e) => setError(String(e)))}
               />
             </ErrorBoundary>
           )}
