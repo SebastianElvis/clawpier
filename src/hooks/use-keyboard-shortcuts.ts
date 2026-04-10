@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-type Tab = "dashboard" | "chat" | "terminal" | "files" | "docker";
+type Tab = "dashboard" | "chat" | "skills" | "terminal" | "files" | "docker";
 
 interface KeyboardShortcutsConfig {
   /** The currently selected bot (null = no detail view open) */
@@ -24,9 +24,10 @@ interface KeyboardShortcutsConfig {
 const TAB_MAP: Record<string, Tab> = {
   "1": "dashboard",
   "2": "chat",
-  "3": "terminal",
-  "4": "files",
-  "5": "docker",
+  "3": "skills",
+  "4": "terminal",
+  "5": "files",
+  "6": "docker",
 };
 
 function isInsideInteractiveElement(): boolean {
@@ -85,7 +86,7 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
         return;
       }
 
-      // Cmd+1 through Cmd+5 — switch tabs
+      // Cmd+1 through Cmd+6 — switch tabs
       const tab = TAB_MAP[e.key];
       if (tab && !e.shiftKey) {
         e.preventDefault();

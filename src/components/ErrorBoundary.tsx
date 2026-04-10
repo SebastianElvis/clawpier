@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-          <div className="text-red-400 text-lg font-medium mb-2">
+          <div className="text-[var(--badge-red-text)] text-lg font-medium mb-2">
             {this.props.fallbackTitle ?? 'Something went wrong'}
           </div>
           <p className="text-[var(--text-tertiary)] text-sm mb-4 max-w-md">
@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </p>
           <button
             onClick={this.handleReset}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+            className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-sm rounded-lg transition-colors"
           >
             Try again
           </button>
@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <summary className="text-[var(--text-secondary)] text-xs cursor-pointer hover:text-[var(--text-tertiary)]">
               Error details
             </summary>
-            <pre className="mt-2 p-3 bg-gray-900 rounded text-xs text-red-300 overflow-auto max-h-48">
+            <pre className="mt-2 p-3 bg-[var(--bg-elevated)] rounded text-xs text-[var(--badge-red-text)] overflow-auto max-h-48">
               {this.state.error?.message}
               {'\n\n'}
               {this.state.error?.stack}

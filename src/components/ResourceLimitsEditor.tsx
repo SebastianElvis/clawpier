@@ -63,7 +63,7 @@ export function ResourceLimitsEditor({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-[var(--text-secondary)]">Resource Limits</h3>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Resource Limits</h3>
       <p className="text-xs text-[var(--text-tertiary)]">
         Constrain CPU and memory usage for this bot.
       </p>
@@ -80,7 +80,7 @@ export function ResourceLimitsEditor({
               key={preset.label}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
-                  ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+                  ? "border-[var(--focus-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                   : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
               }`}
               onClick={() => applyPreset(preset)}
@@ -110,7 +110,7 @@ export function ResourceLimitsEditor({
           step={1}
           value={cpu}
           onChange={(e) => handleCpuChange(parseFloat(e.target.value))}
-          className="w-full accent-blue-600"
+          className="w-full accent-[var(--accent)]"
         />
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
           <span>{MIN_CPU} cores</span>
@@ -136,7 +136,7 @@ export function ResourceLimitsEditor({
           step={512}
           value={mem / MB}
           onChange={(e) => handleMemChange(parseInt(e.target.value) * MB)}
-          className="w-full accent-emerald-600"
+          className="w-full accent-[var(--btn-start-bg)]"
         />
         <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
           <span>{formatMemory(MIN_MEM)}</span>

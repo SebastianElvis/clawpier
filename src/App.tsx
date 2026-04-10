@@ -18,6 +18,7 @@ import { ToastContainer } from "./components/Toast";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DockerConnectionBanner } from "./components/DockerConnectionBanner";
 import { loadWindowState, saveWindowState } from "./lib/window-state";
+import { ShortcutSheet } from "./components/ShortcutSheet";
 import { Loader2 } from "lucide-react";
 
 // Lazy-load heavy detail view — reduces initial bundle by ~40KB
@@ -37,6 +38,7 @@ function App() {
     bots,
   } = useBotStore();
   const [showNewBot, setShowNewBot] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(
     () => loadWindowState().selectedBotId ?? null
   );
@@ -150,7 +152,7 @@ function App() {
     setShowWelcome(false);
   }, []);
 
-  // Keyboard shortcut: Cmd+N to create bot
+  // Keyboard shortcut: Cmd+N to create bot, Cmd+/ for shortcut sheet
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey && e.key === "n") {
@@ -158,6 +160,10 @@ function App() {
         if (dockerAvailable && imageAvailable) {
           setShowNewBot(true);
         }
+      }
+      if (e.metaKey && e.key === "/") {
+        e.preventDefault();
+        setShowShortcuts((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handler);
@@ -172,7 +178,7 @@ function App() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)]"
+              className="h-40 animate-pulse rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)]"
             />
           ))}
         </div>
@@ -194,13 +200,13 @@ function App() {
             ? bots.map((b) => (
                 <div
                   key={b.id}
-                  className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)]"
+                  className="h-40 animate-pulse rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)]"
                 />
               ))
             : [1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)]"
+                  className="h-40 animate-pulse rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)]"
                 />
               ))}
         </div>
@@ -236,7 +242,7 @@ function App() {
               <Suspense
                 fallback={
                   <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-text)]" />
                   </div>
                 }
               >
@@ -260,6 +266,7 @@ function App() {
 
         {showNewBot && <NewBotSheet onClose={() => setShowNewBot(false)} />}
         {showWelcome && <WelcomeScreen onDismiss={handleDismissWelcome} />}
+        {showShortcuts && <ShortcutSheet onClose={() => setShowShortcuts(false)} />}
       </ErrorBoundary>
       <ToastContainer />
     </>

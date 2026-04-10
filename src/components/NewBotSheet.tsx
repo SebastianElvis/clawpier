@@ -176,7 +176,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <FocusTrap>
-      <div className="w-full max-w-md rounded-xl bg-[var(--bg-elevated)] shadow-xl">
+      <div className="w-full max-w-md rounded-xl bg-[var(--bg-elevated)] shadow-2xl ring-1 ring-[var(--border-secondary)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border-secondary)] px-6 py-4">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">New Bot</h2>
@@ -204,7 +204,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     type="button"
                     className={`flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors ${
                       isActive
-                        ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+                        ? "border-[var(--focus-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                         : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => setAgentType(at.key)}
@@ -223,7 +223,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
               Bot name <span className="text-red-500">*</span>
             </label>
             <input
-              className="mt-1.5 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="mt-1.5 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--focus-border)] focus:ring-2 focus:ring-[var(--focus-ring)]"
               placeholder="e.g., research-assistant"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -264,7 +264,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
           {/* Resource Limits */}
           <div className="mt-5">
-            <label className="block text-xs font-medium text-[var(--text-secondary)]">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
               Resource limits
             </label>
 
@@ -280,7 +280,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     type="button"
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
                       isActive
-                        ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+                        ? "border-[var(--focus-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                         : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => applyPreset(preset)}
@@ -312,7 +312,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                 step={1}
                 value={cpuLimit}
                 onChange={(e) => handleCpuSlider(parseFloat(e.target.value))}
-                className="w-full accent-blue-600"
+                className="w-full accent-[var(--accent)]"
               />
               <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
                 <span>{MIN_CPU} cores</span>
@@ -340,7 +340,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                 onChange={(e) =>
                   handleMemorySlider(parseInt(e.target.value))
                 }
-                className="w-full accent-emerald-600"
+                className="w-full accent-[var(--btn-start-bg)]"
               />
               <div className="flex justify-between text-[10px] text-[var(--text-tertiary)]">
                 <span>{formatMemory(MIN_MEM)}</span>
@@ -355,7 +355,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
           {/* Network Mode */}
           <div className="mt-5">
-            <label className="block text-xs font-medium text-[var(--text-secondary)]">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
               Network mode
             </label>
             <div className="mt-1.5 grid grid-cols-4 gap-1.5">
@@ -367,7 +367,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
                     type="button"
                     className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-colors ${
                       isActive
-                        ? "border-blue-300 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+                        ? "border-[var(--focus-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
                         : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     }`}
                     onClick={() => setNetworkMode(mode.key)}
@@ -394,7 +394,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
             {/* Custom network name */}
             {networkMode === "custom" && (
               <input
-                className="mt-1.5 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
+                className="mt-1.5 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)]"
                 placeholder="Docker network name"
                 value={customNetworkName}
                 onChange={(e) => setCustomNetworkName(e.target.value)}
@@ -427,7 +427,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
               disabled={
                 !name.trim() ||
                 isDuplicate ||

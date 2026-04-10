@@ -22,7 +22,7 @@ export function DockerConnectionBanner() {
   if (connected) return null;
 
   return (
-    <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-4 py-2 flex items-center gap-2 text-yellow-400 text-sm">
+    <div className="bg-[var(--badge-amber-bg)] border-b border-[var(--badge-amber-border)] px-4 py-2 flex items-center gap-2 text-[var(--badge-amber-text)] text-sm">
       <WifiOff className="h-4 w-4 animate-pulse" />
       <span>Docker connection lost — retrying...</span>
     </div>

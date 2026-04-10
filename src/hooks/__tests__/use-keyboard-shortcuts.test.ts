@@ -51,7 +51,7 @@ describe("useKeyboardShortcuts", () => {
     expect(defaultConfig.onBack).not.toHaveBeenCalled();
   });
 
-  describe("tab navigation (Cmd+1 through Cmd+5)", () => {
+  describe("tab navigation (Cmd+1 through Cmd+6)", () => {
     it("Cmd+1 switches to dashboard", () => {
       renderHook(() => useKeyboardShortcuts(defaultConfig));
       const { preventDefaultSpy } = fireKey("1", { metaKey: true });
@@ -65,27 +65,33 @@ describe("useKeyboardShortcuts", () => {
       expect(defaultConfig.onTabChange).toHaveBeenCalledWith("chat");
     });
 
-    it("Cmd+3 switches to terminal", () => {
+    it("Cmd+3 switches to skills", () => {
       renderHook(() => useKeyboardShortcuts(defaultConfig));
       fireKey("3", { metaKey: true });
+      expect(defaultConfig.onTabChange).toHaveBeenCalledWith("skills");
+    });
+
+    it("Cmd+4 switches to terminal", () => {
+      renderHook(() => useKeyboardShortcuts(defaultConfig));
+      fireKey("4", { metaKey: true });
       expect(defaultConfig.onTabChange).toHaveBeenCalledWith("terminal");
     });
 
-    it("Cmd+4 switches to files", () => {
+    it("Cmd+5 switches to files", () => {
       renderHook(() => useKeyboardShortcuts(defaultConfig));
-      fireKey("4", { metaKey: true });
+      fireKey("5", { metaKey: true });
       expect(defaultConfig.onTabChange).toHaveBeenCalledWith("files");
     });
 
-    it("Cmd+5 switches to docker", () => {
+    it("Cmd+6 switches to docker", () => {
       renderHook(() => useKeyboardShortcuts(defaultConfig));
-      fireKey("5", { metaKey: true });
+      fireKey("6", { metaKey: true });
       expect(defaultConfig.onTabChange).toHaveBeenCalledWith("docker");
     });
 
-    it("Cmd+6 does not trigger tab change", () => {
+    it("Cmd+7 does not trigger tab change", () => {
       renderHook(() => useKeyboardShortcuts(defaultConfig));
-      fireKey("6", { metaKey: true });
+      fireKey("7", { metaKey: true });
       expect(defaultConfig.onTabChange).not.toHaveBeenCalled();
     });
   });

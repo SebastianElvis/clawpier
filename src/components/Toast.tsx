@@ -9,10 +9,10 @@ const icons: Record<ToastType, React.ElementType> = {
 };
 
 const styles: Record<ToastType, string> = {
-  success: "border-green-500/30 bg-green-500/10 text-green-400",
-  error: "border-red-500/30 bg-red-500/10 text-red-400",
-  warning: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400",
-  info: "border-blue-500/30 bg-blue-500/10 text-blue-400",
+  success: "border-[var(--badge-green-text)]/30 bg-[var(--badge-green-bg)] text-[var(--badge-green-text)]",
+  error: "border-[var(--badge-red-text)]/30 bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]",
+  warning: "border-[var(--badge-amber-text)]/30 bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]",
+  info: "border-[var(--badge-blue-text)]/30 bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]",
 };
 
 export function ToastContainer() {
