@@ -11,30 +11,45 @@ use tokio::sync::Mutex as TokioMutex;
 use crate::docker_manager::{self, DockerManager};
 use crate::error::AppError;
 use crate::models::{
-    BotNotificationPrefs, BotProfile, BotStatus, BotWithStatus, ChatMessage, ChatResponseChunk,
-    ChatSessionSummary, EnvVar, ExecResult, FileEntry, HealthCheckConfig, HealthUpdate,
-    NetworkMode, PortMapping,
+    AgentType, BotNotificationPrefs, BotProfile, BotStatus, BotWithStatus, ChatMessage,
+    ChatResponseChunk, ChatSessionSummary, EnvVar, ExecResult, FileEntry, HealthCheckConfig,
+    HealthUpdate, NetworkMode, PortMapping,
 };
 use crate::state::AppState;
 use crate::streaming::{InteractiveSession, StreamKind};
 
 // ── Chat command helpers ─────────────────────────────────────────────
 
-/// Build the CLI arguments for `openclaw agent` with session persistence.
+/// Build the CLI arguments for an agent chat command with session persistence.
 /// Separated from the Tauri command so it can be unit-tested.
-pub(crate) fn build_openclaw_agent_cmd(session_id: &str, message: &str) -> Vec<String> {
-    let oc_session_id = format!("clawpier-{}", session_id);
-    vec![
-        "/usr/local/bin/openclaw".to_string(),
-        "agent".to_string(),
-        "--local".to_string(),
-        "--agent".to_string(),
-        "main".to_string(),
-        "--session-id".to_string(),
-        oc_session_id,
-        "--message".to_string(),
-        message.to_string(),
-    ]
+pub(crate) fn build_agent_chat_cmd(agent_type: &AgentType, session_id: &str, message: &str) -> Vec<String> {
+    match agent_type {
+        AgentType::OpenClaw => {
+            let oc_session_id = format!("clawpier-{}", session_id);
+            vec![
+                "/usr/local/bin/openclaw".to_string(),
+                "agent".to_string(),
+                "--local".to_string(),
+                "--agent".to_string(),
+                "main".to_string(),
+                "--session-id".to_string(),
+                oc_session_id,
+                "--message".to_string(),
+                message.to_string(),
+            ]
+        }
+        AgentType::Hermes => {
+            let h_session_id = format!("clawpier-{}", session_id);
+            vec![
+                "hermes".to_string(),
+                "agent".to_string(),
+                "--session-id".to_string(),
+                h_session_id,
+                "--message".to_string(),
+                message.to_string(),
+            ]
+        }
+    }
 }
 
 // ── Validation helpers ────────────────────────────────────────────────
@@ -57,6 +72,7 @@ const BLOCKED_ENV_KEYS: &[&str] = &[
 /// or be a bare Docker Hub image name (no registry prefix).
 const TRUSTED_REGISTRIES: &[&str] = &[
     "ghcr.io/openclaw/",
+    "nousresearch/hermes-agent",
     "docker.io/library/",
     "busybox",
 ];
@@ -153,8 +169,18 @@ fn validate_image_name(image: &str) -> Result<(), AppError> {
     if image.is_empty() {
         return Err(AppError::Validation("Image name must not be empty".into()));
     }
-    if TRUSTED_REGISTRIES.iter().any(|r| image.starts_with(r)) {
-        return Ok(());
+    for prefix in TRUSTED_REGISTRIES {
+        if image.starts_with(prefix) {
+            // For prefixes ending with '/', any sub-path is fine
+            if prefix.ends_with('/') {
+                return Ok(());
+            }
+            // For exact image names, ensure the match is precise
+            // (next char must be ':' for tag, or exact match)
+            if image.len() == prefix.len() || image.as_bytes()[prefix.len()] == b':' {
+                return Ok(());
+            }
+        }
     }
     Err(AppError::Validation(format!(
         "Image '{}' is not from a trusted registry",
@@ -271,13 +297,14 @@ pub async fn create_bot(
     cpu_limit: Option<f64>,
     memory_limit: Option<u64>,
     network_mode: Option<NetworkMode>,
+    agent_type: Option<AgentType>,
 ) -> Result<BotProfile, AppError> {
     if let Some(ref path) = workspace_path {
         validate_workspace_path(path)?;
     }
     validate_resource_limits(cpu_limit, memory_limit)?;
     let mut store = state.store.lock().await;
-    let mut bot = BotProfile::new(name, workspace_path);
+    let mut bot = BotProfile::with_agent_type(name, workspace_path, agent_type.unwrap_or_default());
     if cpu_limit.is_some() {
         bot.cpu_limit = cpu_limit;
     }
@@ -632,6 +659,7 @@ fn resolve_container(store: &crate::bot_store::BotStore, id: &str) -> Result<Str
 /// Parse `openclaw skills list` table output into Skill structs.
 /// Rows: `│ ✓ ready │ 📦 name │ description │ source │`
 fn parse_openclaw_skills_output(output: &str) -> Vec<crate::models::Skill> {
+    let mut seen = std::collections::HashSet::new();
     output
         .lines()
         .filter_map(|line| {
@@ -660,7 +688,7 @@ fn parse_openclaw_skills_output(output: &str) -> Vec<crate::models::Skill> {
                 .trim()
                 .to_string();
 
-            if name.is_empty() {
+            if name.is_empty() || !seen.insert(name.clone()) {
                 return None;
             }
 
@@ -679,6 +707,7 @@ fn parse_openclaw_skills_output(output: &str) -> Vec<crate::models::Skill> {
 /// Parse `npx clawhub search` text output into Skill structs.
 /// Each line: `slug  Title  (score)`
 fn parse_clawhub_search_output(output: &str) -> Vec<crate::models::Skill> {
+    let mut seen = std::collections::HashSet::new();
     output
         .lines()
         .filter_map(|line| {
@@ -695,6 +724,9 @@ fn parse_clawhub_search_output(output: &str) -> Vec<crate::models::Skill> {
                 return None;
             }
             let slug = parts[0].trim().to_string();
+            if slug.is_empty() || !seen.insert(slug.clone()) {
+                return None;
+            }
             let rest = parts[1].trim();
             let description = if let Some(paren_pos) = rest.rfind('(') {
                 rest[..paren_pos].trim().to_string()
@@ -722,9 +754,12 @@ pub async fn clawhub_search_skills(
 ) -> Result<crate::models::SkillSearchResult, AppError> {
     use crate::models::SkillSearchResult;
 
-    let container_name = {
+    let (container_name, bot_agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        let bot = store
+            .get_by_id(&id)
+            .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
+        (bot.container_name(), bot.agent_type.clone())
     };
 
     let docker = {
@@ -735,8 +770,11 @@ pub async fn clawhub_search_skills(
     let timeout_dur = std::time::Duration::from_secs(30);
 
     if query.trim().is_empty() {
-        // No query: list all bundled skills via `openclaw skills list`
-        let args = vec!["openclaw", "skills", "list"];
+        // No query: list all bundled skills
+        let args = match bot_agent_type {
+            AgentType::OpenClaw => vec!["openclaw", "skills", "list"],
+            AgentType::Hermes => vec!["hermes", "skills", "list"],
+        };
         let result = tokio::time::timeout(
             timeout_dur,
             DockerManager::exec_in_container(&docker, &container_name, &args),
@@ -1052,10 +1090,23 @@ pub async fn set_workspace_path(
 }
 
 #[tauri::command]
-pub async fn pull_image(state: State<'_, AppState>, image: String) -> Result<(), AppError> {
+pub async fn pull_image(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    image: String,
+) -> Result<(), AppError> {
     validate_image_name(&image)?;
-    let docker = state.docker.lock().await;
-    docker.pull_image(&image).await
+    // Clone the bollard client (cheap — Arc internally) and drop the mutex
+    // so other Docker operations aren't blocked during the long-running pull.
+    let client = {
+        let docker = state.docker.lock().await;
+        docker.client()
+    };
+    let event_name = format!("image-pull-progress-{}", image.replace(['/', ':'], "-"));
+    DockerManager::pull_image_with_progress(&client, &image, |progress| {
+        let _ = app.emit(&event_name, &progress);
+    })
+    .await
 }
 
 // ── New commands ─────────────────────────────────────────────────────
@@ -1226,13 +1277,13 @@ pub async fn send_chat_message(
         chat_store.add_message(&id, &session_id, user_msg)?;
     }
 
-    // Get container name and docker client
-    let container_name = {
+    // Get container name, agent type, and docker client
+    let (container_name, bot_agent_type) = {
         let store = state.store.lock().await;
         let bot = store
             .get_by_id(&id)
             .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
-        bot.container_name()
+        (bot.container_name(), bot.agent_type.clone())
     };
 
     let docker = {
@@ -1250,8 +1301,8 @@ pub async fn send_chat_message(
     let handle = tauri::async_runtime::spawn(async move {
         use bollard::exec::CreateExecOptions;
 
-        // Use `openclaw agent` via the gateway with session persistence.
-        let cmd = crate::commands::build_openclaw_agent_cmd(&sess_id, &message);
+        // Use the appropriate agent CLI with session persistence.
+        let cmd = crate::commands::build_agent_chat_cmd(&bot_agent_type, &sess_id, &message);
         let config = CreateExecOptions {
             attach_stdin: Some(false),
             attach_stdout: Some(true),
@@ -1682,13 +1733,61 @@ pub async fn get_bot_config(
             // Only read text files up to 1MB
             if sym_meta.len() <= 1_048_576 {
                 if let Ok(content) = tokio::fs::read_to_string(&path).await {
-                    configs.insert(name, content);
+                    // Convert YAML files to JSON so the frontend gets a uniform format
+                    if name.ends_with(".yaml") || name.ends_with(".yml") {
+                        if let Ok(yaml_val) = serde_yaml::from_str::<serde_json::Value>(&content) {
+                            if let Ok(json_str) = serde_json::to_string(&yaml_val) {
+                                let json_name = name.replace(".yaml", ".json").replace(".yml", ".json");
+                                configs.insert(json_name, json_str);
+                            }
+                        }
+                    } else if name == ".env" {
+                        // Parse .env into a JSON object for the dashboard
+                        let env_obj = parse_dotenv_to_json(&content);
+                        if let Ok(json_str) = serde_json::to_string(&env_obj) {
+                            configs.insert("env.json".to_string(), json_str);
+                        }
+                    } else {
+                        configs.insert(name, content);
+                    }
                 }
             }
         }
     }
 
     Ok(configs)
+}
+
+/// Parse a .env file into a JSON object (key-value map).
+/// Handles `export` prefix, inline comments, and quoted values.
+fn parse_dotenv_to_json(content: &str) -> serde_json::Value {
+    let mut map = serde_json::Map::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let line = line.strip_prefix("export ").unwrap_or(line);
+        if let Some((key, val)) = line.split_once('=') {
+            let key = key.trim();
+            let val = val.split('#').next().unwrap_or(val).trim();
+            let val = val.trim_matches('"').trim_matches('\'');
+            if !key.is_empty() {
+                // Redact sensitive values (show only last 4 chars)
+                let display_val = if key.contains("KEY") || key.contains("TOKEN") || key.contains("SECRET") {
+                    if val.len() > 4 {
+                        format!("{}...{}", &val[..2], &val[val.len()-4..])
+                    } else {
+                        "****".to_string()
+                    }
+                } else {
+                    val.to_string()
+                };
+                map.insert(key.to_string(), serde_json::Value::String(display_val));
+            }
+        }
+    }
+    serde_json::Value::Object(map)
 }
 
 /// Info returned from the Telegram Bot API `getMe` endpoint.
@@ -1705,31 +1804,60 @@ pub async fn resolve_telegram_bot(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<TelegramBotInfo, AppError> {
-    // Read bot token from openclaw.json
-    let config_dir = {
+    // Read bot token based on agent type
+    let (config_dir, bot_agent_type) = {
         let store = state.store.lock().await;
-        store
+        let bot = store
             .get_by_id(&id)
             .ok_or_else(|| AppError::BotNotFound(id.clone()))?;
-        dirs::config_dir()
+        let agent_type = bot.agent_type.clone();
+        let dir = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join("clawpier")
             .join("data")
-            .join(&id)
+            .join(&id);
+        (dir, agent_type)
     };
 
-    let config_path = config_dir.join("openclaw.json");
-    let content = tokio::fs::read_to_string(&config_path)
-        .await
-        .map_err(|_| AppError::Other("No openclaw.json found".into()))?;
+    let bot_token = match bot_agent_type {
+        AgentType::OpenClaw => {
+            let config_path = config_dir.join("openclaw.json");
+            let content = tokio::fs::read_to_string(&config_path)
+                .await
+                .map_err(|_| AppError::Other("No openclaw.json found".into()))?;
 
-    let json: serde_json::Value =
-        serde_json::from_str(&content).map_err(|e| AppError::Other(e.to_string()))?;
+            let json: serde_json::Value =
+                serde_json::from_str(&content).map_err(|e| AppError::Other(e.to_string()))?;
 
-    let bot_token = json
-        .pointer("/channels/telegram/botToken")
-        .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| AppError::Other("No Telegram bot token configured".into()))?;
+            json.pointer("/channels/telegram/botToken")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| AppError::Other("No Telegram bot token configured".into()))?
+                .to_string()
+        }
+        AgentType::Hermes => {
+            // Try .env file for TELEGRAM_BOT_TOKEN
+            let env_path = config_dir.join(".env");
+            let content = tokio::fs::read_to_string(&env_path)
+                .await
+                .map_err(|_| AppError::Other("No .env file found".into()))?;
+            content.lines()
+                .find_map(|line| {
+                    let line = line.trim();
+                    // Skip comments
+                    if line.starts_with('#') { return None; }
+                    // Strip optional `export ` prefix
+                    let line = line.strip_prefix("export ").unwrap_or(line);
+                    if let Some(val) = line.strip_prefix("TELEGRAM_BOT_TOKEN=") {
+                        // Strip inline comments and surrounding quotes
+                        let val = val.split('#').next().unwrap_or(val).trim();
+                        Some(val.trim_matches('"').trim_matches('\'').to_string())
+                    } else {
+                        None
+                    }
+                })
+                .ok_or_else(|| AppError::Other("No TELEGRAM_BOT_TOKEN in .env".into()))?
+        }
+    };
 
     // Call Telegram Bot API getMe
     let url = format!("https://api.telegram.org/bot{}/getMe", bot_token);
@@ -2073,11 +2201,11 @@ mod tests {
         assert!(json["memory_bytes"].is_number());
     }
 
-    // ── Chat / openclaw agent command tests ──────────────────────────
+    // ── Chat / agent command tests ─────────────────────────────────
 
     #[test]
-    fn build_openclaw_agent_cmd_basic() {
-        let cmd = build_openclaw_agent_cmd("session-abc", "Hello world");
+    fn build_agent_chat_cmd_openclaw_basic() {
+        let cmd = build_agent_chat_cmd(&AgentType::OpenClaw, "session-abc", "Hello world");
         assert_eq!(cmd[0], "/usr/local/bin/openclaw");
         assert_eq!(cmd[1], "agent");
         assert_eq!(cmd[2], "--local");
@@ -2091,8 +2219,20 @@ mod tests {
     }
 
     #[test]
-    fn build_openclaw_agent_cmd_uses_local_flag() {
-        let cmd = build_openclaw_agent_cmd("s1", "hi");
+    fn build_agent_chat_cmd_hermes_basic() {
+        let cmd = build_agent_chat_cmd(&AgentType::Hermes, "session-abc", "Hello world");
+        assert_eq!(cmd[0], "hermes");
+        assert_eq!(cmd[1], "agent");
+        assert_eq!(cmd[2], "--session-id");
+        assert_eq!(cmd[3], "clawpier-session-abc");
+        assert_eq!(cmd[4], "--message");
+        assert_eq!(cmd[5], "Hello world");
+        assert_eq!(cmd.len(), 6);
+    }
+
+    #[test]
+    fn build_agent_chat_cmd_openclaw_uses_local_flag() {
+        let cmd = build_agent_chat_cmd(&AgentType::OpenClaw, "s1", "hi");
         assert!(
             cmd.contains(&"--local".to_string()),
             "must use --local to avoid gateway dependency"
@@ -2100,9 +2240,17 @@ mod tests {
     }
 
     #[test]
-    fn build_openclaw_agent_cmd_session_id_prefixed() {
-        let cmd = build_openclaw_agent_cmd("my-session", "hi");
-        // Session ID should always be prefixed with "clawpier-"
+    fn build_agent_chat_cmd_hermes_no_local_flag() {
+        let cmd = build_agent_chat_cmd(&AgentType::Hermes, "s1", "hi");
+        assert!(
+            !cmd.contains(&"--local".to_string()),
+            "Hermes should not use --local flag"
+        );
+    }
+
+    #[test]
+    fn build_agent_chat_cmd_session_id_prefixed() {
+        let cmd = build_agent_chat_cmd(&AgentType::OpenClaw, "my-session", "hi");
         let session_arg = cmd.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
         assert!(
             session_arg.starts_with("clawpier-"),
@@ -2112,34 +2260,43 @@ mod tests {
     }
 
     #[test]
-    fn build_openclaw_agent_cmd_preserves_message_with_special_chars() {
+    fn build_agent_chat_cmd_hermes_session_id_prefixed() {
+        let cmd = build_agent_chat_cmd(&AgentType::Hermes, "my-session", "hi");
+        let session_arg = cmd.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
+        assert!(
+            session_arg.starts_with("clawpier-"),
+            "session id must be prefixed: {}",
+            session_arg
+        );
+    }
+
+    #[test]
+    fn build_agent_chat_cmd_preserves_message_with_special_chars() {
         let msg = "Hello! How are you? I'm fine & great <tag> \"quoted\"";
-        let cmd = build_openclaw_agent_cmd("s1", msg);
-        // Message must be passed verbatim — no shell escaping needed
-        // because bollard uses exec (not shell)
+        let cmd = build_agent_chat_cmd(&AgentType::OpenClaw, "s1", msg);
         assert_eq!(cmd.last().unwrap(), msg);
     }
 
     #[test]
-    fn build_openclaw_agent_cmd_empty_message() {
-        let cmd = build_openclaw_agent_cmd("s1", "");
+    fn build_agent_chat_cmd_empty_message() {
+        let cmd = build_agent_chat_cmd(&AgentType::OpenClaw, "s1", "");
         assert_eq!(cmd.last().unwrap(), "");
     }
 
     #[test]
-    fn build_openclaw_agent_cmd_multiline_message() {
+    fn build_agent_chat_cmd_multiline_message() {
         let msg = "line1\nline2\nline3";
-        let cmd = build_openclaw_agent_cmd("s1", msg);
+        let cmd = build_agent_chat_cmd(&AgentType::OpenClaw, "s1", msg);
         assert_eq!(cmd.last().unwrap(), msg, "multiline messages must be preserved");
     }
 
     #[test]
-    fn build_openclaw_agent_cmd_different_sessions_produce_different_ids() {
-        let cmd1 = build_openclaw_agent_cmd("aaa", "hi");
-        let cmd2 = build_openclaw_agent_cmd("bbb", "hi");
+    fn build_agent_chat_cmd_different_sessions_produce_different_ids() {
+        let cmd1 = build_agent_chat_cmd(&AgentType::OpenClaw, "aaa", "hi");
+        let cmd2 = build_agent_chat_cmd(&AgentType::OpenClaw, "bbb", "hi");
         let sid1 = cmd1.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
         let sid2 = cmd2.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
-        assert_ne!(sid1, sid2, "different sessions must yield different openclaw session ids");
+        assert_ne!(sid1, sid2, "different sessions must yield different session ids");
     }
 
     // ── Skill name validation tests ─────────────────────────────────
@@ -2359,5 +2516,31 @@ mod tests {
     #[test]
     fn validate_skill_name_rejects_ampersand() {
         assert!(validate_skill_name("skill&whoami").is_err());
+    }
+
+    // ── Image name validation (Hermes support) ───────────────────────
+
+    #[test]
+    fn validate_hermes_image_trusted() {
+        assert!(validate_image_name("nousresearch/hermes-agent:latest").is_ok());
+        assert!(validate_image_name("nousresearch/hermes-agent").is_ok());
+    }
+
+    #[test]
+    fn validate_openclaw_image_still_trusted() {
+        assert!(validate_image_name("ghcr.io/openclaw/openclaw:latest").is_ok());
+    }
+
+    #[test]
+    fn validate_untrusted_image_rejected() {
+        assert!(validate_image_name("malicious/image:latest").is_err());
+        assert!(validate_image_name("").is_err());
+    }
+
+    #[test]
+    fn validate_image_name_rejects_similar_prefix() {
+        // Must not match repos that share a prefix with trusted entries
+        assert!(validate_image_name("nousresearch/hermes-agent-evil:latest").is_err());
+        assert!(validate_image_name("busybox-evil:latest").is_err());
     }
 }

@@ -27,7 +27,7 @@ interface BotCardProps {
 }
 
 export function BotCard({ bot, onSelect }: BotCardProps) {
-  const { startBot, stopBot, renameBot, actionInProgress } =
+  const { startBot, stopBot, renameBot, actionInProgress, pullProgress, pullingImage } =
     useBotStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(bot.name);
@@ -135,9 +135,18 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
                 {bot.name}
               </h3>
             )}
-            <p className="mt-0.5 truncate text-xs text-[var(--text-tertiary)]">
-              {bot.image.split("/").pop()}
-            </p>
+            <div className="mt-0.5 flex items-center gap-1.5">
+              <span className={`inline-flex shrink-0 items-center rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
+                bot.agent_type === "Hermes"
+                  ? "bg-[var(--badge-purple-bg)] text-[var(--badge-purple-text)]"
+                  : "bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+              }`}>
+                {bot.agent_type === "Hermes" ? "Hermes" : "OpenClaw"}
+              </span>
+              <span className="truncate text-xs text-[var(--text-tertiary)]">
+                {bot.image.split("/").pop()}
+              </span>
+            </div>
           </div>
 
           {/* Menu button */}
@@ -236,6 +245,26 @@ export function BotCard({ bot, onSelect }: BotCardProps) {
           <p className="mt-2 text-xs text-[var(--badge-red-text)] bg-[var(--badge-red-bg)] rounded px-2 py-1">
             {error}
           </p>
+        )}
+
+        {/* Image pull progress — only show if this bot's image is being pulled */}
+        {isLoading && pullProgress && pullingImage === bot.image && (
+          <div className="mt-2">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-primary)]">
+              <div
+                className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
+                style={{
+                  width: pullProgress.bytes_total > 0
+                    ? `${Math.round((pullProgress.bytes_downloaded / pullProgress.bytes_total) * 100)}%`
+                    : "100%",
+                  animation: pullProgress.bytes_total === 0 ? "pulse 2s ease-in-out infinite" : undefined,
+                }}
+              />
+            </div>
+            <p className="mt-0.5 text-[10px] text-[var(--text-tertiary)]">
+              Pulling image... {pullProgress.layers_done}/{pullProgress.layers_total} layers
+            </p>
+          </div>
         )}
 
         {/* Actions */}

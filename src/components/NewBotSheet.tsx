@@ -15,7 +15,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { NetworkMode } from "../lib/types";
+import type { AgentType, NetworkMode } from "../lib/types";
 import { useBotStore } from "../stores/bot-store";
 import { FocusTrap } from "./FocusTrap";
 import * as api from "../lib/tauri";
@@ -56,6 +56,11 @@ const RESOURCE_PRESETS = [
   },
 ] as const;
 
+const AGENT_TYPES: { key: AgentType; label: string; description: string }[] = [
+  { key: "OpenClaw", label: "OpenClaw", description: "ghcr.io/openclaw/openclaw" },
+  { key: "Hermes", label: "Hermes", description: "nousresearch/hermes-agent" },
+];
+
 const NETWORK_MODES: {
   key: SimpleMode;
   label: string;
@@ -78,6 +83,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agentType, setAgentType] = useState<AgentType>("OpenClaw");
 
   // System resources
   const [maxCpu, setMaxCpu] = useState(8);
@@ -158,6 +164,7 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
         cpuLimit,
         memoryLimit,
         networkMode: resolvedNetworkMode,
+        agentType,
       });
       onClose();
     } catch (e) {
@@ -183,6 +190,33 @@ export function NewBotSheet({ onClose }: NewBotSheetProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-6">
+          {/* Agent type */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">
+              Agent type
+            </label>
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+              {AGENT_TYPES.map((at) => {
+                const isActive = agentType === at.key;
+                return (
+                  <button
+                    key={at.key}
+                    type="button"
+                    className={`flex flex-col items-start gap-0.5 rounded-lg border p-2.5 text-left transition-colors ${
+                      isActive
+                        ? "border-[var(--focus-border)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]"
+                        : "border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                    }`}
+                    onClick={() => setAgentType(at.key)}
+                  >
+                    <span className="text-xs font-medium">{at.label}</span>
+                    <span className="text-[10px] opacity-70">{at.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Name field */}
           <div>
             <label className="block text-xs font-medium text-[var(--text-secondary)]">

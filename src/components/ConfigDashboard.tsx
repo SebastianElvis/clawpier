@@ -24,18 +24,24 @@ import {
 } from "lucide-react";
 import { getBotConfig, resolveTelegramBot } from "../lib/tauri";
 import type { TelegramBotInfo } from "../lib/tauri";
+import type { AgentType } from "../lib/types";
 
 interface ConfigDashboardProps {
   botId: string;
   isRunning: boolean;
+  agentType?: AgentType;
   onSwitchToTerminal: () => void;
+  onRestart?: () => void;
 }
 
 export function ConfigDashboard({
   botId,
   isRunning,
+  agentType,
   onSwitchToTerminal,
+  onRestart,
 }: ConfigDashboardProps) {
+  const configureCmd = agentType === "Hermes" ? "hermes setup" : "openclaw configure";
   const [configs, setConfigs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +101,7 @@ export function ConfigDashboard({
           <p className="mt-1 text-xs text-[var(--text-tertiary)]">
             {isRunning ? "Run " : "Start the bot and run "}
             <code className="rounded bg-[var(--bg-hover)] px-1.5 py-0.5 font-mono text-[11px]">
-              openclaw configure
+              {configureCmd}
             </code>
             {" in the Terminal tab to set up this agent."}
           </p>
@@ -145,16 +151,7 @@ export function ConfigDashboard({
     );
   }
 
-  const models = merged.models as Record<string, unknown> | undefined;
-  const agents = merged.agents as Record<string, unknown> | undefined;
-  const channels = merged.channels as Record<string, unknown> | undefined;
-  const gateway = merged.gateway as Record<string, unknown> | undefined;
-  const skills = merged.skills as Record<string, unknown> | undefined;
-  const webTools = merged.web_tools as Record<string, unknown> | undefined;
-  const commands = merged.commands as Record<string, unknown> | undefined;
-  const daemon = merged.daemon as Record<string, unknown> | undefined;
-  const healthCheck = merged.health_check as Record<string, unknown> | undefined;
-  const plugins = merged.plugins as Record<string, unknown> | undefined;
+  const isHermes = agentType === "Hermes";
 
   return (
     <div className="flex h-full flex-col">
@@ -165,7 +162,7 @@ export function ConfigDashboard({
           <span>
             Run{" "}
             <code className="rounded bg-[var(--bg-hover)] px-1 py-0.5 font-mono font-medium">
-              openclaw configure
+              {configureCmd}
             </code>{" "}
             in{" "}
             <button
@@ -178,6 +175,16 @@ export function ConfigDashboard({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {isRunning && onRestart && (
+            <button
+              className="inline-flex items-center gap-1 rounded-md bg-amber-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-amber-700"
+              onClick={() => { onRestart(); setTimeout(fetchConfig, 2000); }}
+              title="Restart bot to apply configuration changes"
+            >
+              <RefreshCw className="h-2.5 w-2.5" />
+              Restart to apply
+            </button>
+          )}
           <button
             className="text-[11px] text-[var(--badge-amber-text)] hover:opacity-80"
             onClick={() => setShowRaw(true)}
@@ -196,78 +203,126 @@ export function ConfigDashboard({
 
       {/* Scrollable content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {/* ── Primary: Model & Channels ── */}
-        <div className="grid grid-cols-2 gap-2">
-          <HeroCard
-            icon={Brain}
-            label="Model"
-            configured={!!models}
-            summary={summarizeModel(models, agents)}
-          />
-          <ChannelsCard botId={botId} channels={channels} />
-        </div>
-
-        {/* ── Secondary: inline rows ── */}
-        <div className="mt-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] divide-y divide-[var(--border-secondary)]">
-          <InfoRow
-            icon={Radio}
-            label="Gateway"
-            value={summarizeGateway(gateway)}
-          />
-          <InfoRow
-            icon={Globe}
-            label="Web Tools"
-            value={webTools ? summarizeObject(webTools) : null}
-          />
-          <InfoRow
-            icon={Wrench}
-            label="Skills"
-            value={skills ? summarizeObject(skills) : null}
-          />
-          <InfoRow
-            icon={FileText}
-            label="Agents"
-            value={agents ? summarizeAgents(agents) : null}
-          />
-          <InfoRow
-            icon={Wrench}
-            label="Plugins"
-            value={plugins ? summarizePlugins(plugins) : null}
-          />
-
-          {/* Collapsible extras */}
-          {showMore && (
-            <>
-              <InfoRow
-                icon={Cog}
-                label="Commands"
-                value={commands ? summarizeObject(commands) : null}
-              />
-              <InfoRow
-                icon={Server}
-                label="Daemon"
-                value={daemon ? summarizeObject(daemon) : null}
-              />
-              <InfoRow
-                icon={HeartPulse}
-                label="Health Check"
-                value={healthCheck ? summarizeObject(healthCheck) : null}
-              />
-            </>
-          )}
-        </div>
-
-        <button
-          className="mt-1 flex w-full items-center justify-center gap-1 py-1 text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-          onClick={() => setShowMore(!showMore)}
-        >
-          {showMore ? "Show less" : "Show more"}
-          <ChevronDown
-            className={`h-3 w-3 transition-transform ${showMore ? "rotate-180" : ""}`}
-          />
-        </button>
+        {isHermes ? (
+          <HermesConfigContent merged={merged} botId={botId} />
+        ) : (
+          <OpenClawConfigContent merged={merged} botId={botId} showMore={showMore} setShowMore={setShowMore} />
+        )}
       </div>
     </div>
+  );
+}
+
+// ── Hermes config content ─────────────────────────────────────────────
+
+function HermesConfigContent({ merged, botId }: { merged: Record<string, unknown>; botId: string }) {
+  const model = merged.model as Record<string, unknown> | undefined;
+  const platforms = merged.platforms as Record<string, unknown> | undefined;
+  const terminal = merged.terminal as Record<string, unknown> | undefined;
+  const sessionReset = merged.session_reset as Record<string, unknown> | undefined;
+  const streaming = merged.streaming as Record<string, unknown> | undefined;
+  const skills = merged.skills as Record<string, unknown> | undefined;
+  const agent = merged.agent as Record<string, unknown> | undefined;
+  const compression = merged.compression as Record<string, unknown> | undefined;
+
+  const modelName = model?.default as string | undefined;
+  const provider = model?.provider as string | undefined;
+
+  // Extract platform channels from Hermes' platforms config
+  const hermesChannels = platforms ? Object.entries(platforms).reduce<Record<string, unknown>>((acc, [name, cfg]) => {
+    if (typeof cfg === "object" && cfg !== null) {
+      acc[name] = cfg;
+    }
+    return acc;
+  }, {}) : undefined;
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <HeroCard
+          icon={Brain}
+          label="Model"
+          configured={!!(modelName || provider)}
+          summary={[
+            ...(modelName ? [`Model: ${modelName}`] : []),
+            ...(provider ? [`Provider: ${provider}`] : []),
+          ]}
+        />
+        <ChannelsCard botId={botId} channels={hermesChannels} />
+      </div>
+
+      <div className="mt-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] divide-y divide-[var(--border-secondary)]">
+        <InfoRow icon={Terminal} label="Terminal" value={terminal ? (terminal.backend as string ?? summarizeObject(terminal)) : null} />
+        <InfoRow icon={Radio} label="Streaming" value={streaming ? summarizeObject(streaming) : null} />
+        <InfoRow icon={Wrench} label="Skills" value={skills ? summarizeObject(skills) : null} />
+        <InfoRow icon={Cog} label="Agent" value={agent ? summarizeObject(agent) : null} />
+        <InfoRow icon={Server} label="Compression" value={compression ? summarizeObject(compression) : null} />
+        <InfoRow icon={RefreshCw} label="Session Reset" value={sessionReset ? summarizeObject(sessionReset) : null} />
+      </div>
+    </>
+  );
+}
+
+// ── OpenClaw config content ──────────────────────────────────────────
+
+function OpenClawConfigContent({
+  merged,
+  botId,
+  showMore,
+  setShowMore,
+}: {
+  merged: Record<string, unknown>;
+  botId: string;
+  showMore: boolean;
+  setShowMore: (v: boolean) => void;
+}) {
+  const models = merged.models as Record<string, unknown> | undefined;
+  const agents = merged.agents as Record<string, unknown> | undefined;
+  const channels = merged.channels as Record<string, unknown> | undefined;
+  const gateway = merged.gateway as Record<string, unknown> | undefined;
+  const skills = merged.skills as Record<string, unknown> | undefined;
+  const webTools = merged.web_tools as Record<string, unknown> | undefined;
+  const commands = merged.commands as Record<string, unknown> | undefined;
+  const daemon = merged.daemon as Record<string, unknown> | undefined;
+  const healthCheck = merged.health_check as Record<string, unknown> | undefined;
+  const plugins = merged.plugins as Record<string, unknown> | undefined;
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <HeroCard
+          icon={Brain}
+          label="Model"
+          configured={!!models}
+          summary={summarizeModel(models, agents)}
+        />
+        <ChannelsCard botId={botId} channels={channels} />
+      </div>
+
+      <div className="mt-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] divide-y divide-[var(--border-secondary)]">
+        <InfoRow icon={Radio} label="Gateway" value={summarizeGateway(gateway)} />
+        <InfoRow icon={Globe} label="Web Tools" value={webTools ? summarizeObject(webTools) : null} />
+        <InfoRow icon={Wrench} label="Skills" value={skills ? summarizeObject(skills) : null} />
+        <InfoRow icon={FileText} label="Agents" value={agents ? summarizeAgents(agents) : null} />
+        <InfoRow icon={Wrench} label="Plugins" value={plugins ? summarizePlugins(plugins) : null} />
+
+        {showMore && (
+          <>
+            <InfoRow icon={Cog} label="Commands" value={commands ? summarizeObject(commands) : null} />
+            <InfoRow icon={Server} label="Daemon" value={daemon ? summarizeObject(daemon) : null} />
+            <InfoRow icon={HeartPulse} label="Health Check" value={healthCheck ? summarizeObject(healthCheck) : null} />
+          </>
+        )}
+      </div>
+
+      <button
+        className="mt-1 flex w-full items-center justify-center gap-1 py-1 text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+        onClick={() => setShowMore(!showMore)}
+      >
+        {showMore ? "Show less" : "Show more"}
+        <ChevronDown className={`h-3 w-3 transition-transform ${showMore ? "rotate-180" : ""}`} />
+      </button>
+    </>
   );
 }
 

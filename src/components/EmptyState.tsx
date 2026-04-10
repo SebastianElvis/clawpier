@@ -10,7 +10,7 @@ export function EmptyState({ onCreateBot }: EmptyStateProps) {
       <Bot className="h-14 w-14 text-[var(--text-tertiary)]" />
       <h2 className="mt-5 text-xl font-semibold tracking-tight text-[var(--text-primary)]">No bots yet</h2>
       <p className="mt-1.5 max-w-xs text-center text-sm text-[var(--text-secondary)]">
-        Create your first sandboxed OpenClaw bot to get started.
+        Create your first sandboxed bot to get started.
       </p>
       <button
         className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)]"

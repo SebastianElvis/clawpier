@@ -23,7 +23,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { BotWithStatus, NetworkMode, PortMapping, EnvVar, HealthCheckConfig } from "../lib/types";
+import type { AgentType, BotWithStatus, NetworkMode, PortMapping, EnvVar, HealthCheckConfig } from "../lib/types";
 import * as api from "../lib/tauri";
 import { useBotStore } from "../stores/bot-store";
 import { useContainerStats } from "../hooks/use-container-stats";
@@ -320,7 +320,9 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
               <ConfigDashboard
                 botId={bot.id}
                 isRunning={isRunning}
+                agentType={bot.agent_type}
                 onSwitchToTerminal={() => setActiveTab("terminal")}
+                onRestart={() => restartBot(bot.id).catch((e) => setError(String(e)))}
               />
             </ErrorBoundary>
           )}
@@ -336,7 +338,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
           )}
           {activeTab === "terminal" && (
             <ErrorBoundary fallbackTitle="Terminal error">
-              <TerminalTab botId={bot.id} isRunning={isRunning} />
+              <TerminalTab botId={bot.id} isRunning={isRunning} agentType={bot.agent_type} />
             </ErrorBoundary>
           )}
           {activeTab === "files" && (
@@ -972,22 +974,36 @@ function HealthCheckSection({
 
 // ── Terminal Tab ──────────────────────────────────────────────────────
 
-const QUICK_COMMANDS = [
-  { label: "openclaw configure", command: "openclaw configure" },
-  { label: "openclaw status", command: "openclaw status" },
-  { label: "openclaw skills list", command: "openclaw skills list" },
-  { label: "openclaw --help", command: "openclaw --help" },
-  { label: "ls /workspace", command: "ls /workspace" },
-  { label: "env", command: "env" },
-];
+function getQuickCommands(agentType?: AgentType) {
+  if (agentType === "Hermes") {
+    return [
+      { label: "hermes setup", command: "hermes setup" },
+      { label: "hermes status", command: "hermes status" },
+      { label: "hermes --help", command: "hermes --help" },
+      { label: "ls /opt/data", command: "ls /opt/data" },
+      { label: "env", command: "env" },
+    ];
+  }
+  return [
+    { label: "openclaw configure", command: "openclaw configure" },
+    { label: "openclaw status", command: "openclaw status" },
+    { label: "openclaw skills list", command: "openclaw skills list" },
+    { label: "openclaw --help", command: "openclaw --help" },
+    { label: "ls /workspace", command: "ls /workspace" },
+    { label: "env", command: "env" },
+  ];
+}
 
 function TerminalTab({
   botId,
   isRunning,
+  agentType,
 }: {
   botId: string;
   isRunning: boolean;
+  agentType?: AgentType;
 }) {
+  const quickCommands = getQuickCommands(agentType);
   const {
     containerRef,
     isConnected,
@@ -1013,10 +1029,10 @@ function TerminalTab({
         <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
           Quick:
         </span>
-        {QUICK_COMMANDS.map((qc) => (
+        {quickCommands.map((qc) => (
           <button
             key={qc.command}
-            className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] transition-colors hover:border-blue-400/50 hover:bg-[var(--badge-blue-bg)] hover:text-[var(--badge-blue-text)] disabled:opacity-40"
+            className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[var(--focus-border)] hover:bg-[var(--badge-blue-bg)] hover:text-[var(--badge-blue-text)] disabled:opacity-40"
             onClick={() => writeCommand(qc.command)}
             disabled={!isConnected}
           >

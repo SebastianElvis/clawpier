@@ -11,7 +11,7 @@ interface UseAutoRestartOptions {
 
 /**
  * Auto-restarts a bot ONCE when it stops unexpectedly while the terminal tab
- * is active (e.g. after `openclaw configure` triggers a gateway restart).
+ * is active (e.g. after a configure command triggers a gateway restart).
  *
  * The one-shot guard prevents restart loops if the container keeps crashing.
  * Call `resetAutoRestart()` after a manual start/stop to re-arm.

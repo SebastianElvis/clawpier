@@ -1,3 +1,12 @@
+export interface ImagePullProgress {
+  layers_total: number;
+  layers_done: number;
+  bytes_downloaded: number;
+  bytes_total: number;
+  status: string;
+  done: boolean;
+}
+
 export interface EnvVar {
   key: string;
   value: string;
@@ -31,10 +40,13 @@ export interface BotNotificationPrefs {
   memory_threshold?: number;
 }
 
+export type AgentType = "OpenClaw" | "Hermes";
+
 export interface BotProfile {
   id: string;
   name: string;
   image: string;
+  agent_type: AgentType;
   network_mode: NetworkMode;
   workspace_path?: string;
   api_key_env?: string;
