@@ -21,9 +21,6 @@ import {
   Package,
   ChevronUp,
   ChevronDown,
-  Sun,
-  Moon,
-  Monitor,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { AgentType, BotWithStatus, NetworkMode, PortMapping, EnvVar, HealthCheckConfig } from "../lib/types";
@@ -48,12 +45,6 @@ import { useAutoRestart } from "../hooks/use-auto-restart";
 import { useRestartProgress } from "../hooks/use-restart-progress";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { loadWindowState, saveWindowState } from "../lib/window-state";
-import {
-  getThemePreference,
-  setThemePreference,
-  applyTheme,
-  type ThemePreference,
-} from "../lib/theme";
 
 type Tab = "dashboard" | "chat" | "skills" | "terminal" | "files" | "docker";
 
@@ -77,19 +68,6 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
     setActiveTabState(tab);
     saveWindowState({ activeTab: tab });
   }, []);
-
-  // Theme toggle
-  const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
-  const cycleTheme = useCallback(() => {
-    const order: ThemePreference[] = ["system", "light", "dark"];
-    setTheme((prev) => {
-      const next = order[(order.indexOf(prev) + 1) % order.length];
-      setThemePreference(next);
-      applyTheme(next);
-      return next;
-    });
-  }, []);
-  const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   // Register tab change callback for keyboard shortcuts
   useEffect(() => {
@@ -165,13 +143,13 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
   const networkMode = bot.network_mode;
   const hasNetwork = networkMode !== "none";
 
-  const tabs: { key: Tab; label: string; icon: typeof LayoutDashboard; runningOnly?: boolean }[] = [
-    { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { key: "chat", label: "Chat", icon: MessageSquare, runningOnly: true },
-    { key: "skills", label: "Skills", icon: Package, runningOnly: true },
-    { key: "terminal", label: "Terminal", icon: Terminal },
-    { key: "files", label: "Files", icon: FolderOpen },
-    { key: "docker", label: "Docker", icon: Box },
+  const tabs: { key: Tab; label: string; icon: typeof LayoutDashboard; runningOnly?: boolean; shortcut: string }[] = [
+    { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "⌘1" },
+    { key: "chat", label: "Chat", icon: MessageSquare, runningOnly: true, shortcut: "⌘2" },
+    { key: "skills", label: "Skills", icon: Package, runningOnly: true, shortcut: "⌘3" },
+    { key: "terminal", label: "Terminal", icon: Terminal, shortcut: "⌘4" },
+    { key: "files", label: "Files", icon: FolderOpen, shortcut: "⌘5" },
+    { key: "docker", label: "Docker", icon: Box, shortcut: "⌘6" },
   ];
 
   return (
@@ -193,7 +171,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
             <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
               <span className="truncate">{bot.image}</span>
               <button
-                className={`shrink-0 cursor-pointer font-mono transition-colors ${idCopied ? "text-emerald-500" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"}`}
+                className={`shrink-0 cursor-pointer font-mono transition-colors ${idCopied ? "text-[var(--badge-green-text)]" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"}`}
                 title="Click to copy full ID"
                 onClick={() => {
                   navigator.clipboard.writeText(bot.id);
@@ -208,14 +186,6 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
             <StatusBadge status={bot.status} />
             {hasNetwork && <NetworkBadge mode={networkMode} />}
           </div>
-
-          <button
-            className="rounded-lg p-1.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
-            onClick={cycleTheme}
-            title={`Theme: ${theme}`}
-          >
-            <ThemeIcon className="h-3.5 w-3.5" />
-          </button>
 
           {/* Start/Stop/Restart buttons */}
           {isRunning ? (
@@ -248,7 +218,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
             </>
           ) : (
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--btn-start-bg)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--btn-start-hover)] disabled:opacity-50"
               onClick={handleStart}
               disabled={isLoading}
             >
@@ -262,40 +232,6 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
           )}
         </div>
 
-        {/* Stats bar with sparklines (when running) */}
-        {isRunning && stats && (
-          <div className="mt-2 flex items-center gap-4 text-xs text-[var(--text-secondary)]">
-            <div className="flex items-center gap-1.5">
-              <Cpu className="h-3.5 w-3.5" />
-              <span>
-                CPU {stats.cpu_percent.toFixed(1)}%
-                {bot.cpu_limit != null && (
-                  <span className="ml-1 text-[var(--text-tertiary)]">
-                    · {bot.cpu_limit} {bot.cpu_limit === 1 ? "core" : "cores"}
-                  </span>
-                )}
-              </span>
-              <Sparkline
-                data={statsHistory.map((s) => s.cpu_percent)}
-                max={100}
-                color="#3b82f6"
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <HardDrive className="h-3.5 w-3.5" />
-              <span>
-                MEM {formatBytes(stats.memory_usage)} /{" "}
-                {formatBytes(stats.memory_limit)}
-              </span>
-              <Sparkline
-                data={statsHistory.map((s) => s.memory_percent)}
-                max={100}
-                color="#10b981"
-              />
-            </div>
-          </div>
-        )}
-
         {/* Error */}
         {error && (
           <p className="mt-2 rounded bg-[var(--badge-red-bg)] px-3 py-1.5 text-xs text-[var(--badge-red-text)]">
@@ -306,17 +242,18 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
 
       {/* Tab bar */}
       <div className="flex shrink-0 border-b border-[var(--border-primary)]">
-        {tabs.map(({ key, label, icon: Icon, runningOnly }) => {
+        {tabs.map(({ key, label, icon: Icon, runningOnly, shortcut }) => {
           if (runningOnly && !isRunning) return null;
           return (
             <button
               key={key}
               className={`inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
                 activeTab === key
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-[var(--accent)] text-[var(--accent-text)]"
                   : "border-transparent text-[var(--text-secondary)] hover:border-[var(--border-primary)] hover:text-[var(--text-primary)]"
               }`}
               onClick={() => setActiveTab(key)}
+              title={`${label} (${shortcut})`}
             >
               <Icon className="h-3.5 w-3.5" />
               {label}
@@ -330,10 +267,10 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
         {/* Restart overlay */}
         {isRestarting && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="rounded-xl bg-gray-800 p-6 text-center shadow-xl">
-              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-gray-600 border-t-blue-400" />
-              <p className="mb-1 font-medium text-white">Restarting bot...</p>
-              <p className="text-sm text-gray-400">
+            <div className="rounded-xl bg-[var(--bg-elevated)] p-6 text-center shadow-xl">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[var(--border-primary)] border-t-[var(--accent)]" />
+              <p className="mb-1 font-medium text-[var(--text-primary)]">Restarting bot...</p>
+              <p className="text-sm text-[var(--text-secondary)]">
                 {phase === "stopping" && "Stopping container..."}
                 {phase === "stopped" && "Container stopped"}
                 {phase === "starting" && "Starting container..."}
@@ -347,12 +284,44 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
         <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
           {activeTab === "dashboard" && (
             <ErrorBoundary fallbackTitle="Dashboard error">
+              {/* Stats bar with sparklines (when running) */}
+              {isRunning && stats && (
+                <div className="flex items-center gap-4 border-b border-[var(--border-primary)] px-4 py-2 text-xs text-[var(--text-secondary)]">
+                  <div className="flex items-center gap-1.5">
+                    <Cpu className="h-3.5 w-3.5" />
+                    <span>
+                      CPU {stats.cpu_percent.toFixed(1)}%
+                      {bot.cpu_limit != null && (
+                        <span className="ml-1 text-[var(--text-tertiary)]">
+                          · {bot.cpu_limit} {bot.cpu_limit === 1 ? "core" : "cores"}
+                        </span>
+                      )}
+                    </span>
+                    <Sparkline
+                      data={statsHistory.map((s) => s.cpu_percent)}
+                      max={100}
+                      color="#6366f1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <HardDrive className="h-3.5 w-3.5" />
+                    <span>
+                      MEM {formatBytes(stats.memory_usage)} /{" "}
+                      {formatBytes(stats.memory_limit)}
+                    </span>
+                    <Sparkline
+                      data={statsHistory.map((s) => s.memory_percent)}
+                      max={100}
+                      color="#10b981"
+                    />
+                  </div>
+                </div>
+              )}
               <ConfigDashboard
                 botId={bot.id}
                 isRunning={isRunning}
                 agentType={bot.agent_type}
                 onSwitchToTerminal={() => setActiveTab("terminal")}
-                onRestart={() => restartBot(bot.id).catch((e) => setError(String(e)))}
               />
             </ErrorBoundary>
           )}
@@ -383,7 +352,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
                   <FolderOpen className="h-8 w-8 text-[var(--text-tertiary)]" />
                   <p>No workspace path configured.</p>
                   <button
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)]"
                     onClick={() => setActiveTab("docker")}
                   >
                     <Box className="h-3.5 w-3.5" />
@@ -494,7 +463,7 @@ function LogPanel({
       <button
         className={`inline-flex w-full cursor-pointer items-center gap-1.5 border-t-2 px-4 py-2.5 text-xs font-medium transition-colors ${
           isOpen
-            ? "border-blue-600 text-blue-600"
+            ? "border-[var(--accent)] text-[var(--accent-text)]"
             : "border-[var(--border-primary)] text-[var(--text-secondary)] hover:border-[var(--border-primary)] hover:text-[var(--text-primary)]"
         }`}
         onClick={() => setIsOpen(!isOpen)}
@@ -668,7 +637,7 @@ function DockerTab({
           )}
           {hasChanges && (
             <button
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
               onClick={handleSave}
               disabled={saving || pendingModeIsCustomEmpty}
             >
@@ -691,7 +660,7 @@ function DockerTab({
 
       {/* Auto-start on launch */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
           Start on Launch
         </h3>
         <div className="flex items-center justify-between rounded-lg border border-[var(--border-primary)] bg-[var(--bg-surface)] px-3 py-2.5">
@@ -707,7 +676,7 @@ function DockerTab({
             role="switch"
             aria-checked={bot.auto_start}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-              bot.auto_start ? "bg-blue-600" : "bg-[var(--bg-active)]"
+              bot.auto_start ? "bg-[var(--accent)]" : "bg-[var(--bg-active)]"
             }`}
             onClick={() => setAutoStart(bot.id, !bot.auto_start)}
           >
@@ -751,7 +720,7 @@ function DockerTab({
 
       {/* Workspace Path */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
           Workspace Path
         </h3>
         <p className="text-xs text-[var(--text-tertiary)]">
@@ -873,7 +842,7 @@ function HealthCheckSection({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
         <HeartPulse className="mr-1 inline h-4 w-4" />
         Health Check
       </h3>
@@ -892,7 +861,7 @@ function HealthCheckSection({
             role="switch"
             aria-checked={enabled}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-              enabled ? "bg-blue-600" : "bg-[var(--bg-active)]"
+              enabled ? "bg-[var(--accent)]" : "bg-[var(--bg-active)]"
             }`}
             onClick={handleToggle}
             disabled={savingHc}
@@ -913,7 +882,7 @@ function HealthCheckSection({
                 Command
               </label>
               <input
-                className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                 value={command}
                 onChange={(e) => setCommand(e.target.value)}
                 placeholder="echo ok"
@@ -930,7 +899,7 @@ function HealthCheckSection({
                   type="number"
                   min={5}
                   max={300}
-                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                   value={interval}
                   onChange={(e) =>
                     setInterval_(Math.max(5, parseInt(e.target.value) || 5))
@@ -945,7 +914,7 @@ function HealthCheckSection({
                   type="number"
                   min={1}
                   max={10}
-                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-[var(--focus-ring)]"
                   value={retries}
                   onChange={(e) =>
                     setRetries(Math.max(1, parseInt(e.target.value) || 1))
@@ -968,7 +937,7 @@ function HealthCheckSection({
                 role="switch"
                 aria-checked={autoRestart}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  autoRestart ? "bg-blue-600" : "bg-[var(--bg-active)]"
+                  autoRestart ? "bg-[var(--accent)]" : "bg-[var(--bg-active)]"
                 }`}
                 onClick={() => setAutoRestart(!autoRestart)}
               >
@@ -983,7 +952,7 @@ function HealthCheckSection({
             {/* Save button for changes */}
             {hasChanges && (
               <button
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
                 onClick={handleSave}
                 disabled={savingHc}
               >
@@ -1062,7 +1031,7 @@ function TerminalTab({
         {quickCommands.map((qc) => (
           <button
             key={qc.command}
-            className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] transition-colors hover:border-blue-400/50 hover:bg-[var(--badge-blue-bg)] hover:text-[var(--badge-blue-text)] disabled:opacity-40"
+            className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] transition-colors hover:border-[var(--focus-border)] hover:bg-[var(--badge-blue-bg)] hover:text-[var(--badge-blue-text)] disabled:opacity-40"
             onClick={() => writeCommand(qc.command)}
             disabled={!isConnected}
           >

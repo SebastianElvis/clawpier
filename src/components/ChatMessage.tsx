@@ -37,7 +37,7 @@ export function ChatMessageBubble({
       <div
         className={`relative max-w-[85%] rounded-xl px-3 py-2 ${
           isUser
-            ? "bg-blue-600 text-white"
+            ? "bg-[var(--accent)] text-white"
             : "border border-[var(--border-primary)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
         }`}
       >
@@ -73,7 +73,7 @@ export function ChatMessageBubble({
         {/* Timestamp */}
         <p
           className={`mt-1 text-[10px] ${
-            isUser ? "text-blue-200" : "text-[var(--text-tertiary)]"
+            isUser ? "text-white/60" : "text-[var(--text-tertiary)]"
           }`}
         >
           {new Date(message.timestamp).toLocaleTimeString()}

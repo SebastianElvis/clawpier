@@ -26,7 +26,7 @@ export function BotList({ onCreateBot, onSelectBot }: BotListProps) {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-40 animate-pulse rounded-xl border border-[var(--border-primary)] bg-[var(--bg-primary)]"
+            className="h-40 animate-pulse rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)]"
           />
         ))}
       </div>
@@ -52,7 +52,7 @@ export function BotList({ onCreateBot, onSelectBot }: BotListProps) {
         <div className="py-12 text-center">
           <p className="text-sm text-[var(--text-secondary)]">No bots match your filters.</p>
           <button
-            className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
+            className="mt-2 text-xs font-medium text-[var(--accent-text)] hover:text-[var(--accent-text)]"
             onClick={() => {
               setSearchQuery("");
               setStatusFilter("all");

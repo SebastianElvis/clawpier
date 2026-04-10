@@ -207,7 +207,7 @@ export function LogViewer({ logs, onClear, tail, onTailChange }: LogViewerProps)
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Search logs..."
-            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1 pl-7 pr-20 text-xs text-[var(--text-secondary)] placeholder-[var(--text-tertiary)] outline-none focus:border-blue-400"
+            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1 pl-7 pr-20 text-xs text-[var(--text-secondary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--focus-border)]"
           />
           {debouncedSearch && (
             <div className="absolute right-1 flex items-center gap-0.5">

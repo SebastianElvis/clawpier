@@ -9,7 +9,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     case "Running":
       return (
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--badge-green-bg)] px-2.5 py-0.5 text-xs font-medium text-[var(--badge-green-text)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 status-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--btn-start-bg)] status-pulse" />
           Running
         </span>
       );

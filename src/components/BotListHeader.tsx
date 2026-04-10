@@ -48,7 +48,7 @@ export function BotListHeader({
                 inputRef.current?.blur();
               }
             }}
-            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] py-1 pl-7 pr-7 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-colors focus:border-blue-300 focus:ring-1 focus:ring-blue-100"
+            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] py-1 pl-7 pr-7 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none transition-colors focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
           />
           {searchQuery && (
             <button
@@ -70,7 +70,7 @@ export function BotListHeader({
             key={option.value}
             className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
               statusFilter === option.value
-                ? "bg-blue-600 text-white"
+                ? "bg-[var(--accent)] text-white"
                 : "bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:bg-[var(--bg-active)]"
             }`}
             onClick={() => onStatusFilterChange(option.value)}

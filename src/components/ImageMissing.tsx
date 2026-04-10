@@ -74,7 +74,7 @@ export function ImageMissing() {
       <div className="rounded-2xl bg-[var(--badge-amber-bg)] p-5">
         <Download className="h-12 w-12 text-[var(--badge-amber-text)]" />
       </div>
-      <h1 className="mt-5 text-xl font-bold text-[var(--text-primary)]">
+      <h1 className="mt-5 text-xl font-semibold tracking-tight text-[var(--text-primary)]">
         Agent Image Not Found
       </h1>
       <p className="mt-2 max-w-md text-center text-sm text-[var(--text-secondary)]">
@@ -108,7 +108,7 @@ export function ImageMissing() {
                   </span>
                 ) : (
                   <button
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
                     onClick={() => handlePull(img.image)}
                     disabled={pulling !== null}
                   >
@@ -128,7 +128,7 @@ export function ImageMissing() {
               <div className="px-4 pb-3">
                 <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border-primary)]">
                   <div
-                    className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                    className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
                     style={{
                       width: progressPercent !== null ? `${progressPercent}%` : "100%",
                       animation: progressPercent === null ? "pulse 2s ease-in-out infinite" : undefined,
@@ -158,7 +158,7 @@ export function ImageMissing() {
 
       {anyAvailable && (
         <button
-          className="mt-4 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          className="mt-4 rounded-lg bg-[var(--btn-start-bg)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--btn-start-hover)]"
           onClick={() => checkImage()}
         >
           Continue

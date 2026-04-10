@@ -137,7 +137,7 @@ export function ChatTab({ botId }: ChatTabProps) {
                   {editingId === session.id ? (
                     <div className="flex min-w-0 flex-1 items-center gap-1">
                       <input
-                        className="min-w-0 flex-1 rounded border border-blue-300 bg-[var(--bg-input)] px-1.5 py-0.5 text-xs text-[var(--text-primary)] outline-none"
+                        className="min-w-0 flex-1 rounded border border-[var(--focus-border)] bg-[var(--bg-input)] px-1.5 py-0.5 text-xs text-[var(--text-primary)] outline-none"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onKeyDown={(e) => {
@@ -224,7 +224,7 @@ export function ChatTab({ botId }: ChatTabProps) {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--text-tertiary)]" />
             <input
-              className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1 pl-7 pr-2 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300"
+              className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1 pl-7 pr-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)]"
               placeholder="Search messages..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -246,7 +246,7 @@ export function ChatTab({ botId }: ChatTabProps) {
             <MessageSquare className="h-10 w-10 text-[var(--text-tertiary)]" />
             <p>Create a session to start chatting</p>
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)]"
               onClick={() => createSession()}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -304,7 +304,7 @@ export function ChatTab({ botId }: ChatTabProps) {
               <div className="flex items-end gap-2">
                 <textarea
                   ref={inputRef}
-                  className="min-h-[36px] max-h-32 flex-1 resize-none rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200"
+                  className="min-h-[36px] max-h-32 flex-1 resize-none rounded-lg border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
                   placeholder="Type a message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -314,7 +314,7 @@ export function ChatTab({ botId }: ChatTabProps) {
                 />
                 {streaming ? (
                   <button
-                    className="shrink-0 rounded-lg bg-red-600 p-2 text-white hover:bg-red-700"
+                    className="shrink-0 rounded-lg bg-[var(--btn-danger-bg)] p-2 text-white hover:bg-[var(--btn-danger-hover-bg)]"
                     onClick={stopResponse}
                     title="Stop response"
                   >
@@ -322,7 +322,7 @@ export function ChatTab({ botId }: ChatTabProps) {
                   </button>
                 ) : (
                   <button
-                    className="shrink-0 rounded-lg bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="shrink-0 rounded-lg bg-[var(--accent)] p-2 text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
                     onClick={handleSend}
                     disabled={!input.trim()}
                     title="Send message"

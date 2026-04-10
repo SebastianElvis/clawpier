@@ -25,10 +25,10 @@ export function DeleteConfirm({ botName, botId, onClose }: DeleteConfirmProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-sm rounded-xl bg-[var(--bg-elevated)] p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl bg-[var(--bg-elevated)] p-6 shadow-2xl ring-1 ring-[var(--border-secondary)]">
         <div className="flex items-start gap-3">
-          <div className="rounded-full bg-red-100 p-2">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+          <div className="rounded-full bg-[var(--badge-red-bg)] p-2">
+            <AlertTriangle className="h-5 w-5 text-[var(--badge-red-text)]" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -49,7 +49,7 @@ export function DeleteConfirm({ botName, botId, onClose }: DeleteConfirmProps) {
             Cancel
           </button>
           <button
-            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--btn-danger-bg)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--btn-danger-hover-bg)] disabled:opacity-50"
             onClick={handleDelete}
             disabled={deleting}
           >

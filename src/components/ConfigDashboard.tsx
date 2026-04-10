@@ -31,7 +31,6 @@ interface ConfigDashboardProps {
   isRunning: boolean;
   agentType?: AgentType;
   onSwitchToTerminal: () => void;
-  onRestart?: () => void;
 }
 
 export function ConfigDashboard({
@@ -39,7 +38,6 @@ export function ConfigDashboard({
   isRunning,
   agentType,
   onSwitchToTerminal,
-  onRestart,
 }: ConfigDashboardProps) {
   const configureCmd = agentType === "Hermes" ? "hermes setup" : "openclaw configure";
   const [configs, setConfigs] = useState<Record<string, string>>({});
@@ -107,7 +105,7 @@ export function ConfigDashboard({
           </p>
         </div>
         <button
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)]"
           onClick={onSwitchToTerminal}
         >
           <Terminal className="h-3.5 w-3.5" />
@@ -175,16 +173,6 @@ export function ConfigDashboard({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {isRunning && onRestart && (
-            <button
-              className="inline-flex items-center gap-1 rounded-md bg-amber-600 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-amber-700"
-              onClick={() => { onRestart(); setTimeout(fetchConfig, 2000); }}
-              title="Restart bot to apply configuration changes"
-            >
-              <RefreshCw className="h-2.5 w-2.5" />
-              Restart to apply
-            </button>
-          )}
           <button
             className="text-[11px] text-[var(--badge-amber-text)] hover:opacity-80"
             onClick={() => setShowRaw(true)}
@@ -456,7 +444,7 @@ function ChannelsCard({
           <div className="rounded-md border border-[var(--border-secondary)] bg-[var(--bg-primary)] px-2 py-1.5">
             {/* Header row: icon + name + enabled badge */}
             <div className="flex items-center gap-1.5">
-              <Send className="h-3 w-3 text-blue-500" />
+              <Send className="h-3 w-3 text-[var(--accent-text)]" />
               <span className="text-[11px] font-medium text-[var(--text-secondary)]">
                 Telegram
               </span>
@@ -480,7 +468,7 @@ function ChannelsCard({
             ) : tgInfo ? (
               <div className="mt-1 flex items-center gap-1.5">
                 <AtSign className="h-2.5 w-2.5 text-[var(--text-tertiary)]" />
-                <span className="font-mono text-[11px] text-blue-600">
+                <span className="font-mono text-[11px] text-[var(--accent-text)]">
                   @{tgInfo.username ?? "unknown"}
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)]">

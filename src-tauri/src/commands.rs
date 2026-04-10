@@ -39,17 +39,54 @@ pub(crate) fn build_agent_chat_cmd(agent_type: &AgentType, session_id: &str, mes
             ]
         }
         AgentType::Hermes => {
-            let h_session_id = format!("clawpier-{}", session_id);
             vec![
                 "hermes".to_string(),
-                "agent".to_string(),
-                "--session-id".to_string(),
-                h_session_id,
-                "--message".to_string(),
+                "chat".to_string(),
+                "-Q".to_string(),
+                "-q".to_string(),
                 message.to_string(),
             ]
         }
     }
+}
+
+/// Strip Hermes CLI metadata from one-shot (`-q`) output.
+/// Removes the box-drawing header (e.g. `╭─ ⚕ Hermes ───…╮`) and
+/// trailing `session_id: …` line.
+pub(crate) fn strip_hermes_metadata(raw: &str) -> String {
+    let mut lines: Vec<&str> = raw.lines().collect();
+
+    // Remove leading header and blank lines.
+    // Hermes wraps agent name in box-drawing: ╭─ ⚕ Hermes ───╮
+    while let Some(first) = lines.first() {
+        let trimmed = first.trim();
+        if trimmed.is_empty()
+            || trimmed.starts_with('\u{256D}') // ╭ box-drawing upper-left
+            || trimmed.starts_with('\u{2502}') // │ box-drawing vertical
+            || trimmed.starts_with('\u{2570}') // ╰ box-drawing lower-left
+            || trimmed.starts_with("> ")
+            || trimmed.starts_with('\u{2190}') // ←
+        {
+            lines.remove(0);
+        } else {
+            break;
+        }
+    }
+
+    // Remove trailing session_id / box-drawing footer lines
+    while let Some(last) = lines.last() {
+        let trimmed = last.trim();
+        if trimmed.is_empty()
+            || trimmed.starts_with("session_id:")
+            || trimmed.starts_with('\u{2570}') // ╰
+            || trimmed.starts_with('\u{256D}') // ╭
+        {
+            lines.pop();
+        } else {
+            break;
+        }
+    }
+    lines.join("\n")
 }
 
 // ── Validation helpers ────────────────────────────────────────────────
@@ -1565,6 +1602,8 @@ pub async fn send_chat_message(
                         output: mut stream,
                         ..
                     }) => {
+                        let is_hermes = matches!(bot_agent_type, AgentType::Hermes);
+
                         // Stream stdout; collect stderr separately.
                         // Stderr is only shown if no stdout was received
                         // (i.e. a real error), to avoid gateway fallback
@@ -1576,12 +1615,16 @@ pub async fn send_chat_message(
                                     if !text.is_empty() {
                                         got_stdout = true;
                                         response_content.push_str(&text);
-                                        let chunk = ChatResponseChunk {
-                                            session_id: sess_id.clone(),
-                                            content: text,
-                                            done: false,
-                                        };
-                                        let _ = app_handle.emit(&event_name, &chunk);
+                                        // For Hermes, buffer output and emit
+                                        // after stripping CLI metadata.
+                                        if !is_hermes {
+                                            let chunk = ChatResponseChunk {
+                                                session_id: sess_id.clone(),
+                                                content: text,
+                                                done: false,
+                                            };
+                                            let _ = app_handle.emit(&event_name, &chunk);
+                                        }
                                     }
                                 }
                                 bollard::container::LogOutput::StdErr { message } => {
@@ -1590,6 +1633,20 @@ pub async fn send_chat_message(
                                     );
                                 }
                                 _ => {}
+                            }
+                        }
+
+                        // For Hermes, strip CLI metadata ("> Hermes"
+                        // header, "session_id:" footer) then emit.
+                        if is_hermes && got_stdout {
+                            response_content = crate::commands::strip_hermes_metadata(&response_content);
+                            if !response_content.is_empty() {
+                                let chunk = ChatResponseChunk {
+                                    session_id: sess_id.clone(),
+                                    content: response_content.clone(),
+                                    done: false,
+                                };
+                                let _ = app_handle.emit(&event_name, &chunk);
                             }
                         }
 
@@ -2465,12 +2522,11 @@ mod tests {
     fn build_agent_chat_cmd_hermes_basic() {
         let cmd = build_agent_chat_cmd(&AgentType::Hermes, "session-abc", "Hello world");
         assert_eq!(cmd[0], "hermes");
-        assert_eq!(cmd[1], "agent");
-        assert_eq!(cmd[2], "--session-id");
-        assert_eq!(cmd[3], "clawpier-session-abc");
-        assert_eq!(cmd[4], "--message");
-        assert_eq!(cmd[5], "Hello world");
-        assert_eq!(cmd.len(), 6);
+        assert_eq!(cmd[1], "chat");
+        assert_eq!(cmd[2], "-Q");
+        assert_eq!(cmd[3], "-q");
+        assert_eq!(cmd[4], "Hello world");
+        assert_eq!(cmd.len(), 5);
     }
 
     #[test]
@@ -2503,13 +2559,11 @@ mod tests {
     }
 
     #[test]
-    fn build_agent_chat_cmd_hermes_session_id_prefixed() {
+    fn build_agent_chat_cmd_hermes_no_session_flag() {
         let cmd = build_agent_chat_cmd(&AgentType::Hermes, "my-session", "hi");
-        let session_arg = cmd.iter().skip_while(|a| *a != "--session-id").nth(1).unwrap();
         assert!(
-            session_arg.starts_with("clawpier-"),
-            "session id must be prefixed: {}",
-            session_arg
+            !cmd.contains(&"--resume".to_string()),
+            "Hermes should not pass --resume (sessions are managed by Hermes internally)"
         );
     }
 
@@ -2785,5 +2839,54 @@ mod tests {
         // Must not match repos that share a prefix with trusted entries
         assert!(validate_image_name("nousresearch/hermes-agent-evil:latest").is_err());
         assert!(validate_image_name("busybox-evil:latest").is_err());
+    }
+
+    // ── strip_hermes_metadata tests ─────────────────────────────────
+
+    #[test]
+    fn strip_hermes_metadata_box_header_and_session() {
+        let raw = "\u{256D}\u{2500} \u{2695} Hermes \u{2500}\u{2500}\u{2500}\u{256E}\ngm! How can I help?\n\nsession_id: 20260410_143433_44d6d2";
+        assert_eq!(strip_hermes_metadata(raw), "gm! How can I help?");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_gt_header_and_session() {
+        let raw = "> Hermes\n\nHello! How can I help?\n\nsession_id: 20260410_143433_44d6d2";
+        assert_eq!(strip_hermes_metadata(raw), "Hello! How can I help?");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_arrow_header() {
+        let raw = "\u{2190} 1 Hermes\n\ngood morning!\n\nsession_id: 20260410_143433_44d6d2";
+        assert_eq!(strip_hermes_metadata(raw), "good morning!");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_no_metadata() {
+        let raw = "Just a plain response";
+        assert_eq!(strip_hermes_metadata(raw), "Just a plain response");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_only_header() {
+        let raw = "\u{256D}\u{2500} \u{2695} Hermes \u{2500}\u{256E}\n\nSome content here";
+        assert_eq!(strip_hermes_metadata(raw), "Some content here");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_only_session() {
+        let raw = "Some content\n\nsession_id: abc123";
+        assert_eq!(strip_hermes_metadata(raw), "Some content");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_multiline_content() {
+        let raw = "\u{256D}\u{2500} \u{2695} Hermes \u{2500}\u{256E}\nLine 1\nLine 2\nLine 3\n\nsession_id: xyz";
+        assert_eq!(strip_hermes_metadata(raw), "Line 1\nLine 2\nLine 3");
+    }
+
+    #[test]
+    fn strip_hermes_metadata_empty_input() {
+        assert_eq!(strip_hermes_metadata(""), "");
     }
 }

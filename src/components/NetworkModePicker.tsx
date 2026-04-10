@@ -52,7 +52,7 @@ export function NetworkModePicker({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-[var(--text-secondary)]">Network Mode</h3>
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Network Mode</h3>
       <p className="text-xs text-[var(--text-tertiary)]">
         Control how this bot connects to the network.
       </p>
@@ -63,7 +63,7 @@ export function NetworkModePicker({
             key={opt.key}
             className={`rounded-lg border p-2.5 text-left transition-colors ${
               mode === opt.key
-                ? "border-blue-400/50 bg-[var(--badge-blue-bg)]"
+                ? "border-[var(--focus-border)]/50 bg-[var(--badge-blue-bg)]"
                 : "border-[var(--border-primary)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)]"
             }`}
             onClick={() => handleModeChange(opt.key)}
@@ -71,12 +71,12 @@ export function NetworkModePicker({
             <div className="flex items-center gap-1.5">
               <Shield
                 className={`h-3 w-3 ${
-                  mode === opt.key ? "text-blue-600" : "text-[var(--text-tertiary)]"
+                  mode === opt.key ? "text-[var(--accent-text)]" : "text-[var(--text-tertiary)]"
                 }`}
               />
               <span
                 className={`text-xs font-medium ${
-                  mode === opt.key ? "text-blue-700" : "text-[var(--text-secondary)]"
+                  mode === opt.key ? "text-[var(--accent-text)]" : "text-[var(--text-secondary)]"
                 }`}
               >
                 {opt.label}
@@ -105,7 +105,7 @@ export function NetworkModePicker({
         <div className="space-y-1">
           <label className="text-xs text-[var(--text-secondary)]">Docker Network Name</label>
           <input
-            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-200"
+            className="w-full rounded-md border border-[var(--border-primary)] bg-[var(--bg-input)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
             value={customName}
             onChange={(e) => handleCustomNameChange(e.target.value)}
             placeholder="my-docker-network"

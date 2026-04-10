@@ -72,7 +72,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
       {/* Unread indicator */}
       <div className="mt-1.5 flex w-2 shrink-0 items-center justify-center">
         {!notification.read && (
-          <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          <div className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
         )}
       </div>
 
@@ -180,14 +180,14 @@ export function NotificationCenter() {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)] shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-[var(--border-primary)] bg-[var(--bg-surface)] shadow-lg ring-1 ring-[var(--border-primary)]"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--border-primary)] px-3 py-2.5">
             <h3 className="text-xs font-semibold text-[var(--text-primary)]">
               Notifications
               {unreadCount > 0 && (
-                <span className="ml-1.5 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">
+                <span className="ml-1.5 rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-white">
                   {unreadCount}
                 </span>
               )}
