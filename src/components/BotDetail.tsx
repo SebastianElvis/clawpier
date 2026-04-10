@@ -332,7 +332,7 @@ export function BotDetail({ bot, onBack, tabChangeRef }: BotDetailProps) {
           )}
           {activeTab === "skills" && isRunning && (
             <ErrorBoundary fallbackTitle="Skills error">
-              <SkillBrowser botId={bot.id} />
+              <SkillBrowser botId={bot.id} agentType={bot.agent_type} />
             </ErrorBoundary>
           )}
           {activeTab === "terminal" && (

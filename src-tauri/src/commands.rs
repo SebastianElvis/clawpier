@@ -685,12 +685,15 @@ fn validate_skill_name(name: &str) -> Result<(), AppError> {
     Ok(())
 }
 
-/// Helper: resolve container name for a bot.
-fn resolve_container(store: &crate::bot_store::BotStore, id: &str) -> Result<String, AppError> {
+/// Helper: resolve container name AND agent type for a bot.
+fn resolve_container_and_agent(
+    store: &crate::bot_store::BotStore,
+    id: &str,
+) -> Result<(String, AgentType), AppError> {
     let bot = store
         .get_by_id(id)
         .ok_or_else(|| AppError::BotNotFound(id.to_string()))?;
-    Ok(bot.container_name())
+    Ok((bot.container_name(), bot.agent_type.clone()))
 }
 
 /// Parse `openclaw skills list` table output into Skill structs.
@@ -739,6 +742,139 @@ fn parse_openclaw_skills_output(output: &str) -> Vec<crate::models::Skill> {
             })
         })
         .collect()
+}
+
+/// Parse `hermes skills list` output into Skill structs.
+///
+/// Unlike OpenClaw (which shows ✓/✗ for ready/missing), Hermes `skills list`
+/// only returns **installed** skills. If a skill appears in the output, it is
+/// ready. Available-but-not-installed skills are shown via `hermes skills browse`.
+///
+/// The Hermes CLI uses Python Rich tables with box-drawing characters.
+/// `hermes skills list` outputs columns: Name │ Category │ Source │ Trust
+/// All skills listed are installed (bundled, hub, or local).
+fn parse_hermes_skills_output(output: &str) -> Vec<crate::models::Skill> {
+    parse_rich_table(output, |cells| {
+        // Columns: Name, Category, Source, Trust
+        let name = cells[0].to_string();
+        let category = cells.get(1).copied().unwrap_or("");
+        let source_col = cells.get(2).copied().unwrap_or("");
+        // Map Hermes source types to our source field
+        let source = if source_col.contains("hub") || source_col == "official" {
+            "hermes-hub"
+        } else {
+            "bundled"
+        };
+        Some(crate::models::Skill {
+            name,
+            description: if category.is_empty() {
+                String::new()
+            } else {
+                format!("[{}]", category)
+            },
+            author: source_col.to_string(),
+            version: String::new(),
+            installed: true,
+            source: source.to_string(),
+        })
+    })
+}
+
+/// Parse a Rich-formatted table (box-drawing chars like │ ┌ ─ ┐).
+/// Calls `row_fn` for each data row with the non-empty cells.
+fn parse_rich_table<F>(output: &str, row_fn: F) -> Vec<crate::models::Skill>
+where
+    F: Fn(&[&str]) -> Option<crate::models::Skill>,
+{
+    let mut seen = std::collections::HashSet::new();
+    let mut header_seen = false;
+
+    output
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            // Skip empty lines and decorative borders
+            if line.is_empty()
+                || line.starts_with('┌')
+                || line.starts_with('└')
+                || line.starts_with('├')
+                || line.starts_with('╭')
+                || line.starts_with('╰')
+                || line.starts_with('╞')
+            {
+                return None;
+            }
+            // Must be a table row with │ delimiters
+            if !line.contains('│') {
+                return None;
+            }
+            let cells: Vec<&str> = line.split('│')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if cells.is_empty() {
+                return None;
+            }
+            // Skip header row (first row with │ delimiters)
+            if !header_seen {
+                header_seen = true;
+                return None;
+            }
+            // Strip ANSI escape codes from cells
+            let cleaned: Vec<String> = cells.iter()
+                .map(|c| strip_ansi(c))
+                .collect();
+            let cleaned_refs: Vec<&str> = cleaned.iter().map(|s| s.as_str()).collect();
+
+            let skill = row_fn(&cleaned_refs)?;
+            if skill.name.is_empty() || !seen.insert(skill.name.clone()) {
+                return None;
+            }
+            Some(skill)
+        })
+        .collect()
+}
+
+/// Strip ANSI escape sequences (Rich terminal colors) from a string.
+fn strip_ansi(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // Skip until 'm' (end of ANSI escape)
+            for inner in chars.by_ref() {
+                if inner == 'm' {
+                    break;
+                }
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result.trim().to_string()
+}
+
+/// Parse `hermes skills search` / `hermes skills browse` Rich table output.
+/// Columns: # │ Name │ Description │ Source │ Trust
+fn parse_hermes_search_output(output: &str) -> Vec<crate::models::Skill> {
+    parse_rich_table(output, |cells| {
+        // The browse output has a "#" column first; search does not.
+        // Detect by checking if first cell is numeric.
+        let offset = if cells[0].chars().all(|c| c.is_ascii_digit()) { 1 } else { 0 };
+        let name = cells.get(offset)?.to_string();
+        let description = cells.get(offset + 1).map(|s| s.to_string()).unwrap_or_default();
+        if name.is_empty() {
+            return None;
+        }
+        Some(crate::models::Skill {
+            name,
+            description,
+            author: String::new(),
+            version: String::new(),
+            installed: false,
+            source: "hermes-hub".to_string(),
+        })
+    })
 }
 
 /// Parse `npx clawhub search` text output into Skill structs.
@@ -821,7 +957,10 @@ pub async fn clawhub_search_skills(
 
         match result {
             Ok(exec_result) => {
-                let skills = parse_openclaw_skills_output(&exec_result.output);
+                let skills = match bot_agent_type {
+                    AgentType::OpenClaw => parse_openclaw_skills_output(&exec_result.output),
+                    AgentType::Hermes => parse_hermes_skills_output(&exec_result.output),
+                };
                 let total = skills.len() as u32;
                 Ok(SkillSearchResult { skills, total })
             }
@@ -830,23 +969,29 @@ pub async fn clawhub_search_skills(
             )),
         }
     } else {
-        // Search ClawHub registry via `npx clawhub search <query>`
-        let args = vec!["npx", "--yes", "clawhub", "search", &query, "--limit", "20"];
+        // Search skill registry
+        let args = match bot_agent_type {
+            AgentType::OpenClaw => vec!["npx", "--yes", "clawhub", "search", &query, "--limit", "20"],
+            AgentType::Hermes => vec!["hermes", "skills", "search", &query],
+        };
         let result = tokio::time::timeout(
             timeout_dur,
             DockerManager::exec_in_container(&docker, &container_name, &args),
         )
         .await
-        .map_err(|_| AppError::Validation("ClawHub search timed out.".into()))?;
+        .map_err(|_| AppError::Validation("Skill search timed out.".into()))?;
 
         match result {
             Ok(exec_result) => {
                 if exec_result.exit_code == Some(127) {
                     return Err(AppError::Validation(
-                        "ClawHub CLI is not available in this container.".into(),
+                        "Skill search CLI is not available in this container.".into(),
                     ));
                 }
-                let skills = parse_clawhub_search_output(&exec_result.output);
+                let skills = match bot_agent_type {
+                    AgentType::OpenClaw => parse_clawhub_search_output(&exec_result.output),
+                    AgentType::Hermes => parse_hermes_search_output(&exec_result.output),
+                };
                 let total = skills.len() as u32;
                 Ok(SkillSearchResult { skills, total })
             }
@@ -862,10 +1007,16 @@ pub async fn check_clawhub_available(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<String, AppError> {
-    let container_name = {
+    let (container_name, agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        resolve_container_and_agent(&store, &id)?
     };
+
+    // Hermes has native skill support — no external CLI needed
+    if agent_type == AgentType::Hermes {
+        return Ok("hermes-native".to_string());
+    }
+
     let docker = {
         let dm = state.docker.lock().await;
         dm.client()
@@ -897,10 +1048,19 @@ pub async fn install_clawhub(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<ExecResult, AppError> {
-    let container_name = {
+    let (container_name, agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        resolve_container_and_agent(&store, &id)?
     };
+
+    // Hermes has native skill support — no external CLI to install
+    if agent_type == AgentType::Hermes {
+        return Ok(ExecResult {
+            output: "Hermes has native skill support".to_string(),
+            exit_code: Some(0),
+        });
+    }
+
     let docker = {
         let dm = state.docker.lock().await;
         dm.client()
@@ -925,35 +1085,105 @@ pub async fn clawhub_inspect_skill(
 ) -> Result<String, AppError> {
     validate_skill_name(&skill_name)?;
 
-    let container_name = {
+    let (container_name, agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        resolve_container_and_agent(&store, &id)?
     };
     let docker = {
         let dm = state.docker.lock().await;
         dm.client()
     };
 
-    // `npx clawhub inspect <slug> --json` returns full metadata
-    let args = vec!["npx", "--yes", "clawhub", "inspect", &skill_name, "--json"];
-    let result = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        DockerManager::exec_in_container(&docker, &container_name, &args),
-    )
-    .await
-    .map_err(|_| AppError::Validation("Inspect timed out".into()))?;
+    match agent_type {
+        AgentType::OpenClaw => {
+            // OpenClaw: use npx clawhub inspect for registry metadata
+            let args = vec!["npx", "--yes", "clawhub", "inspect", &skill_name, "--json"];
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(30),
+                DockerManager::exec_in_container(&docker, &container_name, &args),
+            )
+            .await
+            .map_err(|_| AppError::Validation("Inspect timed out".into()))?;
 
-    match result {
-        Ok(exec_result) => {
-            // Extract JSON from output (skip npm warnings)
-            let output = exec_result.output.trim();
-            if let Some(json_start) = output.find('{') {
-                Ok(output[json_start..].to_string())
-            } else {
-                Ok(output.to_string())
+            match result {
+                Ok(exec_result) => {
+                    let output = exec_result.output.trim();
+                    if let Some(json_start) = output.find('{') {
+                        Ok(output[json_start..].to_string())
+                    } else {
+                        Ok(output.to_string())
+                    }
+                }
+                Err(e) => Err(e),
             }
         }
-        Err(e) => Err(e),
+        AgentType::Hermes => {
+            // Hermes: read SKILL.md frontmatter directly from the skills directory.
+            // `hermes skills inspect` expects a full source path (e.g. official/foo),
+            // not a bare name, so we read the file directly for installed skills.
+            let script = format!(
+                r#"
+f="$HOME/.hermes/skills/{skill}/SKILL.md"
+if [ ! -f "$f" ]; then
+  # Try finding the skill in subdirectories (skills can be nested by category)
+  f=$(find "$HOME/.hermes/skills" -maxdepth 3 -name "SKILL.md" -path "*/{skill}/SKILL.md" 2>/dev/null | head -1)
+fi
+if [ -z "$f" ] || [ ! -f "$f" ]; then
+  echo '{{"error":"not found"}}'
+  exit 0
+fi
+# Extract YAML frontmatter between --- markers and convert to JSON-like output
+awk '/^---$/{{if(n++)exit;next}}n' "$f" | head -30
+"#,
+                skill = skill_name
+            );
+            let args = vec!["sh", "-c", &script];
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                DockerManager::exec_in_container(&docker, &container_name, &args),
+            )
+            .await
+            .map_err(|_| AppError::Validation("Inspect timed out".into()))?;
+
+            match result {
+                Ok(exec_result) => {
+                    let output = exec_result.output.trim();
+                    // Build a JSON response from the YAML frontmatter fields
+                    // Parse simple key: value lines
+                    let mut name = skill_name.clone();
+                    let mut description = String::new();
+                    let mut version = String::new();
+                    let mut category = String::new();
+                    for line in output.lines() {
+                        let line = line.trim();
+                        if let Some(val) = line.strip_prefix("name:") {
+                            name = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                        } else if let Some(val) = line.strip_prefix("description:") {
+                            description = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                        } else if let Some(val) = line.strip_prefix("version:") {
+                            version = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                        } else if let Some(val) = line.strip_prefix("category:") {
+                            category = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                        }
+                    }
+                    let json = serde_json::json!({
+                        "skill": {
+                            "slug": skill_name,
+                            "displayName": name,
+                            "summary": description,
+                        },
+                        "latestVersion": {
+                            "version": version,
+                        },
+                        "owner": {
+                            "handle": if category.is_empty() { "hermes-bundled" } else { &category },
+                        }
+                    });
+                    Ok(json.to_string())
+                }
+                Err(e) => Err(e),
+            }
+        }
     }
 }
 
@@ -968,23 +1198,31 @@ pub async fn get_skill_requirements(
 ) -> Result<serde_json::Value, AppError> {
     validate_skill_name(&skill_name)?;
 
-    let container_name = {
+    let (container_name, agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        resolve_container_and_agent(&store, &id)?
     };
     let docker = {
         let dm = state.docker.lock().await;
         dm.client()
     };
 
+    // Skill metadata path differs by agent type:
+    //   OpenClaw: /app/skills/{skill}/SKILL.md
+    //   Hermes:   ~/.hermes/skills/{skill}/SKILL.md (per Hermes docs)
+    let skills_base = match agent_type {
+        AgentType::OpenClaw => "/app/skills".to_string(),
+        AgentType::Hermes => "$HOME/.hermes/skills".to_string(),
+    };
+
     // Shell script that:
-    // 1. Reads the requires field from SKILL.md frontmatter
+    // 1. Reads the requires / required_environment_variables from SKILL.md frontmatter
     // 2. Checks which bins are missing via `command -v`
     // 3. Checks which env vars are unset
     // 4. Outputs JSON
     let script = format!(
         r#"
-f="/app/skills/{skill}/SKILL.md"
+f="{skills_base}/{skill}/SKILL.md"
 if [ ! -f "$f" ]; then echo '{{"error":"not found"}}'; exit 0; fi
 
 # Extract requires block
@@ -1040,7 +1278,8 @@ missing_config=$(echo "$missing_config" | sed 's/,$//')
 
 echo "{{\"bins\":[$missing_bins],\"env\":[$missing_env],\"config\":[$missing_config],\"os\":[$required_os]}}"
 "#,
-        skill = skill_name
+        skill = skill_name,
+        skills_base = skills_base
     );
 
     let args = vec!["sh", "-c", &script];
@@ -1071,9 +1310,9 @@ pub async fn clawhub_install_skill(
 ) -> Result<ExecResult, AppError> {
     validate_skill_name(&skill_name)?;
 
-    let container_name = {
+    let (container_name, agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        resolve_container_and_agent(&store, &id)?
     };
 
     let docker = {
@@ -1081,10 +1320,12 @@ pub async fn clawhub_install_skill(
         dm.client()
     };
 
-    // Install via `npx clawhub install <slug> --no-input`
-    let args = vec![
-        "npx", "--yes", "clawhub", "install", &skill_name, "--no-input",
-    ];
+    let args = match agent_type {
+        AgentType::OpenClaw => vec![
+            "npx", "--yes", "clawhub", "install", &skill_name, "--no-input",
+        ],
+        AgentType::Hermes => vec!["hermes", "skills", "install", &skill_name],
+    };
     DockerManager::exec_in_container(&docker, &container_name, &args).await
 }
 
@@ -1096,9 +1337,9 @@ pub async fn clawhub_uninstall_skill(
 ) -> Result<ExecResult, AppError> {
     validate_skill_name(&skill_name)?;
 
-    let container_name = {
+    let (container_name, agent_type) = {
         let store = state.store.lock().await;
-        resolve_container(&store, &id)?
+        resolve_container_and_agent(&store, &id)?
     };
 
     let docker = {
@@ -1106,10 +1347,12 @@ pub async fn clawhub_uninstall_skill(
         dm.client()
     };
 
-    // Uninstall via `npx clawhub uninstall <slug> --no-input`
-    let args = vec![
-        "npx", "--yes", "clawhub", "uninstall", &skill_name, "--no-input",
-    ];
+    let args = match agent_type {
+        AgentType::OpenClaw => vec![
+            "npx", "--yes", "clawhub", "uninstall", &skill_name, "--no-input",
+        ],
+        AgentType::Hermes => vec!["hermes", "skills", "uninstall", &skill_name],
+    };
     DockerManager::exec_in_container(&docker, &container_name, &args).await
 }
 

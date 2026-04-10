@@ -27,9 +27,10 @@ type ViewMode = "list" | "grid";
 
 interface SkillBrowserProps {
   botId: string;
+  agentType?: import("../lib/types").AgentType;
 }
 
-export function SkillBrowser({ botId }: SkillBrowserProps) {
+export function SkillBrowser({ botId, agentType }: SkillBrowserProps) {
   const {
     skills,
     allSkills,
@@ -74,9 +75,20 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search ClawHub registry..."
-            className="w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1.5 pl-8 pr-3 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
+            onKeyDown={(e) => { if (e.key === "Enter") refresh(); }}
+            placeholder={agentType === "Hermes" ? "Search Hermes skills hub..." : "Search ClawHub registry..."}
+            className="w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] py-1.5 pl-8 pr-8 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[var(--focus-border)] focus:ring-1 focus:ring-[var(--focus-ring)]"
           />
+          {query.trim() && (
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--text-tertiary)] hover:text-blue-500 disabled:opacity-50"
+              title="Search"
+            >
+              <Search className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <FilterButton active={filter === "all"} onClick={() => setFilter("all")} label="All" />
@@ -121,7 +133,7 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
             {isSearching && isRegistrySearch ? (
               <span className="inline-flex items-center gap-1">
                 <Globe className="h-2.5 w-2.5" />
-                ClawHub results for &ldquo;{query}&rdquo;
+                {agentType === "Hermes" ? "Hermes hub" : "ClawHub"} results for &ldquo;{query}&rdquo;
               </span>
             ) : isSearching ? (
               `Bundled skills matching "${query}"`
@@ -129,7 +141,7 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
               `${allSkills.length} bundled skills (${installedCount} ready)`
             )}
           </span>
-          {isSearching && isRegistrySearch && (
+          {isSearching && isRegistrySearch && agentType !== "Hermes" && (
             <button
               onClick={() => open(`https://clawhub.com/search?q=${encodeURIComponent(query)}`)}
               className="inline-flex items-center gap-0.5 text-[10px] text-[var(--accent-text)] hover:text-[var(--accent-hover)]"
@@ -142,7 +154,7 @@ export function SkillBrowser({ botId }: SkillBrowserProps) {
       )}
 
       {/* ClawHub unavailable banner */}
-      {clawhubAvailable === false && isSearching && (
+      {clawhubAvailable === false && isSearching && agentType !== "Hermes" && (
         <div className="mx-4 mt-2 flex items-center gap-3 rounded-lg border border-[var(--badge-amber-border)] bg-[var(--badge-amber-bg)] px-3 py-2">
           <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--badge-amber-text)]" />
           <div className="flex-1">
@@ -256,6 +268,14 @@ function SourceBadge({ source }: { source: string }) {
       </span>
     );
   }
+  if (source === "hermes-hub") {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+        <Globe className="h-2 w-2" />
+        Hermes Hub
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--bg-hover)] px-1.5 py-0.5 text-[9px] font-medium text-[var(--text-secondary)]">
       <Package className="h-2 w-2" />
@@ -299,7 +319,7 @@ function SkillRow({ skill, isInstalling, onInstall, onUninstall, onClick }: Skil
               className="shrink-0 text-[var(--text-tertiary)] hover:text-[var(--accent-text)]"
               title="View on clawhub.com"
             >
-              <ExternalLink className="h-3 w-3" />
+              <ExternalLink className="h-2.5 w-2.5" />
             </button>
           )}
         </div>
@@ -449,7 +469,7 @@ function SkillDetailModal({
       const data = JSON.parse(raw) as InspectData;
       setInspectData(data);
     } catch {
-      setInspectError("Could not fetch details from ClawHub");
+      setInspectError("Could not fetch skill details");
     } finally {
       setInspectLoading(false);
     }
@@ -519,7 +539,7 @@ function SkillDetailModal({
           {/* ClawHub stats */}
           {inspectLoading && (
             <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
-              <Loader2 className="h-3 w-3 animate-spin" /> Fetching ClawHub details...
+              <Loader2 className="h-3 w-3 animate-spin" /> Fetching skill details...
             </div>
           )}
 
