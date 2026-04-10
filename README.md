@@ -1,13 +1,13 @@
 # ClawPier
 
-**OpenClaw has OS-level access to your machine. ClawPier runs it in a sandbox.**
+**AI agents have OS-level access to your machine. ClawPier runs them in a sandbox.**
 
 [![Release](https://img.shields.io/github/v/release/SebastianElvis/clawpier?label=release)](https://github.com/SebastianElvis/clawpier/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/SebastianElvis/clawpier)](https://github.com/SebastianElvis/clawpier/stargazers)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%20v2-orange)](https://v2.tauri.app)
 
-A native desktop app for managing [OpenClaw](https://github.com/openclaw) bot instances inside Docker containers — sandboxed from your host by default. Available on macOS, Linux, and Windows.
+A native desktop app for managing [OpenClaw](https://github.com/openclaw) and [Hermes](https://github.com/nousresearch/hermes-agent) AI agent instances inside Docker containers — sandboxed from your host by default. Available on macOS, Linux, and Windows.
 
 <p align="center">
   <img src="docs/demo.gif" alt="ClawPier demo" width="800" />
@@ -17,9 +17,9 @@ A native desktop app for managing [OpenClaw](https://github.com/openclaw) bot in
 
 ## Why ClawPier?
 
-OpenClaw is an incredible AI agent runtime — but it has OS-level access to your email, calendars, files, and messaging platforms. Running it directly on your host means a prompt injection gives an attacker your machine ([CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253), CVSS 8.8).
+AI agent runtimes like OpenClaw and Hermes have OS-level access to your email, calendars, files, and messaging platforms. Running them directly on your host means a prompt injection gives an attacker your machine ([CVE-2026-25253](https://nvd.nist.gov/vuln/detail/CVE-2026-25253), CVSS 8.8).
 
-ClawPier fixes this by running every bot inside a Docker container:
+ClawPier fixes this by running every agent inside a Docker container:
 
 - **Sandboxed by default** — containers start with `--network none`; network access is opt-in per bot
 - **Resource limits** — set CPU and memory caps from the GUI, not Docker flags
@@ -51,9 +51,14 @@ Grab the latest build for your platform from [Releases](https://github.com/Sebas
 ### Prerequisites
 
 - **Docker** must be installed and running (Docker Desktop on macOS/Windows, or Docker Engine on Linux)
-- OpenClaw Docker image — ClawPier will prompt you to pull it on first launch
+- Agent Docker image (OpenClaw or Hermes) — ClawPier will prompt you to pull it on first launch
 
 ## Features
+
+### Multi-Agent Support
+- **OpenClaw and Hermes** — choose your agent runtime when creating a bot
+- **Agent-specific config dashboards** — view model, provider, platforms, and settings per agent type
+- **Image pull progress** — real-time progress bar with layer and byte tracking
 
 ### Bot Management
 - **Create and manage multiple bots** from a clean dashboard
@@ -74,7 +79,7 @@ Grab the latest build for your platform from [Releases](https://github.com/Sebas
 - **Resource monitoring** — live CPU, memory, and network I/O per bot
 
 ### Configuration
-- **Dashboard** — see your bot's OpenClaw config, model, channels, and Telegram info at a glance
+- **Dashboard** — see your bot's config, model, channels, and platform info at a glance
 - **Port mapping presets** — quick setup for webhooks, APIs, and WebSocket with port conflict detection
 - **Environment variables** — configure secrets and settings per bot
 - **Resource limits** — set CPU and memory limits per container
@@ -122,7 +127,7 @@ pnpm tauri build      # Build release binary + installers
 
 - Each bot gets its own Docker container (`clawpier-{uuid}`)
 - Bot profiles are saved locally at `~/.config/clawpier/bots.json`
-- OpenClaw config persists across container restarts via host bind mounts
+- Agent config persists across container restarts via host bind mounts
 - Status updates stream to the UI every 5 seconds via Tauri events
 
 ## Tech stack
